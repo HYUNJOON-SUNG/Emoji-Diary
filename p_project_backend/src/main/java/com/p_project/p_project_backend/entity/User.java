@@ -37,7 +37,8 @@ public class User {
     // 페르소나 (persona)
     @Enumerated(EnumType.STRING)
     @Column(name = "persona")
-    private Persona persona;
+    @Builder.Default
+    private Persona persona = Persona.BEST_FRIEND;
 
     // 이메일 인증 완료 여부 (email_verified)
     @Column(name = "email_verified", columnDefinition = "TINYINT(1) DEFAULT 0")

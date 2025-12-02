@@ -70,19 +70,11 @@
         id="signupPassword"
         placeholder="비밀번호 (8자 이상, 영문/숫자/특수문자)"
       />
-      <select id="signupPersona">
-        <option value="BEST_FRIEND">Best Friend (친한 친구)</option>
-        <option value="PARENTS">Parents (부모님)</option>
-        <option value="EXPERT">Expert (전문가)</option>
-        <option value="MENTOR">Mentor (멘토)</option>
-        <option value="COUNSELOR">Counselor (상담사)</option>
-        <option value="POET">Poet (시인)</option>
-      </select>
       <button onclick="register()">가입하기</button>
     </div>
 
     <!-- Password Reset -->
-    <div class="card">
+    <div class="section">
       <h2>비밀번호 찾기</h2>
       <input type="email" id="resetEmail" placeholder="가입한 이메일" />
       <button onclick="sendResetCode()">인증 코드 발송</button>
@@ -101,6 +93,21 @@
       <input type="email" id="loginEmail" placeholder="이메일" />
       <input type="password" id="loginPassword" placeholder="비밀번호" />
       <button onclick="login()">로그인</button>
+    </div>
+
+    <!-- Persona Setup -->
+    <div id="personaSection" class="section hidden">
+      <h2>페르소나 설정</h2>
+      <p>현재 페르소나: <span id="currentPersona">Loading...</span></p>
+      <select id="updatePersonaSelect">
+        <option value="BEST_FRIEND">Best Friend (친한 친구)</option>
+        <option value="PARENTS">Parents (부모님)</option>
+        <option value="EXPERT">Expert (전문가)</option>
+        <option value="MENTOR">Mentor (멘토)</option>
+        <option value="COUNSELOR">Counselor (상담사)</option>
+        <option value="POET">Poet (시인)</option>
+      </select>
+      <button onclick="updatePersona()">변경하기</button>
     </div>
 
     <!-- Profile -->
@@ -127,12 +134,15 @@
           document.getElementById("signupSection").classList.add("hidden");
           document.getElementById("loginSection").classList.add("hidden");
           document.getElementById("profileSection").classList.remove("hidden");
+          document.getElementById("personaSection").classList.remove("hidden");
+          fetchUserInfo();
         } else {
           document.getElementById("statusText").innerText = "로그아웃됨";
           document.getElementById("logoutBtn").classList.add("hidden");
           document.getElementById("signupSection").classList.remove("hidden");
           document.getElementById("loginSection").classList.remove("hidden");
           document.getElementById("profileSection").classList.add("hidden");
+          document.getElementById("personaSection").classList.add("hidden");
         }
       }
 
@@ -199,7 +209,6 @@
           email: document.getElementById("signupEmail").value,
           password: document.getElementById("signupPassword").value,
           emailVerified: true, // 테스트 편의상 true로 보냄 (서버에서 체크함)
-          persona: document.getElementById("signupPersona").value,
         };
         const res = await api("/api/auth/register", "POST", req);
         if (res.success) {
@@ -208,7 +217,9 @@
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", refreshToken);
           updateAuthStatus();
-          alert("가입 성공!");
+          alert("가입 성공! 자동 로그인됩니다.");
+        } else {
+          alert("회원가입 실패: " + res.error.message);
         }
       }
 
@@ -225,6 +236,24 @@
           localStorage.setItem("refreshToken", refreshToken);
           updateAuthStatus();
           alert("로그인 성공!");
+        }
+      }
+
+      async function fetchUserInfo() {
+        const res = await api("/api/users/me", "GET", null, true);
+        if (res.success) {
+            document.getElementById("currentPersona").innerText = res.data.persona;
+        }
+      }
+      
+      async function updatePersona() {
+        const persona = document.getElementById("updatePersonaSelect").value;
+        const res = await api("/api/users/me/persona", "PUT", { persona }, true);
+        if (res.success) {
+            alert(res.data.message);
+            fetchUserInfo(); // Refresh info
+        } else {
+            alert(res.error.message);
         }
       }
 
@@ -251,7 +280,6 @@
         alert("로그아웃 되었습니다.");
       }
 
-      updateAuthStatus();
       let currentResetToken = null;
 
       async function sendResetCode() {
@@ -296,6 +324,9 @@
             alert(res.error.message);
         }
       }
+      
+      // Initial check
+      updateAuthStatus();
     </script>
   </body>
 </html>

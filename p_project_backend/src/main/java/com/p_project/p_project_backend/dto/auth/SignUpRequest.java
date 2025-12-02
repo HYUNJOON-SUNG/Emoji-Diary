@@ -1,6 +1,5 @@
 package com.p_project.p_project_backend.dto.auth;
 
-import com.p_project.p_project_backend.entity.User;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,5 +25,4 @@ public class SignUpRequest {
     @AssertTrue(message = "이메일 인증이 완료되어야 합니다")
     private Boolean emailVerified;
 
-    private User.Persona persona;
 }
