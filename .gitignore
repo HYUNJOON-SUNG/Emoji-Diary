@@ -1,0 +1,8 @@
+.vscode/
+.idea/
+.venv/
+*.log
+*.md
+!README.md
+__pycache__/
+*.pyc

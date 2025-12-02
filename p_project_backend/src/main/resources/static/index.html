@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emoji Diary Auth Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .section {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+      h2 {
+        margin-top: 0;
+      }
+      input,
+      select,
+      button {
+        margin: 5px 0;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #result {
+        background-color: #f0f0f0;
+        padding: 10px;
+        white-space: pre-wrap;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Emoji Diary API Test</h1>
+
+    <!-- Status -->
+    <div id="authStatus" class="section">
+      상태: <span id="statusText">로그아웃됨</span>
+      <button id="logoutBtn" class="hidden" onclick="logout()">로그아웃</button>
+    </div>
+
+    <!-- Sign Up -->
+    <div id="signupSection" class="section">
+      <h2>회원가입</h2>
+      <input type="text" id="signupName" placeholder="이름 (2자 이상)" />
+      <input type="email" id="signupEmail" placeholder="이메일" />
+      <button onclick="checkEmail()">이메일 중복 확인</button>
+      <button onclick="sendVerificationCode()">인증 코드 발송</button>
+      <input type="text" id="verificationCode" placeholder="인증 코드" />
+      <button onclick="verifyCode()">인증 코드 확인</button>
+      <input
+        type="password"
+        id="signupPassword"
+        placeholder="비밀번호 (8자 이상, 영문/숫자/특수문자)"
+      />
+      <select id="signupPersona">
+        <option value="BEST_FRIEND">Best Friend (친한 친구)</option>
+        <option value="PARENTS">Parents (부모님)</option>
+        <option value="EXPERT">Expert (전문가)</option>
+        <option value="MENTOR">Mentor (멘토)</option>
+        <option value="COUNSELOR">Counselor (상담사)</option>
+        <option value="POET">Poet (시인)</option>
+      </select>
+      <button onclick="register()">가입하기</button>
+    </div>
+
+    <!-- Password Reset -->
+    <div class="card">
+      <h2>비밀번호 찾기</h2>
+      <input type="email" id="resetEmail" placeholder="가입한 이메일" />
+      <button onclick="sendResetCode()">인증 코드 발송</button>
+      
+      <input type="text" id="resetCode" placeholder="인증 코드 6자리" />
+      <button onclick="verifyResetCode()">인증 코드 확인</button>
+      
+      <input type="password" id="newPassword" placeholder="새 비밀번호" />
+      <input type="password" id="confirmPassword" placeholder="새 비밀번호 확인" />
+      <button onclick="resetPassword()">비밀번호 재설정</button>
+    </div>
+
+    <!-- Login -->
+    <div id="loginSection" class="section">
+      <h2>로그인</h2>
+      <input type="email" id="loginEmail" placeholder="이메일" />
+      <input type="password" id="loginPassword" placeholder="비밀번호" />
+      <button onclick="login()">로그인</button>
+    </div>
+
+    <!-- Profile -->
+    <div id="profileSection" class="section hidden">
+      <h2>내 정보</h2>
+      <button onclick="getProfile()">정보 조회</button>
+      <div id="profileData"></div>
+    </div>
+
+    <!-- Result Log -->
+    <div class="section">
+      <h2>결과 로그</h2>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      let accessToken = localStorage.getItem("accessToken");
+      let refreshToken = localStorage.getItem("refreshToken");
+
+      function updateAuthStatus() {
+        if (accessToken) {
+          document.getElementById("statusText").innerText = "로그인됨";
+          document.getElementById("logoutBtn").classList.remove("hidden");
+          document.getElementById("signupSection").classList.add("hidden");
+          document.getElementById("loginSection").classList.add("hidden");
+          document.getElementById("profileSection").classList.remove("hidden");
+        } else {
+          document.getElementById("statusText").innerText = "로그아웃됨";
+          document.getElementById("logoutBtn").classList.add("hidden");
+          document.getElementById("signupSection").classList.remove("hidden");
+          document.getElementById("loginSection").classList.remove("hidden");
+          document.getElementById("profileSection").classList.add("hidden");
+        }
+      }
+
+      function log(message, data) {
+        const el = document.getElementById("result");
+        el.innerText =
+          message +
+          (data ? "\n" + JSON.stringify(data, null, 2) : "") +
+          "\n\n" +
+          el.innerText;
+      }
+
+      async function api(url, method, body, auth = false) {
+        const headers = { "Content-Type": "application/json" };
+        if (auth && accessToken) {
+          headers["Authorization"] = "Bearer " + accessToken;
+        }
+
+        try {
+          const response = await fetch(url, {
+            method: method,
+            headers: headers,
+            body: body ? JSON.stringify(body) : null,
+          });
+          const data = await response.json();
+          log(`${method} ${url} 결과:`, data);
+          return data;
+        } catch (error) {
+          log(`${method} ${url} 에러:`, error);
+          throw error;
+        }
+      }
+
+      async function checkEmail() {
+        const email = document.getElementById("signupEmail").value;
+        const res = await api("/api/auth/check-email", "POST", { email });
+        if (res.success) {
+            alert(res.data.message);
+        } else {
+            alert(res.error.message);
+        }
+      }
+
+      async function sendVerificationCode() {
+        const email = document.getElementById("signupEmail").value;
+        await api("/api/auth/send-verification-code", "POST", { email });
+        alert("인증 코드가 발송되었습니다 (콘솔/로그 확인 필요)");
+      }
+
+      async function verifyCode() {
+        const email = document.getElementById("signupEmail").value;
+        const code = document.getElementById("verificationCode").value;
+        const res = await api("/api/auth/verify-code", "POST", { email, code });
+        if (res.success) {
+            alert(res.data.message);
+        } else {
+            alert(res.error.message);
+        }
+      }
+
+      async function register() {
+        const req = {
+          name: document.getElementById("signupName").value,
+          email: document.getElementById("signupEmail").value,
+          password: document.getElementById("signupPassword").value,
+          emailVerified: true, // 테스트 편의상 true로 보냄 (서버에서 체크함)
+          persona: document.getElementById("signupPersona").value,
+        };
+        const res = await api("/api/auth/register", "POST", req);
+        if (res.success) {
+          accessToken = res.data.accessToken;
+          refreshToken = res.data.refreshToken;
+          localStorage.setItem("accessToken", accessToken);
+          localStorage.setItem("refreshToken", refreshToken);
+          updateAuthStatus();
+          alert("가입 성공!");
+        }
+      }
+
+      async function login() {
+        const req = {
+          email: document.getElementById("loginEmail").value,
+          password: document.getElementById("loginPassword").value,
+        };
+        const res = await api("/api/auth/login", "POST", req);
+        if (res.success) {
+          accessToken = res.data.accessToken;
+          refreshToken = res.data.refreshToken;
+          localStorage.setItem("accessToken", accessToken);
+          localStorage.setItem("refreshToken", refreshToken);
+          updateAuthStatus();
+          alert("로그인 성공!");
+        }
+      }
+
+      async function getProfile() {
+        const res = await api("/api/users/me", "GET", null, true);
+        if (res.success) {
+          document.getElementById("profileData").innerText = JSON.stringify(
+            res.data,
+            null,
+            2
+          );
+        }
+      }
+
+      async function logout() {
+        if (refreshToken) {
+          await api("/api/auth/logout", "POST", { refreshToken });
+        }
+        accessToken = null;
+        refreshToken = null;
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        updateAuthStatus();
+        alert("로그아웃 되었습니다.");
+      }
+
+      updateAuthStatus();
+      let currentResetToken = null;
+
+      async function sendResetCode() {
+        const email = document.getElementById("resetEmail").value;
+        const res = await api("/api/auth/password-reset/send-code", "POST", { email });
+        if (res.success) alert(res.data.message);
+        else alert(res.error.message);
+      }
+
+      async function verifyResetCode() {
+        const email = document.getElementById("resetEmail").value;
+        const code = document.getElementById("resetCode").value;
+        const res = await api("/api/auth/password-reset/verify-code", "POST", { email, code });
+        if (res.success) {
+            currentResetToken = res.data.resetToken; // Store the token
+            alert("인증되었습니다. 새 비밀번호를 설정해주세요.");
+        } else {
+            alert(res.error.message);
+        }
+      }
+
+      async function resetPassword() {
+        const email = document.getElementById("resetEmail").value;
+        const newPassword = document.getElementById("newPassword").value;
+        const confirmPassword = document.getElementById("confirmPassword").value;
+        
+        if (!currentResetToken) {
+            alert("먼저 이메일 인증을 완료해주세요.");
+            return;
+        }
+
+        const res = await api("/api/auth/password-reset/reset", "POST", { 
+            email, 
+            newPassword, 
+            confirmPassword,
+            resetToken: currentResetToken 
+        });
+        
+        if (res.success) {
+            alert(res.data.message);
+        } else {
+            alert(res.error.message);
+        }
+      }
+    </script>
+  </body>
+</html>

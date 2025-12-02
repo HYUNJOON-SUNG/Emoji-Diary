@@ -1,0 +1,13 @@
+package com.p_project.p_project_backend.dto.auth;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+public class VerificationCodeRequest {
+    private String email;
+    private String code;
+}
