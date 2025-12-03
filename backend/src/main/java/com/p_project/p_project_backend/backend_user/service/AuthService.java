@@ -48,7 +48,7 @@ public class AuthService {
         RefreshToken rt = RefreshToken.builder()
                 .user(user)
                 .token(refreshToken)
-                .expiryDate(LocalDateTime.now().plusDays(7)) // 7 days validity
+                .expiresAt(LocalDateTime.now().plusDays(7)) // 7 days validity
                 .createdAt(LocalDateTime.now())
                 .build();
         refreshTokenRepository.save(rt);
@@ -230,7 +230,7 @@ public class AuthService {
         RefreshToken rt = refreshTokenRepository.findByToken(refreshToken)
                 .orElseThrow(() -> new RuntimeException("Refresh token not found"));
 
-        if (rt.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (rt.getExpiresAt().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.delete(rt);
             throw new RuntimeException("Refresh token expired");
         }
@@ -240,7 +240,7 @@ public class AuthService {
         String newRefreshToken = tokenProvider.createRefreshToken(user.getEmail());
 
         rt.setToken(newRefreshToken);
-        rt.setExpiryDate(LocalDateTime.now().plusDays(7));
+        rt.setExpiresAt(LocalDateTime.now().plusDays(7));
         refreshTokenRepository.save(rt);
 
         return TokenResponse.builder()
