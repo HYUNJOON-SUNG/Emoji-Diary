@@ -1,12 +1,11 @@
 package com.p_project.p_project_backend.config;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,11 +13,10 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DatabaseIndexInitializer {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
 
     @EventListener(ApplicationReadyEvent.class)
-    @Order(1) // 다른 초기화보다 먼저 실행
+    @Order(1)
     public void createFulltextIndex() {
         try {
             // 1. 테이블 존재 확인
@@ -29,10 +27,9 @@ public class DatabaseIndexInitializer {
                   AND table_name = 'diaries'
                 """;
             
-            Long tableExists = ((Number) entityManager.createNativeQuery(checkTableSql)
-                .getSingleResult()).longValue();
+            Integer tableExists = jdbcTemplate.queryForObject(checkTableSql, Integer.class);
             
-            if (tableExists == 0) {
+            if (tableExists == null || tableExists == 0) {
                 log.warn("diaries 테이블이 아직 생성되지 않았습니다. 인덱스 생성을 건너뜁니다.");
                 return;
             }
@@ -46,30 +43,25 @@ public class DatabaseIndexInitializer {
                   AND index_name = 'idx_diaries_title_content'
                 """;
             
-            Long indexExists = ((Number) entityManager.createNativeQuery(checkIndexSql)
-                .getSingleResult()).longValue();
+            Integer indexExists = jdbcTemplate.queryForObject(checkIndexSql, Integer.class);
             
-            if (indexExists > 0) {
+            if (indexExists != null && indexExists > 0) {
                 log.info("FULLTEXT 인덱스가 이미 존재합니다: idx_diaries_title_content");
                 return;
             }
 
-            // 3. FULLTEXT 인덱스 생성
+            // 3. FULLTEXT 인덱스 생성 (DDL은 JdbcTemplate으로 실행)
             String createIndexSql = """
                 CREATE FULLTEXT INDEX idx_diaries_title_content 
                 ON diaries(title, content)
                 """;
             
-            entityManager.createNativeQuery(createIndexSql).executeUpdate();
+            jdbcTemplate.execute(createIndexSql);
             log.info("FULLTEXT 인덱스 생성 완료: idx_diaries_title_content");
             
         } catch (Exception e) {
-            // 인덱스가 이미 존재하거나 다른 오류 발생 시
-            // 애플리케이션 시작을 막지 않도록 에러만 로깅
             log.error("FULLTEXT 인덱스 생성 중 오류 발생 (무시하고 계속 진행): {}", 
                      e.getMessage());
-            // 에러를 다시 던지지 않아서 애플리케이션 시작은 계속됨
         }
     }
 }
-
