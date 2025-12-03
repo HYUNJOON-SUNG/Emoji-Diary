@@ -6,7 +6,10 @@ node_modules/
 /.pnp
 .pnp.js
 
-frontend/reference/
+# ========================================
+# 레퍼런스 파일
+# ========================================
+reference/
 
 # Python
 venv/
