@@ -10,7 +10,9 @@ import java.time.LocalDateTime;
 @Table(name = "error_logs", indexes = {
         @Index(name = "idx_error_logs_level", columnList = "level"),
         @Index(name = "idx_error_logs_created_at", columnList = "created_at"),
-        @Index(name = "idx_error_logs_user_id", columnList = "user_id")
+        @Index(name = "idx_error_logs_user_id", columnList = "user_id"),
+        @Index(name = "idx_error_logs_admin_id", columnList = "admin_id"),
+        @Index(name = "idx_error_logs_endpoint", columnList = "endpoint")
 }) // 테이블명 설정 - error_logs, 인덱스 설정
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 인자가 필요없는 생성자 생성
 @AllArgsConstructor // 모든 인자를 필요로하는 생성자 생성
@@ -44,6 +46,11 @@ public class ErrorLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    // 관리자 ID (admin_id) - FK (NULL 가능)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id")
+    private Admin admin;
 
     // 스택 트레이스 (stack_trace)
     @Column(name = "stack_trace", columnDefinition = "TEXT")

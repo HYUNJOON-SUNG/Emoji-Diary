@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "password_reset_codes", indexes = {
         @Index(name = "idx_password_codes_email", columnList = "email"),
         @Index(name = "idx_password_codes_code", columnList = "code"),
+        @Index(name = "idx_password_codes_reset_token", columnList = "reset_token"),
         @Index(name = "idx_password_codes_expires_at", columnList = "expires_at")
 }) // 테이블명 설정 - password_reset_codes, 인덱스 설정
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 인자가 필요없는 생성자 생성
