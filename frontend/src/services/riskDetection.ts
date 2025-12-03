@@ -36,13 +36,33 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * 위험 분석 결과 인터페이스 (플로우 9.1)
+ * 
+ * [ERD 설계서 참고 - Risk_Detection_Sessions 테이블]
+ * - id: BIGINT (PK) → (세션 고유 ID, API 응답에 포함되지 않을 수 있음)
+ * - user_id: BIGINT (FK) → (사용자 ID, Users.id 참조, API 응답에 포함되지 않음)
+ * - risk_level: ENUM → riskLevel (위험 레벨: none, low, medium, high)
+ * - shown_at: DATETIME → (알림 표시 완료 일시, NULL이면 아직 알림을 보지 않은 상태)
+ * - created_at: DATETIME → (생성일시, API 응답에 포함되지 않을 수 있음)
+ * 
+ * [관계]
+ * - Risk_Detection_Sessions.user_id → Users.id (FK, CASCADE)
+ * - 사용자 로그인 후 다이어리 메인 화면 진입 시 위험 신호 분석 후 세션 생성
+ * - shown_at이 NULL이면 아직 알림을 보지 않은 상태
+ * - 세션 중 한 번만 표시되도록 shown_at으로 확인
+ * 
+ * [API 명세서 참고]
+ * - GET /api/risk-detection/analyze 응답 형식
+ * - riskLevel: none, low, medium, high
+ * - reasons: 위험 판정 근거 배열
+ * - urgentCounselingPhones: High 레벨인 경우 긴급 상담 전화번호 배열 (Counseling_Resources.is_urgent = TRUE인 기관)
  */
 export interface RiskAnalysis {
-  isAtRisk: boolean; // 위험 신호 감지 여부
-  riskLevel: 'none' | 'low' | 'medium' | 'high'; // 위험 레벨
+  isAtRisk: boolean; // 위험 신호 감지 여부 (riskLevel !== 'none')
+  riskLevel: 'none' | 'low' | 'medium' | 'high'; // 위험 레벨 (ERD: Risk_Detection_Sessions.risk_level, ENUM)
   reasons: string[]; // 위험 판정 근거 (사용자에게 표시)
-  recentNegativeCount: number; // 14일 중 부정 감정 일수
+  recentNegativeCount: number; // 모니터링 기간 내 부정 감정 일수
   consecutiveNegativeDays: number; // 최대 연속 부정 감정 일수
+  urgentCounselingPhones?: string[]; // 긴급 상담 전화번호 (High 레벨인 경우, Counseling_Resources.is_urgent = TRUE인 기관의 전화번호)
 }
 
 /**

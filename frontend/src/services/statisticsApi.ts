@@ -29,6 +29,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * 감정 통계 조회 파라미터 인터페이스
  * 
  * [API 명세서 Section 5.2.1]
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - 통계는 Diaries 테이블의 emotion 컬럼 기준으로 집계됨
+ * - emotion: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+ * - 인덱스: idx_diaries_emotion, idx_diaries_emotion_date (통계 조회 최적화)
  */
 export interface EmotionStatisticsParams {
   period: 'weekly' | 'monthly' | 'yearly'; // 기간
@@ -43,6 +49,12 @@ export interface EmotionStatisticsParams {
  * [API 명세서 Section 5.2.1]
  * - Response: { success: true, data: { period, year, month, emotions, total } }
  * - emotions: { "행복": 10, "중립": 5, "슬픔": 3, ... }
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - emotions 객체의 키는 Diaries.emotion 컬럼 값 (ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - 값은 해당 감정을 가진 일기의 개수
+ * - total은 조회 기간 내 전체 일기 개수
+ * - 통계는 KoBERT 분석 결과(emotion 컬럼) 기준으로 집계됨
  */
 export interface EmotionStatisticsResponse {
   period: 'weekly' | 'monthly' | 'yearly';
@@ -50,9 +62,9 @@ export interface EmotionStatisticsResponse {
   month?: number;
   week?: number;
   emotions: {
-    [key: string]: number; // 감정명: 개수 (예: "행복": 10)
+    [key: string]: number; // 감정명: 개수 (ERD: Diaries.emotion 기준 집계, 예: "행복": 10)
   };
-  total: number; // 총 일기 개수
+  total: number; // 총 일기 개수 (ERD: Diaries 테이블 조회 기간 내 전체 레코드 수)
 }
 
 /**
@@ -71,13 +83,20 @@ export interface EmotionTrendParams {
  * 
  * [API 명세서 Section 5.2.2]
  * - Response: { success: true, data: { period, dates, emotions } }
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - emotions 배열의 각 항목은 Diaries 테이블의 레코드
+ * - date: Diaries.date (DATE, YYYY-MM-DD 형식)
+ * - emotion: Diaries.emotion (ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+ * - 인덱스: idx_diaries_emotion_date (통계 조회 최적화)
  */
 export interface EmotionTrendResponse {
   period: 'weekly' | 'monthly';
-  dates: string[]; // 날짜 배열 (YYYY-MM-DD)
+  dates: string[]; // 날짜 배열 (ERD: Diaries.date, DATE, YYYY-MM-DD 형식)
   emotions: Array<{
-    date: string; // 날짜 (YYYY-MM-DD)
-    emotion: string; // KoBERT 감정 (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+    date: string; // 날짜 (ERD: Diaries.date, DATE, YYYY-MM-DD 형식)
+    emotion: string; // KoBERT 감정 (ERD: Diaries.emotion, ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
   }>;
 }
 

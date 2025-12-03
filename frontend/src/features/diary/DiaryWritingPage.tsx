@@ -592,12 +592,12 @@ export function DiaryWritingPage({
       } else {
         // 새 작성 모드: 감정 분석 모달 표시 (플로우 3.4)
         // KoBERT 분석 결과를 전달
-        onFinish({
+          onFinish({
           emotion: emotionEmoji, // KoBERT 분석 결과 이모지
           emotionName: emotionData?.name || '중립', // KoBERT 분석 결과 이름
           emotionCategory: emotionCategory, // 긍정/중립/부정
-          date: selectedDate,
-        });
+            date: selectedDate,
+          });
       }
       
     } catch (err) {
@@ -709,8 +709,8 @@ export function DiaryWritingPage({
                   <p className="text-xs text-blue-600">
                     일기를 작성하고 저장하면, AI가 본문을 분석하여 감정을 자동으로 파악합니다.
                   </p>
-                </div>
-              </div>
+                  </div>
+                  </div>
             </div>
             
             {/* 3. 기분 입력 (선택) */}

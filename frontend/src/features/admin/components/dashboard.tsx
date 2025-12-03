@@ -5,128 +5,240 @@
  * 
  * @description
  * 관리자 대시보드의 메인 화면으로, 시스템 전체의 핵심 지표를 시각화하여 표시
- * - 대시보드 화면 진입
- * - 통계 카드 조회
- * - 일지 작성 추이 차트 조회
+ * - 유스케이스: 2.1-2.5 서비스 통계 플로우
+ * - 플로우: 서비스 통계 플로우
  * 
  * @features
- * 1. 대시보드 화면 진입:
- *    - 로그인 성공 후 자동 이동 또는 네비게이션 "대시보드" 탭 클릭
+ * 1. 서비스 통계 화면 진입 (2.1):
+ *    - 관리자 로그인 성공 후 자동 이동 또는 네비게이션에서 서비스 통계 기능 실행
  *    - 로딩 스피너 표시
  *    - 전체 통계 데이터 자동 로드
  * 
- * 2. 통계 카드 4개:
- *    - 전체 사용자 수: 현재 등록된 총 사용자 수
- *    - 오늘 작성된 일지 수: 오늘 날짜 기준
- *    - 이번 주 작성된 일지 수: 이번 주(월~일) 작성
- *    - 이번 달 작성된 일지 수: 이번 달 작성
- *    - 이전 기간 대비 증감 표시 (화살표 아이콘 + 수치)
- *    - 기간 필터: 주간/월간/연간 선택 가능
+ * 2. 전체 통계 카드 조회 (2.2) - 6개:
+ *    - 전체 사용자 수: 현재 등록된 총 사용자 수, 이전 기간 대비 증감, 기간 필터 (주간/월간/연간)
+ *    - 활성 사용자 수: DAU/WAU/MAU, 기간 필터 (DAU/WAU/MAU 선택)
+ *    - 신규 가입자 수: 오늘/이번 주/이번 달, 기간 필터 (일/주/월 선택)
+ *    - 총 일지 작성 수: 전체 누적 일지 작성 개수, 이전 기간 대비 증감
+ *    - 일평균 일지 작성 수: 선택한 기간의 일평균 일지 작성 개수, 기간 필터 (주간/월간/연간)
+ *    - 위험 레벨별 사용자 수: High/Medium/Low/None 레벨별 사용자 수 (시각적으로 구분)
  * 
- * 3. 일지 작성 추이 차트:
- *    - 기간별 일지 작성 추이 Bar Chart
+ * 3. 일지 작성 추이 차트 조회 (2.3):
+ *    - 일지 작성 개수 추이 막대 그래프
+ *    - X축: 날짜 (일별/주별/월별)
+ *    - Y축: 작성된 일지 개수
+ *    - 기간 필터: 주간/월간/연간 선택
+ *    - 데이터 포인트 호버 시 해당 기간의 일지 개수 표시
+ * 
+ * 4. 사용자 활동 통계 차트 조회 (2.4):
+ *    - 사용자 활동 추이 라인 차트
+ *    - 여러 지표 동시 표시: 활성 사용자 수 추이 (DAU/WAU/MAU), 신규 가입자 수 추이, 사용자 유지율 추이
+ *    - 지표 선택 기능 제공 (여러 지표 동시 선택 가능)
+ *    - 기간 필터: 주간/월간/연간 선택
+ *    - 데이터 포인트 호버 시 해당 기간의 상세 정보 표시
+ * 
+ * 5. 위험 레벨 분포 통계 조회 (2.5):
+ *    - 위험 레벨별 사용자 수 분포 차트 (파이 차트 또는 막대 그래프)
+ *    - 4가지 위험 레벨별 비율 표시: High/Medium/Low/None
+ *    - 각 레벨별로 시각적으로 구분, 범례 표시 (위험 레벨, 사용자 수, 비율)
+ *    - 기간 필터: 주간/월간/연간 선택
+ *    - 차트 호버 시 해당 위험 레벨의 상세 정보 표시
  * 
  * @backend_requirements
  * - GET /api/admin/dashboard/stats?period={week|month|year}
  *   Response: {
  *     totalUsers: number,
+ *     activeUsers: { dau: number, wau: number, mau: number },
+ *     newUsers: { today: number, thisWeek: number, thisMonth: number },
+ *     totalDiaries: number,
+ *     avgDailyDiaries: number,
+ *     riskLevelUsers: { high: number, medium: number, low: number, none: number },
  *     todayDiaries: number,
  *     weeklyDiaries: number,
  *     monthlyDiaries: number,
- *     weeklyData: Array<{day, diaries}>
+ *     weeklyData: Array<{day, diaries}>,
+ *     userActivityData: Array<{date, dau, wau, mau, newUsers, retentionRate}>,
+ *     riskDistributionData: Array<{level, count, percentage}>
  *   }
  * 
  * @data_sources
- * - Database: users 테이블 (전체 사용자 수)
- * - Database: diary_entries 테이블 (일지 작성 통계)
+ * - Database: users 테이블 (전체 사용자 수, 활성 사용자 수, 신규 가입자 수)
+ * - Database: diaries 테이블 (일지 작성 통계)
+ * - Database: risk_detection 테이블 (위험 레벨별 사용자 수)
  * 
  * ====================================================================================================
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MetricCard } from './metric-card';
 import { WeeklyDiaryChart } from './weekly-diary-chart';
-import { Users, BookOpen, TrendingUp, Calendar } from 'lucide-react';
-
-// ========================================
-// Mock API 함수 (실제로는 백엔드 API 호출)
-// ========================================
-/**
- * [백엔드 작업] 대시보드 통계 데이터 조회 API
- * 
- * @param period - 조회 기간 (week: 최근 7일, month: 최근 30일, year: 최근 12개월)
- * @returns 대시보드 통계 데이터
- */
-const fetchDashboardStats = async (period: 'week' | 'month' | 'year' = 'month') => {
-  // 네트워크 딜레이 시뮬레이션 (500ms)
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // ========================================
-  // 기간별 통계 Mock 데이터
-  // ========================================
-  const statsData = {
-    week: {
-      totalUsers: 12345,
-      todayDiaries: 234,
-      weeklyDiaries: 1842,
-      monthlyDiaries: 7523,
-      // 월~일 일별 데이터
-      weeklyData: [
-        { day: '월', diaries: 245 },
-        { day: '화', diaries: 268 },
-        { day: '수', diaries: 289 },
-        { day: '목', diaries: 256 },
-        { day: '금', diaries: 312 },
-        { day: '토', diaries: 278 },
-        { day: '일', diaries: 194 }
-      ]
-    },
-    month: {
-      totalUsers: 12345,
-      todayDiaries: 234,
-      weeklyDiaries: 1842,
-      monthlyDiaries: 7523,
-      // 1~4주차 주별 데이터
-      weeklyData: [
-        { day: '1주차', diaries: 1845 },
-        { day: '2주차', diaries: 1923 },
-        { day: '3주차', diaries: 1912 },
-        { day: '4주차', diaries: 1843 }
-      ]
-    },
-    year: {
-      totalUsers: 12345,
-      todayDiaries: 234,
-      weeklyDiaries: 1842,
-      monthlyDiaries: 7523,
-      // 1~12월 월별 데이터
-      weeklyData: [
-        { day: '1월', diaries: 6234 },
-        { day: '2월', diaries: 6412 },
-        { day: '3월', diaries: 6589 },
-        { day: '4월', diaries: 6723 },
-        { day: '5월', diaries: 6856 },
-        { day: '6월', diaries: 6945 },
-        { day: '7월', diaries: 7123 },
-        { day: '8월', diaries: 7234 },
-        { day: '9월', diaries: 7156 },
-        { day: '10월', diaries: 7289 },
-        { day: '11월', diaries: 7387 },
-        { day: '12월', diaries: 7328 }
-      ]
-    }
-  };
-  
-  return statsData[period];
-};
+import { Users, BookOpen, TrendingUp, Calendar, UserPlus, Activity, AlertTriangle } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { 
+  getDashboardStats, 
+  getDiaryTrend, 
+  getUserActivityStats, 
+  getRiskLevelDistribution
+} from '@/services/adminApi';
 
 export function Dashboard() {
   // ========================================
-  // State 관리
+  // State 관리 (2.1-2.5)
   // ========================================
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
+  
+  // 2.2 활성 사용자 수 필터 (DAU/WAU/MAU)
+  const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau');
+  
+  // 2.2 신규 가입자 수 필터 (일/주/월)
+  const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today');
+  
+  // 2.4 사용자 활동 통계 차트 지표 선택
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['dau', 'newUsers']);
+  
+  // 2.5 위험 레벨 분포 통계 차트 타입 선택 (파이/막대)
+  const [riskChartType, setRiskChartType] = useState<'pie' | 'bar'>('pie');
+
+  // ========================================
+  // 대시보드 데이터 조회 함수 (API 명세서에 따라 4개 API로 분리)
+  // ========================================
+  /**
+   * [백엔드 작업] 대시보드 통계 데이터 조회 (2.1-2.5)
+   * 
+   * API 명세서에 따라 4개의 별도 API로 분리:
+   * 1. GET /api/admin/dashboard/stats - 서비스 통계 카드 (10.2.1)
+   * 2. GET /api/admin/dashboard/diary-trend - 일지 작성 추이 차트 (10.2.2)
+   * 3. GET /api/admin/dashboard/user-activity-stats - 사용자 활동 통계 차트 (10.2.3)
+   * 4. GET /api/admin/dashboard/risk-level-distribution - 위험 레벨 분포 통계 (10.2.4)
+   */
+  const fetchDashboardData = useCallback(async (period: 'week' | 'month' | 'year', selectedMetrics: string[]) => {
+    try {
+      const periodParam = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly';
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      
+      console.log('fetchDashboardData called with:', { period, periodParam, selectedMetrics });
+      
+      // 4개의 API를 병렬로 호출 (각각 try-catch로 감싸서 하나가 실패해도 나머지는 진행)
+      let statsRes, trendRes, activityRes, riskRes;
+      
+      try {
+        statsRes = await getDashboardStats({ period: periodParam });
+        console.log('getDashboardStats response:', statsRes);
+      } catch (e) {
+        console.error('getDashboardStats failed:', e);
+        throw new Error(`통계 카드 데이터를 불러오는데 실패했습니다: ${e}`);
+      }
+      
+      try {
+        trendRes = await getDiaryTrend({ period: periodParam, year: currentYear, month: currentMonth });
+        console.log('getDiaryTrend response:', trendRes);
+      } catch (e) {
+        console.error('getDiaryTrend failed:', e);
+        throw new Error(`일지 작성 추이 데이터를 불러오는데 실패했습니다: ${e}`);
+      }
+      
+      try {
+        activityRes = await getUserActivityStats({ period: periodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') });
+        console.log('getUserActivityStats response:', activityRes);
+      } catch (e) {
+        console.error('getUserActivityStats failed:', e);
+        throw new Error(`사용자 활동 통계 데이터를 불러오는데 실패했습니다: ${e}`);
+      }
+      
+      try {
+        riskRes = await getRiskLevelDistribution({ period: periodParam, year: currentYear, month: currentMonth });
+        console.log('getRiskLevelDistribution response:', riskRes);
+      } catch (e) {
+        console.error('getRiskLevelDistribution failed:', e);
+        throw new Error(`위험 레벨 분포 데이터를 불러오는데 실패했습니다: ${e}`);
+      }
+      
+      // API 응답 검증
+      if (!statsRes || !statsRes.data) {
+        throw new Error('통계 카드 API 응답이 올바르지 않습니다.');
+      }
+      if (!trendRes || !trendRes.data) {
+        throw new Error('일지 작성 추이 API 응답이 올바르지 않습니다.');
+      }
+      if (!activityRes || !activityRes.data) {
+        throw new Error('사용자 활동 통계 API 응답이 올바르지 않습니다.');
+      }
+      if (!riskRes || !riskRes.data) {
+        throw new Error('위험 레벨 분포 API 응답이 올바르지 않습니다.');
+      }
+      
+      // API 응답을 컴포넌트에서 사용하는 형식으로 변환
+      const stats = statsRes.data;
+      const trend = trendRes.data.trend || [];
+      const activity = activityRes.data.trend || [];
+      const risk = riskRes.data.distribution;
+      
+      // 일지 작성 추이 차트 데이터 변환 (day 필드 추가)
+      const weeklyData = Array.isArray(trend) ? trend.map((item: any, index: number) => {
+        if (period === 'week') {
+          const days = ['월', '화', '수', '목', '금', '토', '일'];
+          return { day: days[index] || `Day ${index + 1}`, diaries: item?.count || 0 };
+        } else if (period === 'month') {
+          return { day: `${index + 1}주차`, diaries: item?.count || 0 };
+        } else {
+          const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+          return { day: months[index] || `Month ${index + 1}`, diaries: item?.count || 0 };
+        }
+      }) : [];
+      
+      // 사용자 활동 통계 차트 데이터 변환 (date 형식 통일)
+      const userActivityData = Array.isArray(activity) ? activity.map((item: any) => ({
+        date: item?.date || '',
+        dau: item?.dau ?? 0,
+        wau: item?.wau ?? 0,
+        mau: item?.mau ?? 0,
+        newUsers: item?.newUsers ?? 0,
+        retentionRate: item?.retentionRate ?? 0
+      })) : [];
+      
+      // 위험 레벨 분포 통계 데이터 변환
+      const riskDistributionData = [
+        { level: 'High', count: risk?.high?.count ?? 0, percentage: risk?.high?.percentage ?? 0 },
+        { level: 'Medium', count: risk?.medium?.count ?? 0, percentage: risk?.medium?.percentage ?? 0 },
+        { level: 'Low', count: risk?.low?.count ?? 0, percentage: risk?.low?.percentage ?? 0 },
+        { level: 'None', count: risk?.none?.count ?? 0, percentage: risk?.none?.percentage ?? 0 }
+      ];
+      
+      const result = {
+        // 2.2 전체 통계 카드 데이터
+        totalUsers: stats?.totalUsers?.count ?? 0,
+        activeUsers: {
+          dau: stats?.activeUsers?.dau ?? 0,
+          wau: stats?.activeUsers?.wau ?? 0,
+          mau: stats?.activeUsers?.mau ?? 0
+        },
+        newUsers: {
+          today: stats?.newUsers?.daily ?? 0,
+          thisWeek: stats?.newUsers?.weekly ?? 0,
+          thisMonth: stats?.newUsers?.monthly ?? 0
+        },
+        totalDiaries: stats?.totalDiaries?.count ?? 0,
+        avgDailyDiaries: stats?.averageDailyDiaries?.count ?? 0,
+        riskLevelUsers: stats?.riskLevelUsers || { high: 0, medium: 0, low: 0, none: 0 },
+        // 2.3 일지 작성 추이 차트 데이터
+        weeklyData: weeklyData,
+        // 2.4 사용자 활동 통계 차트 데이터
+        userActivityData: userActivityData,
+        // 2.5 위험 레벨 분포 통계 데이터
+        riskDistributionData: riskDistributionData
+      };
+      
+      console.log('fetchDashboardData result:', result);
+      return result;
+    } catch (error: any) {
+      console.error('fetchDashboardData error:', error);
+      console.error('Error stack:', error?.stack);
+      throw error;
+    }
+  }, []);
 
   // ========================================
   // 대시보드 데이터 로드
@@ -134,18 +246,40 @@ export function Dashboard() {
   useEffect(() => {
     const loadStats = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const data = await fetchDashboardStats(period);
+        console.log('Loading dashboard data...', { period, selectedMetrics });
+        const data = await fetchDashboardData(period, selectedMetrics);
+        console.log('Dashboard data loaded:', data);
         setStats(data);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load dashboard stats:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          stack: error?.stack,
+          period,
+          selectedMetrics
+        });
+        setError(error?.message || '데이터를 불러오는 중 오류가 발생했습니다.');
+        // 에러 발생 시에도 기본 데이터 구조 설정
+        setStats({
+          totalUsers: 0,
+          activeUsers: { dau: 0, wau: 0, mau: 0 },
+          newUsers: { today: 0, thisWeek: 0, thisMonth: 0 },
+          totalDiaries: 0,
+          avgDailyDiaries: 0,
+          riskLevelUsers: { high: 0, medium: 0, low: 0, none: 0 },
+          weeklyData: [],
+          userActivityData: [],
+          riskDistributionData: []
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     loadStats();
-  }, [period]);
+  }, [period, selectedMetrics, fetchDashboardData]);
 
   // ========================================
   // 로딩 상태 UI
@@ -164,21 +298,30 @@ export function Dashboard() {
   // ========================================
   // 데이터 로드 실패 UI
   // ========================================
+  if (error && !stats) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">데이터를 불러올 수 없습니다.</p>
+        <p className="text-sm text-slate-600">{error}</p>
+      </div>
+    );
+  }
+
   if (!stats) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">데이터를 불러올 수 없습니다.</p>
+        <p className="text-slate-600">데이터를 불러오는 중...</p>
       </div>
     );
   }
 
   // ========================================
-  // 통계 카드 데이터
+  // 통계 카드 데이터 (2.2 - 6개)
   // ========================================
   const metrics = [
     {
       title: '전체 사용자 수',
-      value: stats.totalUsers.toLocaleString(),
+      value: (stats.totalUsers ?? 0).toLocaleString(),
       change: '+12.5%',
       trend: 'up' as const,
       icon: Users,
@@ -186,32 +329,86 @@ export function Dashboard() {
       description: '등록된 전체 사용자'
     },
     {
-      title: '금일 작성된 일지',
-      value: stats.todayDiaries.toLocaleString(),
+      title: '활성 사용자 수',
+      value: activeUserFilter === 'dau' 
+        ? (stats.activeUsers?.dau ?? 0).toLocaleString() 
+        : activeUserFilter === 'wau'
+        ? (stats.activeUsers?.wau ?? 0).toLocaleString()
+        : (stats.activeUsers?.mau ?? 0).toLocaleString(),
       change: '+8.2%',
       trend: 'up' as const,
-      icon: BookOpen,
+      icon: Activity,
       color: 'green' as const,
-      description: '오늘 작성된 일지 수'
+      description: activeUserFilter === 'dau' ? '일일 활성 사용자 (DAU)' : activeUserFilter === 'wau' ? '주간 활성 사용자 (WAU)' : '월간 활성 사용자 (MAU)',
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['dau', 'wau', 'mau'] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={(e) => { e.stopPropagation(); setActiveUserFilter(filter); }}
+              className={`px-2 py-1 text-xs rounded ${activeUserFilter === filter ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700'}`}
+            >
+              {filter.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )
     },
     {
-      title: '주간 일지 수',
-      value: stats.weeklyDiaries.toLocaleString(),
-      change: '+5.7%',
-      trend: 'up' as const,
-      icon: Calendar,
-      color: 'purple' as const,
-      description: '최근 7일간 작성'
-    },
-    {
-      title: '월간 일지 수',
-      value: stats.monthlyDiaries.toLocaleString(),
+      title: '신규 가입자 수',
+      value: newUserFilter === 'today'
+        ? (stats.newUsers?.today ?? 0).toLocaleString()
+        : newUserFilter === 'thisWeek'
+        ? (stats.newUsers?.thisWeek ?? 0).toLocaleString()
+        : (stats.newUsers?.thisMonth ?? 0).toLocaleString(),
       change: '+15.3%',
       trend: 'up' as const,
-      icon: TrendingUp,
+      icon: UserPlus,
+      color: 'purple' as const,
+      description: newUserFilter === 'today' ? '오늘 신규 가입자' : newUserFilter === 'thisWeek' ? '이번 주 신규 가입자' : '이번 달 신규 가입자',
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['today', 'thisWeek', 'thisMonth'] as const).map((filter) => (
+            <button
+              key={filter}
+              onClick={(e) => { e.stopPropagation(); setNewUserFilter(filter); }}
+              className={`px-2 py-1 text-xs rounded ${newUserFilter === filter ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}
+            >
+              {filter === 'today' ? '일' : filter === 'thisWeek' ? '주' : '월'}
+            </button>
+          ))}
+        </div>
+      )
+    },
+    {
+      title: '총 일지 작성 수',
+      value: (stats.totalDiaries ?? 0).toLocaleString(),
+      change: '+18.7%',
+      trend: 'up' as const,
+      icon: BookOpen,
       color: 'orange' as const,
-      description: '이번 달 전체'
-    }
+      description: '전체 누적 일지 작성 개수'
+    },
+    {
+      title: '일평균 일지 작성 수',
+      value: (stats.avgDailyDiaries ?? 0).toLocaleString(),
+      change: '+5.2%',
+      trend: 'up' as const,
+      icon: TrendingUp,
+      color: 'green' as const,
+      description: '선택한 기간의 일평균 일지 작성 개수'
+    },
+    {
+      title: '위험 레벨별 사용자 수',
+      value: `${(stats.riskLevelUsers?.high ?? 0) + (stats.riskLevelUsers?.medium ?? 0) + (stats.riskLevelUsers?.low ?? 0)}명`,
+      change: '-2.1%',
+      trend: 'down' as const,
+      icon: AlertTriangle,
+      color: 'red' as const,
+      description: `High: ${stats.riskLevelUsers?.high ?? 0}명, Medium: ${stats.riskLevelUsers?.medium ?? 0}명, Low: ${stats.riskLevelUsers?.low ?? 0}명, None: ${stats.riskLevelUsers?.none ?? 0}명`
+    },
+    // 기존 카드들 (제거됨 - API 명세서에 해당 필드 없음)
+    // todayDiaries, weeklyDiaries, monthlyDiaries는 API 응답에 포함되지 않으므로 제거
   ];
 
   return (
@@ -266,16 +463,16 @@ export function Dashboard() {
       </div>
 
       {/* ========================================
-          통계 카드 그리드
+          통계 카드 그리드 (2.2 - 6개 + 기존 3개)
           ======================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         {metrics.map((metric, index) => (
           <MetricCard key={index} {...metric} />
         ))}
       </div>
 
       {/* ========================================
-          차트 섹션
+          일지 작성 추이 차트 (2.3)
           ======================================== */}
       <div className="mb-10">
         <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg border-2 border-slate-200 p-6 shadow-lg overflow-x-auto">
@@ -287,6 +484,222 @@ export function Dashboard() {
           </div>
           <div className="min-w-[600px]">
             <WeeklyDiaryChart data={stats.weeklyData} />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================
+          사용자 활동 통계 차트 (2.4)
+          ======================================== */}
+      <div className="mb-10">
+        <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg border-2 border-slate-200 p-6 shadow-lg overflow-x-auto">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+            <div className="flex items-center">
+              <Activity className="w-5 h-5 text-slate-700 mr-2" />
+              <h2 className="text-slate-800">사용자 활동 통계 ({period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'})</h2>
+            </div>
+            {/* 지표 선택 (2.4) */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: 'dau', label: 'DAU' },
+                { key: 'wau', label: 'WAU' },
+                { key: 'mau', label: 'MAU' },
+                { key: 'newUsers', label: '신규 가입자' },
+                { key: 'retentionRate', label: '유지율' }
+              ].map((metric) => (
+                <label key={metric.key} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedMetrics.includes(metric.key)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedMetrics([...selectedMetrics, metric.key]);
+                      } else {
+                        setSelectedMetrics(selectedMetrics.filter(m => m !== metric.key));
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-slate-700">{metric.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="min-w-[600px]">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={stats.userActivityData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '13px' }} />
+                <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '8px 12px'
+                  }}
+                />
+                <Legend />
+                {selectedMetrics.includes('dau') && (
+                  <Line type="monotone" dataKey="dau" stroke="#3b82f6" strokeWidth={2} name="DAU" />
+                )}
+                {selectedMetrics.includes('wau') && (
+                  <Line type="monotone" dataKey="wau" stroke="#8b5cf6" strokeWidth={2} name="WAU" />
+                )}
+                {selectedMetrics.includes('mau') && (
+                  <Line type="monotone" dataKey="mau" stroke="#10b981" strokeWidth={2} name="MAU" />
+                )}
+                {selectedMetrics.includes('newUsers') && (
+                  <Line type="monotone" dataKey="newUsers" stroke="#f59e0b" strokeWidth={2} name="신규 가입자" />
+                )}
+                {selectedMetrics.includes('retentionRate') && (
+                  <Line type="monotone" dataKey="retentionRate" stroke="#ef4444" strokeWidth={2} name="유지율 (%)" />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================
+          위험 레벨 분포 통계 (2.5)
+          ======================================== */}
+      <div className="mb-10">
+        <div className="bg-gradient-to-br from-slate-50 to-white rounded-lg border-2 border-slate-200 p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+            <div className="flex items-center">
+              <AlertTriangle className="w-5 h-5 text-slate-700 mr-2" />
+              <h2 className="text-slate-800">위험 레벨 분포 통계 ({period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'})</h2>
+            </div>
+            {/* 차트 타입 선택 버튼 (2.5) */}
+            <div className="flex items-center gap-1 sm:gap-2 bg-white border-2 border-slate-300 rounded-lg p-1 flex-shrink-0">
+              <button
+                onClick={() => setRiskChartType('pie')}
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
+                  riskChartType === 'pie' 
+                    ? 'bg-slate-700 text-white shadow-md' 
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                파이 차트
+              </button>
+              <button
+                onClick={() => setRiskChartType('bar')}
+                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
+                  riskChartType === 'bar' 
+                    ? 'bg-slate-700 text-white shadow-md' 
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                막대 그래프
+              </button>
+            </div>
+          </div>
+          
+          {/* 파이 차트 또는 막대 그래프 (선택에 따라 표시) */}
+          <div className="flex justify-center">
+            {riskChartType === 'pie' ? (
+              <div className="w-full max-w-[600px]">
+                <ResponsiveContainer width="100%" height={400}>
+                  <PieChart>
+                    <Pie
+                      data={stats.riskDistributionData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {stats.riskDistributionData.map((entry: any, index: number) => {
+                        const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
+                        return <Cell key={`cell-${index}`} fill={colors[index]} />;
+                      })}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '2px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '8px 12px'
+                      }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value}명 (${props.payload.percentage.toFixed(2)}%)`,
+                        '사용자 수'
+                      ]}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          return `${payload[0].payload.level} 레벨`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      formatter={(value, entry: any) => {
+                        // entry.payload에서 실제 데이터 가져오기
+                        const payload = entry.payload;
+                        if (payload && payload.level) {
+                          return `${payload.level}: ${payload.count}명 (${payload.percentage.toFixed(2)}%)`;
+                        }
+                        // fallback: stats에서 찾기
+                        const data = stats.riskDistributionData.find((d: any) => d.level === value);
+                        if (data) {
+                          return `${data.level}: ${data.count}명 (${data.percentage.toFixed(2)}%)`;
+                        }
+                        return value;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="w-full max-w-[800px]">
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={stats.riskDistributionData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="level" stroke="#64748b" style={{ fontSize: '13px' }} />
+                    <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '2px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '8px 12px'
+                      }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value}명 (${props.payload.percentage.toFixed(2)}%)`,
+                        '사용자 수'
+                      ]}
+                    />
+                    <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]}>
+                      {stats.riskDistributionData.map((entry: any, index: number) => {
+                        const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
+                        return <Cell key={`cell-${index}`} fill={colors[index]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+          
+          {/* 범례 (2.5) */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {stats.riskDistributionData.map((entry: any, index: number) => {
+              const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
+              const labels = ['High', 'Medium', 'Low', 'None'];
+              return (
+                <div key={index} className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                  <div className="w-4 h-4 rounded" style={{ backgroundColor: colors[index] }}></div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">{labels[index]} 레벨</p>
+                    <p className="text-xs text-slate-600">{entry.count}명 ({entry.percentage.toFixed(2)}%)</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -328,9 +328,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-lg overflow-hidden shadow-sm">
               {/* 지도 헤더 */}
               <div className="absolute top-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-3 z-10">
-                 <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
                    <span className="text-2xl">{getEmotionEmoji(entry.emotion)}</span>
-                   <span className="text-xl">🗺️</span>
+                  <span className="text-xl">🗺️</span>
                   <div className="flex-1">
                     <p className="text-xs text-stone-700">주변 추천 장소</p>
                   </div>
@@ -398,13 +398,13 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             </div>
 
             {/* 오른쪽 페이지 - 장소 리스트만 */}
-             <KakaoMapRecommendation
-               isOpen={true}
-               onClose={() => setShowMapRecommendation(false)}
-               emotion={entry.emotion}
+            <KakaoMapRecommendation
+              isOpen={true}
+              onClose={() => setShowMapRecommendation(false)}
+              emotion={entry.emotion}
                emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
-               isInline={true}
-             />
+              isInline={true}
+            />
           </div>
         </div>
       );
@@ -643,14 +643,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             - 해당 일기의 감정 카테고리 기반으로 장소 추천
             - → 장소 추천 화면으로 이동
           */}
-           <button
-             onClick={() => {
-               if (onMapRecommendation) {
+          <button
+            onClick={() => {
+              if (onMapRecommendation) {
                  // emotionCategory가 없으면 계산
                  const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
                  onMapRecommendation(entry.emotion, emotionCategory);
-               }
-             }}
+              }
+            }}
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
           >
             <MapPin className="w-3.5 h-3.5" />
@@ -720,14 +720,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         )}
 
         {/* Map Recommendation Modal */}
-         {showMapRecommendation && (
-           <KakaoMapRecommendation
-             isOpen={showMapRecommendation}
-             onClose={() => setShowMapRecommendation(false)}
-             emotion={entry.emotion}
+        {showMapRecommendation && (
+          <KakaoMapRecommendation
+            isOpen={showMapRecommendation}
+            onClose={() => setShowMapRecommendation(false)}
+            emotion={entry.emotion}
              emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
-           />
-         )}
+          />
+        )}
       </div>
     );
   }

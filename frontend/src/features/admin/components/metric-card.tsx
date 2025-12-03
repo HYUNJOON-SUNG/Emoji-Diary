@@ -39,11 +39,12 @@ interface MetricCardProps {
   change: string;
   trend: 'up' | 'down';
   icon: LucideIcon;
-  color: 'blue' | 'green' | 'purple' | 'orange';
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'red';
   description?: string;
+  filter?: React.ReactNode;
 }
 
-export function MetricCard({ title, value, change, trend, icon: Icon, color, description }: MetricCardProps) {
+export function MetricCard({ title, value, change, trend, icon: Icon, color, description, filter }: MetricCardProps) {
   // ========================================
   // 색상 테마 클래스 정의
   // ========================================
@@ -58,14 +59,16 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
     blue: 'bg-blue-50 text-blue-600 border-blue-200',
     green: 'bg-green-50 text-green-600 border-green-200',
     purple: 'bg-purple-50 text-purple-600 border-purple-200',
-    orange: 'bg-orange-50 text-orange-600 border-orange-200'
+    orange: 'bg-orange-50 text-orange-600 border-orange-200',
+    red: 'bg-red-50 text-red-600 border-red-200'
   };
 
   const iconColorClasses = {
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
     purple: 'bg-purple-100 text-purple-600',
-    orange: 'bg-orange-100 text-orange-600'
+    orange: 'bg-orange-100 text-orange-600',
+    red: 'bg-red-100 text-red-600'
   };
 
   return (
@@ -123,6 +126,10 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
           {/* 추가 설명 (선택사항) */}
           {description && (
             <p className="text-xs text-slate-500 mt-2">{description}</p>
+          )}
+          {/* 필터 (선택사항) */}
+          {filter && (
+            <div className="mt-2">{filter}</div>
           )}
         </div>
         
