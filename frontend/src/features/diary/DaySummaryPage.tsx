@@ -95,6 +95,50 @@ import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diar
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 
 /**
+ * KoBERT 감정 한글 → 이모지 변환 함수
+ * 
+ * [API 명세서 참고]
+ * - API 응답에서 emotion은 한글로 반환됨: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오"
+ * - UI 표시를 위해 이모지로 변환
+ */
+const getEmotionEmoji = (emotion: string): string => {
+  const emotionEmojiMap: { [key: string]: string } = {
+    '행복': '😊',
+    '중립': '😐',
+    '당황': '😳',
+    '슬픔': '😢',
+    '분노': '😠',
+    '불안': '😰',
+    '혐오': '🤢',
+  };
+  // 이미 이모지인 경우 그대로 반환, 한글인 경우 변환
+  return emotionEmojiMap[emotion] || emotion || '😐';
+};
+
+/**
+ * 감정 한글 → 카테고리 변환 함수
+ * 
+ * [API 명세서 참고]
+ * - emotionCategory는 프론트엔드에서 계산 (positive/neutral/negative)
+ */
+const getEmotionCategory = (emotion: string): string => {
+  const emotionCategoryMap: { [key: string]: string } = {
+    '행복': 'positive',
+    '중립': 'neutral',
+    '당황': 'neutral',
+    '슬픔': 'negative',
+    '분노': 'negative',
+    '불안': 'negative',
+    '혐오': 'negative',
+  };
+  // 이미 카테고리인 경우 그대로 반환, 한글인 경우 변환
+  if (emotion === 'positive' || emotion === 'neutral' || emotion === 'negative') {
+    return emotion;
+  }
+  return emotionCategoryMap[emotion] || 'neutral';
+};
+
+/**
  * DaySummaryPage 컴포넌트 Props
  */
 interface DaySummaryPageProps {
@@ -284,9 +328,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-lg overflow-hidden shadow-sm">
               {/* 지도 헤더 */}
               <div className="absolute top-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-3 z-10">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{entry.emotion}</span>
-                  <span className="text-xl">🗺️</span>
+                 <div className="flex items-center gap-2">
+                   <span className="text-2xl">{getEmotionEmoji(entry.emotion)}</span>
+                   <span className="text-xl">🗺️</span>
                   <div className="flex-1">
                     <p className="text-xs text-stone-700">주변 추천 장소</p>
                   </div>
@@ -354,13 +398,13 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             </div>
 
             {/* 오른쪽 페이지 - 장소 리스트만 */}
-            <KakaoMapRecommendation
-              isOpen={true}
-              onClose={() => setShowMapRecommendation(false)}
-              emotion={entry.emotion}
-              emotionCategory={entry.emotionCategory}
-              isInline={true}
-            />
+             <KakaoMapRecommendation
+               isOpen={true}
+               onClose={() => setShowMapRecommendation(false)}
+               emotion={entry.emotion}
+               emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
+               isInline={true}
+             />
           </div>
         </div>
       );
@@ -400,7 +444,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
               <div className="text-sm text-slate-800">{formattedDate}</div>
             </div>
             <div className="flex items-center">
-              <span className="text-4xl">{entry.emotion}</span>
+              <span className="text-4xl">{getEmotionEmoji(entry.emotion)}</span>
             </div>
           </div>
         </div>
@@ -408,6 +452,41 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         {/* Title Card */}
         <div className="relative bg-white rounded-lg p-4 shadow-sm">
           <h3 className="text-slate-800">{entry.title}</h3>
+        </div>
+
+        {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
+        <div className="relative bg-white rounded-lg p-3 shadow-sm">
+          <div className="text-xs text-slate-500 mb-2">📷 내가 올린 사진</div>
+          {entry.images && entry.images.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {entry.images.map((imageUrl, index) => (
+                <div
+                  key={index}
+                  className="relative rounded-lg overflow-hidden bg-slate-100 aspect-square"
+                >
+                  <img
+                    src={imageUrl}
+                    alt={`사용자 업로드 이미지 ${index + 1}`}
+                    className="w-full h-full object-cover"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => {
+                      // 이미지 로드 실패 시 대체 처리
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400 py-8 text-center">
+              이미지
+            </div>
+          )}
         </div>
 
         {/* Mood & Weather Card - 2 Column */}
@@ -454,7 +533,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         <div className="relative bg-white rounded-lg p-4 shadow-sm">
           <div className="text-xs text-slate-500 mb-2">메모</div>
           <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-            {entry.note}
+            {entry.content}
           </p>
         </div>
 
@@ -490,6 +569,24 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             <p className="text-xs text-slate-600 leading-relaxed">
               {entry.aiComment}
             </p>
+          </div>
+        )}
+
+        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
+        {entry.recommendedFood && (
+          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
+            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
+              <span>🍽️</span>
+              <span>AI 음식 추천</span>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-800">
+                {entry.recommendedFood.name}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {entry.recommendedFood.reason}
+              </p>
+            </div>
           </div>
         )}
 
@@ -546,12 +643,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             - 해당 일기의 감정 카테고리 기반으로 장소 추천
             - → 장소 추천 화면으로 이동
           */}
-          <button
-            onClick={() => {
-              if (onMapRecommendation) {
-                onMapRecommendation(entry.emotion, entry.emotionCategory);
-              }
-            }}
+           <button
+             onClick={() => {
+               if (onMapRecommendation) {
+                 // emotionCategory가 없으면 계산
+                 const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
+                 onMapRecommendation(entry.emotion, emotionCategory);
+               }
+             }}
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
           >
             <MapPin className="w-3.5 h-3.5" />
@@ -621,14 +720,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         )}
 
         {/* Map Recommendation Modal */}
-        {showMapRecommendation && (
-          <KakaoMapRecommendation
-            isOpen={showMapRecommendation}
-            onClose={() => setShowMapRecommendation(false)}
-            emotion={entry.emotion}
-            emotionCategory={entry.emotionCategory}
-          />
-        )}
+         {showMapRecommendation && (
+           <KakaoMapRecommendation
+             isOpen={showMapRecommendation}
+             onClose={() => setShowMapRecommendation(false)}
+             emotion={entry.emotion}
+             emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
+           />
+         )}
       </div>
     );
   }

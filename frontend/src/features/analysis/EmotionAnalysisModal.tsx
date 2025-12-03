@@ -22,29 +22,37 @@
  * 3. **KoBERT 모델을 통한 감정 분석 (일기 본문 분석)**
  *    [AI 팀 작업 필요]
  *    - 일기 본문을 KoBERT 모델로 분석
- *    - **KoBERT 분석 결과는 사용자에게 직접 표시되지 않음**
+ *    - **KoBERT 분석 결과가 사용자에게 표시되는 감정이 됨**
+ *    - 7가지 감정 중 하나로 분류: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
  *    - AI 이미지 생성, AI 코멘트 생성, 장소 추천 등에 활용됨
  * 
  * 4. AI 이미지 생성 시작 ("그림 생성 중..." 표시)
  *    [AI 팀 작업 필요 - 나노바나나 API]
- *    - 일기 작성 내용(제목, 본문, 감정, 기분, 날씨, 활동 등)과 KoBERT 감정 분석 결과를 활용
+ *    - 일기 작성 내용(제목, 본문, 기분, 날씨, 활동 등)과 KoBERT 감정 분석 결과를 활용
  *    - 나노바나나 API를 통해 일기 내용과 감정 뉘앙스를 반영한 그림일기 형태의 이미지 생성
  *    - 생성 완료 → 이미지 URL 획득
  * 
  * 5. 일기 저장 API 호출
  *    [백엔드 팀 작업 필요]
  *    - 엔드포인트: POST /api/diaries
- *    - 일기 데이터 전송 (제목, 본문, 감정, 기분, 날씨, 활동, 이미지 URL)
+ *    - 일기 데이터 전송 (제목, 본문, 기분, 날씨, 활동, 이미지 URL, KoBERT 감정 분석 결과)
  *    - 저장 성공 → AI 코멘트 생성
  * 
  * 6. AI 코멘트 생성
  *    [AI 팀 작업 필요 - 제미나이 API]
  *    - 제미나이 API를 통한 AI 코멘트 생성
  *    - 입력:
- *      * KoBERT 감정 분석 결과 (emotionCategory)
- *      * 사용자가 선택한 감정 정보 (emotion)
+ *      * 일기 내용(제목, 본문, 기분, 날씨, 활동)
+ *      * KoBERT 감정 분석 결과 (emotion, emotionCategory)
  *      * 페르소나 스타일 (localStorage.getItem('aiPersona'))
  *    - 출력: 페르소나 말투로 작성된 공감 메시지 (2-3문장)
+ * 
+ * 7. 음식 추천 생성
+ *    [AI 팀 작업 필요 - 제미나이 API]
+ *    - 제미나이 API를 통한 음식 추천 생성
+ *    - 입력: 일기 내용(제목, 본문, 기분, 날씨, 활동) + KoBERT 감정 분석 결과
+ *    - 출력: { name: string, reason: string }
+ *    - DB에 저장
  * 
  * [플로우 3.4: 감정 분석 결과 표시 (일기 작성 후)]
  * 
@@ -52,16 +60,17 @@
  * 
  * **모달 표시 내용**:
  * 
- * 1. **사용자가 선택한 감정 이모지** (큰 크기)
- *    - 일기 작성 시 사용자가 "오늘의 감정"에서 선택한 이모지
+ * 1. **KoBERT가 분석한 감정 이모지** (큰 크기)
+ *    - 일기 본문을 KoBERT로 분석한 결과 이모지
+ *    - 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
  *    - 스프링 애니메이션으로 확대 표시
  * 
- * 2. **사용자가 선택한 감정 카테고리 배지** (예: "기쁨", "슬픔")
- *    - **주의**: KoBERT 분석 결과가 아닌 사용자가 일기 작성 시 선택한 감정 기준
+ * 2. **KoBERT가 분석한 감정 카테고리 배지** (예: "행복", "슬픔")
+ *    - KoBERT 분석 결과 기준
  *    - 감정별 색상으로 구분된 배경 (긍정: 파란색, 부정: 빨간색)
  * 
  * 3. **AI 코멘트** (제미나이 API로 생성, 선택한 페르소나 말투로 작성)
- *    - KoBERT 감정 분석 결과를 반영하여 생성되나, 사용자에게는 코멘트만 표시
+ *    - KoBERT 감정 분석 결과를 반영하여 생성
  *    - 페르소나 스타일 적용 (friend, parent, expert, mentor, therapist, poet)
  *    - 공감과 위로의 메시지
  * 
@@ -88,69 +97,30 @@
  * 1. **KoBERT 감정 분석**
  *    - 모델: KoBERT (한국어 감정 분석)
  *    - 입력: 일기 본문 (note)
- *    - 출력: emotionCategory (happy, sad, anxious, angry, calm, excited, love, grateful, hopeful, tired, neutral 등)
- *    - 용도: AI 이미지 생성, AI 코멘트 생성, 장소 추천, 통계 분석
+ *    - 출력: { emotion: string, confidence: number }
+ *      - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
+ *      - 이모지 매핑: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
+ *    - 용도: 사용자에게 표시되는 감정, AI 이미지 생성, AI 코멘트 생성, 장소 추천, 통계 분석
  * 
  * 2. **제미나이 API AI 코멘트 생성**
  *    - API: Google Gemini API
  *    - 입력:
- *      * KoBERT 분석 결과 (emotionCategory)
- *      * 사용자 선택 감정 (emotion)
- *      * 일기 본문 (note)
+ *      * 일기 내용(제목, 본문, 기분, 날씨, 활동)
+ *      * KoBERT 분석 결과 (emotion, emotionCategory)
  *      * 페르소나 ID (localStorage.getItem('aiPersona'))
  *    - 출력: 페르소나 스타일에 맞는 공감 메시지 (2-3문장)
  * 
- * 3. **나노바나나 API AI 이미지 생성**
+ * 3. **제미나이 API 음식 추천 생성**
+ *    - API: Google Gemini API
+ *    - 입력: 일기 내용(제목, 본문, 기분, 날씨, 활동) + KoBERT 감정 분석 결과
+ *    - 출력: { name: string, reason: string }
+ * 
+ * 4. **나노바나나 API AI 이미지 생성**
  *    - API: Naver Nanovana API
  *    - 입력:
- *      * 일기 내용 (title, note, emotion, mood, weather)
- *      * KoBERT 감정 분석 결과 (emotionCategory)
+ *      * 일기 내용 (title, note, mood, weather, activities)
+ *      * KoBERT 감정 분석 결과 (emotion, emotionCategory)
  *    - 출력: 그림일기 형태의 이미지 URL
- * 
- * [Cursor AI 연동 코드]
- * ```typescript
- * // KoBERT 감정 분석 예시:
- * const analyzeEmotionWithKoBERT = async (text: string): Promise<string> => {
- *   const response = await fetch('/api/ai/kobert-analyze', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify({ text })
- *   });
- *   const { emotionCategory } = await response.json();
- *   return emotionCategory; // "happy", "sad", "anxious" 등
- * };
- * 
- * // 제미나이 AI 코멘트 생성 예시:
- * const generateAIComment = async (
- *   note: string,
- *   emotion: string,
- *   emotionCategory: string,
- *   personaId: string
- * ): Promise<string> => {
- *   const response = await fetch('/api/ai/gemini-comment', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify({ note, emotion, emotionCategory, personaId })
- *   });
- *   const { comment } = await response.json();
- *   return comment;
- * };
- * 
- * // 나노바나나 이미지 생성 예시:
- * const generateDiaryImage = async (
- *   content: string,
- *   emotion: string,
- *   weather?: string
- * ): Promise<string> => {
- *   const response = await fetch('/api/ai/nanovana-image', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify({ content, emotion, weather })
- *   });
- *   const { imageUrl } = await response.json();
- *   return imageUrl;
- * };
- * ```
  */
 
 import { X } from 'lucide-react';
@@ -167,25 +137,18 @@ interface EmotionAnalysisModalProps {
   onClose: () => void;
   
   /** 
-   * 사용자가 선택한 감정 이모지 (플로우 3.4)
-   * - 일기 작성 시 "오늘의 감정"에서 선택한 이모지
+   * KoBERT가 분석한 감정 이모지 (플로우 3.4)
+   * - 일기 본문을 KoBERT로 분석한 결과 이모지
+   * - 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
    * - 모달에서 큰 크기로 표시됨
    */
   emotion: string | null;
   
   /** 
-   * 사용자가 선택한 감정 레이블 (플로우 3.4)
-   * - 예: "기쁨", "슬픔", "불안" 등
-   * - **주의**: KoBERT 결과가 아닌 사용자 선택 기준
+   * KoBERT가 분석한 감정 카테고리 (플로우 3.4)
+   * - KoBERT 분석 결과: positive, neutral, negative
    * - 감정 카테고리 배지로 표시됨
-   */
-  userEmotionLabel?: string | null;
-  
-  /** 
-   * AI가 분석한 감정 카테고리 (KoBERT 결과, 내부용)
-   * - 사용자에게 직접 표시되지 않음
-   * - 장소 추천, 통계 분석, 색상 테마에 활용
-   * - 예: "happy", "sad", "anxious", "angry" 등
+   * - 색상 테마 결정에 사용
    */
   emotionCategory: string | null;
   
@@ -218,50 +181,44 @@ interface EmotionAnalysisModalProps {
 }
 
 /**
- * 감정 카테고리별 한글 이름
+ * KoBERT 감정 이모지별 한글 이름
  * 
  * [AI 팀] KoBERT 분석 결과와 매핑
- * - KoBERT가 반환하는 emotionCategory 값과 일치해야 함
+ * - KoBERT가 분석한 7가지 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ * - 이모지와 한글 이름 매핑
  */
 const emotionLabels: { [key: string]: string } = {
-  happy: '행복',
-  love: '사랑',
-  excited: '설렘',
-  calm: '평온',
-  grateful: '감사',
-  hopeful: '희망',
-  tired: '피곤',
-  sad: '슬픔',
-  angry: '화님',
-  anxious: '불안',
-  neutral: '평온',
+  '😊': '행복',
+  '😐': '중립',
+  '😳': '당황',
+  '😢': '슬픔',
+  '😠': '분노',
+  '😰': '불안',
+  '🤢': '혐오',
 };
 
 /**
- * 감정 카테고리별 색상 테마
+ * KoBERT 감정 이모지별 색상 테마
  * 
  * 디자인 컨셉:
  * - 긍정 감정: 파란색 계열 (blue, sky, cyan, teal, indigo)
  * - 부정 감정: 빨간색 계열 (red, rose, pink)
+ * - 중립 감정: 회색 계열 (stone, gray)
  * - 파스텔 톤으로 부드러운 느낌
  */
 const emotionColors: { [key: string]: { bg: string; border: string; text: string } } = {
   // 긍정 감정 - 파란색/시안 파스텔 톤
-  happy: { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800' },
-  love: { bg: 'bg-blue-100', border: 'border-blue-300', text: 'text-blue-800' },
-  excited: { bg: 'bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800' },
-  calm: { bg: 'bg-cyan-100', border: 'border-cyan-300', text: 'text-cyan-800' },
-  grateful: { bg: 'bg-teal-100', border: 'border-teal-300', text: 'text-teal-800' },
-  hopeful: { bg: 'bg-sky-200', border: 'border-sky-400', text: 'text-sky-900' },
+  '😊': { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800' }, // 행복
+  
+  // 중립 감정 - 회색 계열
+  '😐': { bg: 'bg-stone-100', border: 'border-stone-300', text: 'text-stone-800' }, // 중립
+  '😳': { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800' }, // 당황
   
   // 부정 감정 - 빨간색/로즈 파스텔 톤
-  tired: { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' },
-  sad: { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800' },
-  angry: { bg: 'bg-rose-200', border: 'border-rose-400', text: 'text-rose-900' },
-  anxious: { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-800' },
-  
-  // 중립
-  neutral: { bg: 'bg-stone-100', border: 'border-stone-300', text: 'text-stone-800' },
+  '😢': { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800' }, // 슬픔
+  '😠': { bg: 'bg-rose-200', border: 'border-rose-400', text: 'text-rose-900' }, // 분노
+  '😰': { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-800' }, // 불안
+  '🤢': { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' }, // 혐오
 };
 
 export function EmotionAnalysisModal({
@@ -278,17 +235,17 @@ export function EmotionAnalysisModal({
   // 모달이 닫혀있으면 렌더링하지 않음
   if (!isOpen) return null;
 
-  // 플로우 3.4: 사용자가 선택한 감정 레이블 사용 (KoBERT 결과 아님!)
-  // - userEmotionLabel이 있으면 사용 (예: "기쁨", "슬픔")
-  // - 없으면 기존 emotionCategory 매핑 사용 (하위 호환성)
-  const displayLabel = userEmotionLabel || emotionLabels[emotionCategory || 'neutral'];
+  // 플로우 3.4: KoBERT가 분석한 감정 이모지 기반으로 레이블 표시
+  // - emotion 이모지를 기반으로 한글 이름 매핑
+  // - 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
+  const displayLabel = emotion ? emotionLabels[emotion] : '중립';
   
-  // 색상은 emotionCategory 기반으로 선택 (긍정/부정 구분용)
-  // 안전한 기본값 설정: emotionCategory가 없거나 정의되지 않은 값이면 'neutral' 사용
-  const safeEmotionCategory = emotionCategory && emotionColors[emotionCategory] 
-    ? emotionCategory 
-    : 'neutral';
-  const colors = emotionColors[safeEmotionCategory];
+  // 색상은 emotion 이모지 기반으로 선택
+  // 안전한 기본값 설정: emotion이 없거나 정의되지 않은 값이면 중립 색상 사용
+  const safeEmotion = emotion && emotionColors[emotion] 
+    ? emotion 
+    : '😐';
+  const colors = emotionColors[safeEmotion];
 
   return (
     <AnimatePresence>
@@ -402,15 +359,15 @@ export function EmotionAnalysisModal({
                     <div className="space-y-6">
                       {/* 
                         감정 표시 영역 (플로우 3.4)
-                        - 사용자가 선택한 감정 이모지 (큰 크기)
-                        - 사용자가 선택한 감정 카테고리 배지 (예: "행복", "슬픔")
-                          * KoBERT 결과가 아닌 사용자 선택 기준으로 표시
+                        - KoBERT가 분석한 감정 이모지 (큰 크기)
+                        - KoBERT가 분석한 감정 카테고리 배지 (예: "행복", "슬픔")
+                          * 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
                       */}
                       <div className="flex flex-col items-center space-y-4">
                         {/* 
                           감정 이모지 (스프링 애니메이션)
                           - 0.2초 지연 후 확대 애니메이션
-                          - 플로우 3.4: 사용자가 선택한 감정 이모지 표시
+                          - 플로우 3.4: KoBERT가 분석한 감정 이모지 표시
                         */}
                         <motion.div
                           initial={{ scale: 0 }}
@@ -424,9 +381,8 @@ export function EmotionAnalysisModal({
                         {/* 
                           감정 카테고리 배지 (페이드인 애니메이션)
                           - 0.3초 지연 후 표시
-                          - 플로우 3.4: 사용자가 선택한 감정 레이블 표시 (예: "기쁨", "슬픔")
-                          - KoBERT 분석 결과가 아님!
-                          - 감정별 색상 테마 적용 (긍정/부정 구분)
+                          - 플로우 3.4: KoBERT가 분석한 감정 레이블 표시 (예: "행복", "슬픔")
+                          - 감정별 색상 테마 적용 (긍정/중립/부정 구분)
                         */}
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}

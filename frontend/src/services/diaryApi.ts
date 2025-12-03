@@ -45,48 +45,102 @@ export interface EmotionData {
 /**
  * 일기 상세 정보 인터페이스
  * - 일기 조회/작성/수정 시 사용되는 전체 데이터 구조
+ * 
+ * [API 명세서 참고]
+ * - GET /api/diaries/{diaryId} 또는 GET /api/diaries/date/{date} 응답 형식
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - id: BIGINT (PK) → string (일기 고유 ID)
+ * - date: DATE → string (YYYY-MM-DD 형식)
+ * - title: VARCHAR(255) → string (일기 제목)
+ * - content: TEXT → string (일기 본문, KoBERT 분석 대상)
+ * - emotion: ENUM → string (KoBERT 분석 결과: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - mood: VARCHAR(255) → string (기분, 자유 텍스트)
+ * - weather: ENUM → string (날씨: 맑음, 흐림, 비, 천둥, 눈, 안개)
+ * - image_url: VARCHAR(500) → imageUrl (AI 생성 그림일기 이미지 URL)
+ * - ai_comment: TEXT → aiComment (AI 코멘트, Gemini API로 생성)
+ * - recommended_food: JSON → recommendedFood (음식 추천 정보, JSON 형식)
+ * - kobert_analysis: JSON → (백엔드 내부 처리용, API 응답에 포함되지 않음)
+ * - created_at: DATETIME → createdAt (ISO 8601 형식)
+ * - updated_at: DATETIME → updatedAt (ISO 8601 형식)
+ * 
+ * [ERD 설계서 참고 - 관련 테이블]
+ * - Diary_Images 테이블: 사용자 업로드 이미지는 별도 테이블로 관리되지만, API 응답에서는 images 배열로 반환
+ * - Diary_Activities 테이블: 활동 목록은 별도 테이블로 관리되지만, API 응답에서는 activities 배열로 반환
  */
 export interface DiaryDetail {
-  id: string; // 일기 고유 ID
-  date: string; // 날짜 (YYYY-MM-DD 형식)
-  emotion: string; // 사용자가 선택한 감정 이모지
-  emotionCategory: string; // AI가 분석한 감정 카테고리 (KoBERT 결과)
-  mood: string; // 사용자가 입력한 기분 텍스트
-  title: string; // 일기 제목
-  note: string; // 일기 본문
-  weather?: string; // 날씨 (선택사항)
-  activities?: string[]; // 활동 목록 (선택사항)
-  aiComment?: string; // AI 코멘트 (제미나이 API로 생성, 페르소나 반영)
-  imageUrl?: string; // AI 생성 그림일기 이미지 URL (나노바나나 API)
+  id: string; // 일기 고유 ID (ERD: Diaries.id, BIGINT)
+  date: string; // 날짜 (YYYY-MM-DD 형식, ERD: Diaries.date, DATE)
+  emotion: string; // KoBERT가 분석한 감정 (한글: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오", ERD: Diaries.emotion, ENUM)
+  emotionCategory?: string; // AI가 분석한 감정 카테고리 (KoBERT 결과: positive/neutral/negative) - 프론트엔드에서 계산
+  mood: string; // 사용자가 입력한 기분 텍스트 (ERD: Diaries.mood, VARCHAR(255))
+  title: string; // 일기 제목 (ERD: Diaries.title, VARCHAR(255))
+  content: string; // 일기 본문 (ERD: Diaries.content, TEXT, KoBERT 분석 대상, API 명세서: content)
+  weather?: string; // 날씨 (ERD: Diaries.weather, ENUM, 선택사항: 맑음, 흐림, 비, 천둥, 눈, 안개)
+  activities?: string[]; // 활동 목록 (ERD: Diary_Activities 테이블, API 응답에서는 배열로 반환)
+  images?: string[]; // 사용자가 업로드한 이미지 URL 목록 (ERD: Diary_Images 테이블, API 응답에서는 배열로 반환, API 명세서: images)
+  imageUrl?: string; // AI 생성 그림일기 이미지 URL (ERD: Diaries.image_url, VARCHAR(500), NanoVana API로 생성)
+  aiComment?: string; // AI 코멘트 (ERD: Diaries.ai_comment, TEXT, Gemini API로 생성, 페르소나 반영)
+  recommendedFood?: { // 음식 추천 정보 (ERD: Diaries.recommended_food, JSON, Gemini API로 생성)
+    name: string; // 추천 음식 이름
+    reason: string; // 추천 근거
+  };
+  createdAt?: string; // 생성일시 (ERD: Diaries.created_at, DATETIME, ISO 8601 형식)
+  updatedAt?: string; // 수정일시 (ERD: Diaries.updated_at, DATETIME, ISO 8601 형식)
 }
 
 /**
  * 일기 작성 요청 인터페이스
- * - POST /diaries API에 전송되는 데이터 구조
+ * - POST /api/diaries API에 전송되는 데이터 구조
+ * 
+ * [API 명세서 참고]
+ * - emotion 필드는 제거됨 (KoBERT가 자동으로 분석하여 저장)
+ * - KoBERT는 일기 본문(content)만 분석하여 감정을 결정
+ * 
+ * [플로우 3.3: 일기 작성 저장 및 처리]
+ * - 사용자 업로드 이미지는 서버에 업로드 후 URL 배열로 전송
+ * - AI 생성 이미지는 백엔드에서 자동 생성되므로 Request Body에 포함하지 않음
  */
 export interface CreateDiaryRequest {
-  date: string; // 날짜 (YYYY-MM-DD 형식)
+  date: string; // 날짜 (YYYY-MM-DD 형식, 필수)
   title: string; // 일기 제목 (필수)
-  note: string; // 일기 본문 (필수)
-  emotion: string; // 사용자가 선택한 감정 이모지
-  mood: string; // 사용자가 입력한 기분
-  weather?: string; // 날씨 (선택사항)
-  activities?: string[]; // 활동 목록 (선택사항)
-  imageUrl?: string; // AI 생성 그림일기 이미지 URL (나노바나나 API)
+  content: string; // 일기 본문 (필수, KoBERT 분석 대상, API 명세서: content)
+  mood?: string; // 기분 (선택사항, 쉼표로 구분된 여러 값 가능)
+  weather?: string; // 날씨 (선택사항: 맑음, 흐림, 비, 천둥, 눈, 안개)
+  activities?: string[]; // 활동 목록 (선택사항, 문자열 배열)
+  images?: string[]; // 사용자가 업로드한 이미지 URL 목록 (선택사항, 문자열 배열, API 명세서: images)
 }
 
 /**
  * 일기 수정 요청 인터페이스
- * - PATCH /diaries/{id} API에 전송되는 데이터 구조
+ * - PUT /api/diaries/{diaryId} API에 전송되는 데이터 구조
+ * 
+ * [API 명세서 참고]
+ * - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
+ * - KoBERT는 수정된 일기 본문(content)만 분석
+ * - AI 생성 이미지는 재생성하지 않고 기존 이미지(imageUrl) 유지
+ * 
+ * [ERD 설계서 참고]
+ * - title: Diaries.title (VARCHAR(255), 필수)
+ * - content: Diaries.content (TEXT, 필수, KoBERT 재분석 대상)
+ * - mood: Diaries.mood (VARCHAR(255), 선택)
+ * - weather: Diaries.weather (ENUM, 선택)
+ * - activities: Diary_Activities 테이블 업데이트 (별도 테이블, API 요청에서는 배열로 전송)
+ * - imageUrl: Diaries.image_url (VARCHAR(500), 기존 이미지 유지, 재생성하지 않음)
+ * - images: Diary_Images 테이블 업데이트 (별도 테이블, API 요청에서는 배열로 전송)
+ * 
+ * [플로우 4.3: 일기 수정 저장 및 처리]
+ * - 사용자 업로드 이미지는 수정된 내용(삭제/추가된 이미지) 반영
+ * - 백엔드에서 activities와 images 배열을 각각 Diary_Activities, Diary_Images 테이블에 업데이트
  */
 export interface UpdateDiaryRequest {
-  title: string; // 일기 제목 (필수)
-  note: string; // 일기 본문 (필수)
-  emotion: string; // 사용자가 선택한 감정 이모지
-  mood: string; // 사용자가 입력한 기분
-  weather?: string; // 날씨 (선택사항)
-  activities?: string[]; // 활동 목록 (선택사항)
-  imageUrl?: string; // AI 생성 그림일기 이미지 URL (기존 이미지 유지)
+  title: string; // 일기 제목 (필수, ERD: Diaries.title, VARCHAR(255))
+  content: string; // 일기 본문 (필수, KoBERT 재분석 대상, ERD: Diaries.content, TEXT, API 명세서: content)
+  mood?: string; // 기분 (선택사항, 쉼표로 구분된 여러 값 가능, ERD: Diaries.mood, VARCHAR(255))
+  weather?: string; // 날씨 (선택사항: 맑음, 흐림, 비, 천둥, 눈, 안개, ERD: Diaries.weather, ENUM)
+  activities?: string[]; // 활동 목록 (선택사항, 문자열 배열, ERD: Diary_Activities 테이블 업데이트)
+  imageUrl?: string; // AI 생성 그림일기 이미지 URL (선택사항, 기존 이미지 유지, 재생성하지 않음, ERD: Diaries.image_url, VARCHAR(500))
+  images?: string[]; // 사용자가 업로드한 이미지 URL 목록 (선택사항, 문자열 배열, 수정된 내용 반영, ERD: Diary_Images 테이블 업데이트, API 명세서: images)
 }
 
 /**
@@ -130,11 +184,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-03': {
     id: 'd1',
     date: '2025-11-03',
-    emotion: '🌟',
-    emotionCategory: 'happy',
+    emotion: '행복', // API 명세서: 한글 감정
+    emotionCategory: 'positive',
     mood: 'Inspired',
     title: '새로운 시작',
-    note: 'Started a new project today. Feeling motivated and ready for new challenges!',
+    content: 'Started a new project today. Feeling motivated and ready for new challenges!', // API 명세서: content
     weather: '맑음',
     activities: ['운동', '독서'],
     aiComment: '긍정적인 에너지가 느껴지는 하루네요! 새로운 도전을 시작하는 모습이 멋져요.',
@@ -143,11 +197,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-05': {
     id: 'd2',
     date: '2025-11-05',
-    emotion: '😊',
-    emotionCategory: 'happy',
+    emotion: '행복', // API 명세서: 한글 감정
+    emotionCategory: 'positive',
     mood: 'Content',
     title: '평화로운 아침',
-    note: 'Had a peaceful morning walk. The fresh air really cleared my mind.',
+    content: 'Had a peaceful morning walk. The fresh air really cleared my mind.', // API 명세서: content
     weather: '맑음',
     activities: ['산책'],
     aiComment: '자연과 함께하는 시간은 마음을 편안하게 해주죠. 좋은 하루 보내셨네요!',
@@ -156,11 +210,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-08': {
     id: 'd3',
     date: '2025-11-08',
-    emotion: '🥰',
-    emotionCategory: 'love',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: 🥰 → 행복으로 변경)
+    emotionCategory: 'positive',
     mood: 'Loving',
     title: '소중한 시간',
-    note: 'Spent quality time with loved ones. These moments are precious.',
+    content: 'Spent quality time with loved ones. These moments are precious.', // API 명세서: content
     weather: '흐림',
     activities: ['가족 시간'],
     aiComment: '가족과 함께하는 시간은 정말 소중해요. 따뜻한 하루였겠어요.',
@@ -169,11 +223,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-10': {
     id: 'd4',
     date: '2025-11-10',
-    emotion: '✨',
-    emotionCategory: 'excited',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: ✨ → 행복으로 변경)
+    emotionCategory: 'positive',
     mood: 'Magical',
     title: '놀라운 발견',
-    note: 'Discovered something amazing today. Life is full of surprises!',
+    content: 'Discovered something amazing today. Life is full of surprises!', // API 명세서: content
     weather: '맑음',
     activities: ['공부', '취미'],
     aiComment: '새로운 발견은 항상 설레게 하죠! 호기심을 잃지 않는 모습이 좋아요.',
@@ -181,11 +235,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-12': {
     id: 'd5',
     date: '2025-11-12',
-    emotion: '😌',
-    emotionCategory: 'calm',
+    emotion: '중립', // API 명세서: 한글 감정 (기존: 😌 → 중립으로 변경)
+    emotionCategory: 'neutral',
     mood: 'Peaceful',
     title: '조용한 하루',
-    note: 'Just a quiet, restful day. Sometimes that\'s exactly what we need.',
+    content: 'Just a quiet, restful day. Sometimes that\'s exactly what we need.', // API 명세서: content
     weather: '맑음',
     activities: ['휴식'],
     aiComment: '때로는 아무것도 하지 않는 시간이 가장 필요해요. 잘 쉬셨길 바래요.',
@@ -194,11 +248,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-13': {
     id: 'd12',
     date: '2025-11-13',
-    emotion: '😢',
-    emotionCategory: 'sad',
+    emotion: '슬픔', // API 명세서: 한글 감정
+    emotionCategory: 'negative',
     mood: 'Sad',
     title: '슬픈 날',
-    note: 'Had a tough day. Feeling down but trying to stay positive.',
+    content: 'Had a tough day. Feeling down but trying to stay positive.', // API 명세서: content
     weather: '흐림',
     activities: ['독서'],
     aiComment: '어려운 날이지만, 긍정적인 마음가짐을 유지하는 것이 중요해요.',
@@ -206,11 +260,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-14': {
     id: 'd13',
     date: '2025-11-14',
-    emotion: '😰',
-    emotionCategory: 'anxious',
+    emotion: '불안', // API 명세서: 한글 감정
+    emotionCategory: 'negative',
     mood: 'Anxious',
     title: '불안한 순간',
-    note: 'Feeling anxious about upcoming events. Need to find a way to relax.',
+    content: 'Feeling anxious about upcoming events. Need to find a way to relax.', // API 명세서: content
     weather: '흐림',
     activities: ['명상'],
     aiComment: '불안감을 느낄 때는 명상이나 휴식이 도움이 될 수 있어요.',
@@ -218,11 +272,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-15': {
     id: 'd6',
     date: '2025-11-15',
-    emotion: '😄',
-    emotionCategory: 'happy',
+    emotion: '행복', // API 명세서: 한글 감정
+    emotionCategory: 'positive',
     mood: 'Joyful',
     title: '새로운 배움',
-    note: 'Started learning something new. The journey ahead looks promising and fun.',
+    content: 'Started learning something new. The journey ahead looks promising and fun.', // API 명세서: content
     weather: '맑음',
     activities: ['공부', '운동'],
     aiComment: '배움은 언제나 즐거워요! 앞으로의 여정이 기대되네요.',
@@ -230,11 +284,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-16': {
     id: 'd14',
     date: '2025-11-16',
-    emotion: '😔',
-    emotionCategory: 'sad',
+    emotion: '슬픔', // API 명세서: 한글 감정
+    emotionCategory: 'negative',
     mood: 'Sad',
     title: '슬픈 생각',
-    note: 'Thinking about past events that made me sad. Trying to move on.',
+    content: 'Thinking about past events that made me sad. Trying to move on.', // API 명세서: content
     weather: '흐림',
     activities: ['산책'],
     aiComment: '과거의 슬픔을 기억하면서도 앞으로 나아가는 것이 중요해요.',
@@ -242,11 +296,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-17': {
     id: 'd7',
     date: '2025-11-17',
-    emotion: '🎉',
-    emotionCategory: 'excited',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: 🎉 → 행복으로 변경)
+    emotionCategory: 'positive',
     mood: 'Excited',
     title: '좋은 소식',
-    note: 'Got some amazing news today! Can\'t wait to share with everyone.',
+    content: 'Got some amazing news today! Can\'t wait to share with everyone.', // API 명세서: content
     weather: '맑음',
     activities: ['모임'],
     aiComment: '축하해요! 좋은 소식이 있다니 정말 기쁘겠어요.',
@@ -254,11 +308,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-18': {
     id: 'd8',
     date: '2025-11-18',
-    emotion: '😢',
-    emotionCategory: 'sad',
-    mood: 'Sad',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: 😢 → 행복으로 변경, 내용이 긍정적이므로)
+    emotionCategory: 'positive',
+    mood: 'Happy',
     title: '프로젝트 완료',
-    note: 'Completed my project on time. Celebrated with friends at our favorite cafe!',
+    content: 'Completed my project on time. Celebrated with friends at our favorite cafe!', // API 명세서: content
     weather: '맑음',
     activities: ['작업', '친구 만남'],
     aiComment: '목표를 달성하셨네요! 친구들과의 축하는 더욱 의미있었을 거예요.',
@@ -266,11 +320,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-19': {
     id: 'd15',
     date: '2025-11-19',
-    emotion: '😰',
-    emotionCategory: 'anxious',
+    emotion: '불안', // API 명세서: 한글 감정
+    emotionCategory: 'negative',
     mood: 'Anxious',
     title: '불안한 하루',
-    note: 'Feeling anxious about the future. Need to find a way to relax.',
+    content: 'Feeling anxious about the future. Need to find a way to relax.', // API 명세서: content
     weather: '흐림',
     activities: ['명상'],
     aiComment: '불안감을 느낄 때는 명상이나 휴식이 도움이 될 수 있어요.',
@@ -278,11 +332,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-20': {
     id: 'd9',
     date: '2025-11-20',
-    emotion: '😞',
-    emotionCategory: 'sad',
-    mood: 'Sad',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: 😞 → 행복으로 변경, 내용이 긍정적이므로)
+    emotionCategory: 'positive',
+    mood: 'Grateful',
     title: '감사한 하루',
-    note: 'Had a wonderful day with family. Feeling blessed and content. The weather was perfect.',
+    content: 'Had a wonderful day with family. Feeling blessed and content. The weather was perfect.', // API 명세서: content
     weather: '맑음',
     activities: ['가족 시간', '외식'],
     aiComment: '감사하는 마음을 가진 하루는 특별해요. 좋은 시간 보내셨네요!',
@@ -290,11 +344,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-22': {
     id: 'd10',
     date: '2025-11-22',
-    emotion: '🌈',
-    emotionCategory: 'hopeful',
+    emotion: '행복', // API 명세서: 한글 감정 (기존: 🌈 → 행복으로 변경)
+    emotionCategory: 'positive',
     mood: 'Hopeful',
     title: '희망찬 미래',
-    note: 'Looking forward to the future. So many possibilities ahead!',
+    content: 'Looking forward to the future. So many possibilities ahead!', // API 명세서: content
     weather: '비',
     activities: ['계획 세우기'],
     aiComment: '미래에 대한 기대감이 느껴져요. 긍정적인 마음가짐이 좋아요!',
@@ -302,11 +356,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-25': {
     id: 'd11',
     date: '2025-11-25',
-    emotion: '😴',
-    emotionCategory: 'tired',
+    emotion: '중립', // API 명세서: 한글 감정 (기존: 😴 → 중립으로 변경)
+    emotionCategory: 'neutral',
     mood: 'Tired',
     title: '긴 하루',
-    note: 'Long day but productive. Need to get some rest tonight.',
+    content: 'Long day but productive. Need to get some rest tonight.', // API 명세서: content
     weather: '흐림',
     activities: ['작업'],
     aiComment: '오늘 하루도 수고 많으셨어요. 푹 쉬시고 내일을 준비하세요!',
@@ -314,11 +368,11 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
   '2025-11-27': {
     id: 'd16',
     date: '2025-11-27',
-    emotion: '😊',
-    emotionCategory: 'happy',
+    emotion: '행복', // API 명세서: 한글 감정
+    emotionCategory: 'positive',
     mood: '평온하고 행복함',
     title: '카페에서의 오후',
-    note: '오늘은 좋아하는 카페에 갔다. 창밖으로 비가 내리는 걸 보면서 따뜻한 커피를 마셨다. 평소보다 여유로운 시간을 보낼 수 있어서 좋았다. 책도 읽고, 생각도 정리하고... 이런 날이 더 많았으면 좋겠다.',
+    content: '오늘은 좋아하는 카페에 갔다. 창밖으로 비가 내리는 걸 보면서 따뜻한 커피를 마셨다. 평소보다 여유로운 시간을 보낼 수 있어서 좋았다. 책도 읽고, 생각도 정리하고... 이런 날이 더 많았으면 좋겠다.', // API 명세서: content
     weather: '비',
     activities: ['카페', '독서', '휴식'],
     aiComment: '오늘의 감정은 구름 사이로 비치는 달빛처럼 은은하면서도 깊은 의미를 담고 있어요. 여유로운 시간을 가질 수 있어서 다행이에요!',
@@ -353,10 +407,10 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * 3. 반환값: AI 코멘트 문자열 (한글, 2-3문장)
  * 
  * @param mood - 사용자가 입력한 기분
- * @param note - 일기 본문 (감정 분석 대상)
+ * @param content - 일기 본문 (감정 분석 대상, API 명세서: content)
  * @returns AI 코멘트 문자열
  */
-const generateAIComment = (mood: string, note: string): string => {
+const generateAIComment = (mood: string, content: string): string => {
   // [AI 팀] 아래 mock 코드를 실제 제미나이 API 호출로 대체해주세요.
   
   // localStorage에서 페르소나 설정 가져오기 (플로우 16.1)
@@ -433,10 +487,17 @@ const generateAIComment = (mood: string, note: string): string => {
  */
 
 /**
- * GET /diaries/heatMap
- * 해당 사용자, 해당 연월 날짜별 감정 조회
+ * GET /api/diaries/calendar
+ * 캘린더 월별 조회 API
  * 
- * [백엔드 팀] 엔드포인트: GET /api/diaries/heatMap?year={year}&month={month}
+ * [API 명세서 참고]
+ * - 엔드포인트: GET /api/diaries/calendar
+ * - Query Parameters: year (연도), month (월, 1-12)
+ * - Response 200: { success: true, data: { year, month, diaries: [{ date, emotion }] } }
+ * 
+ * [백엔드 팀] 실제 API 호출로 대체
+ * - 헤더: Authorization: Bearer {accessToken}
+ * - 응답 형식: { success: true, data: { year, month, diaries: EmotionData[] } }
  * 
  * 용도:
  * - 캘린더 히트맵에 감정 스티커 표시
@@ -451,24 +512,29 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
   
   // [백엔드 팀] 실제 API 호출로 대체
   // const token = localStorage.getItem('accessToken');
-  // const response = await fetch(`/api/diaries/heatMap?year=${year}&month=${month + 1}`, {
+  // const response = await fetch(`/api/diaries/calendar?year=${year}&month=${month + 1}`, {
   //   headers: { 'Authorization': `Bearer ${token}` }
   // });
-  // return await response.json();
+  // const result = await response.json();
+  // return result.success ? result.data.diaries : [];
   
   const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
   return mockEmotionData.filter(data => data.date.startsWith(yearMonth));
 }
 
 /**
- * GET /diaries/details
- * 선택 날짜의 일기 상세 정보 조회 (플로우 3.1)
+ * GET /api/diaries/date/{date}
+ * 일기 조회 API (날짜 기준)
  * 
- * [백엔드 팀] 엔드포인트: GET /api/diaries/details?date={YYYY-MM-DD}
+ * [API 명세서 참고]
+ * - 엔드포인트: GET /api/diaries/date/{date}
+ * - URL Parameters: date (YYYY-MM-DD 형식)
+ * - Response 200: DiaryDetail
+ * - Response 404: 일기 없음 (DIARY_NOT_FOUND)
  * 
- * 용도:
- * - 캘린더에서 날짜 클릭 시 해당 날짜의 일기 조회
- * - 일기가 없으면 null 반환
+ * [백엔드 팀] 실제 API 호출로 대체
+ * - 헤더: Authorization: Bearer {accessToken}
+ * - 응답 형식: { success: true, data: DiaryDetail } 또는 { success: false, error: {...} }
  * 
  * @param date - 날짜 (YYYY-MM-DD 형식)
  * @returns 일기 상세 정보 또는 null
@@ -478,11 +544,12 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
   
   // [백엔드 팀] 실제 API 호출로 대체
   // const token = localStorage.getItem('accessToken');
-  // const response = await fetch(`/api/diaries/details?date=${date}`, {
+  // const response = await fetch(`/api/diaries/date/${date}`, {
   //   headers: { 'Authorization': `Bearer ${token}` }
   // });
   // if (response.status === 404) return null;
-  // return await response.json();
+  // const result = await response.json();
+  // return result.success ? result.data : null;
   
   return mockDiaryDetails[date] || null;
 }
@@ -491,33 +558,58 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
  * POST /diaries
  * 일기 작성 API
  * 
+ * [플로우 3.3: 일기 작성 저장 및 처리]
+ * 
+ * 처리 순서:
+ * 1. KoBERT 감정 분석 실행 (본문 분석) → 주요 감정 추출
+ *    - 일기 본문(`content`)만 분석하여 7가지 감정 중 하나로 분류
+ *    - 분석 결과: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ *    - KoBERT 분석 결과가 사용자에게 표시되는 감정이 됨
+ * 2. AI 이미지 생성 (NanoVana API) - 일기 작성 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 활용
+ *    - 생성 완료 → 이미지 URL 획득
+ * 3. 일기 데이터 저장 (제목, 본문, 기분, 날씨, 활동, 사용자 업로드 이미지 URL 목록, KoBERT 감정 분석 결과, AI 생성 이미지 URL)
+ *    - 감정 분석 결과는 `emotion` 컬럼에 저장됨
+ *    - AI 생성 이미지 URL은 별도 컬럼에 저장됨
+ * 4. AI 코멘트 생성 (Gemini API) - 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과, 페르소나 스타일 활용
+ * 5. 음식 추천 생성 (Gemini API) - 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 활용 (DB에 저장)
+ * 
+ * [ERD 설계서 참고 - 데이터 저장 구조]
+ * - Diaries 테이블: 일기 기본 정보 저장 (id, user_id, date, title, content, emotion, mood, weather, image_url, ai_comment, recommended_food, kobert_analysis)
+ * - Diary_Activities 테이블: activities 배열의 각 항목을 별도 레코드로 저장 (diary_id, activity)
+ * - Diary_Images 테이블: images 배열의 각 항목을 별도 레코드로 저장 (diary_id, image_url)
+ * - kobert_analysis: JSON 타입으로 저장 (예: {"emotion": "슬픔", "confidence": 0.85})
+ * - recommended_food: JSON 타입으로 저장 (예: {"name": "따뜻한 국밥", "reason": "..."})
+ * 
  * [백엔드 팀 작업 필요]
  * - 엔드포인트: POST /api/diaries
  * - 헤더: Authorization: Bearer {JWT_TOKEN}
  * - 요청 본문: CreateDiaryRequest 인터페이스 참고
  * - 응답: DiaryDetail 인터페이스 참고
+ * - activities 배열을 Diary_Activities 테이블에 저장 (CASCADE 관계)
+ * - images 배열을 Diary_Images 테이블에 저장 (CASCADE 관계)
  * 
  * [AI 팀 작업 필요]
  * 1. KoBERT 모델로 일기 본문 감정 분석
- *    - 입력: data.note (일기 본문)
- *    - 출력: emotionCategory (happy, sad, anxious, angry 등)
+ *    - 입력: data.content (일기 본문, API 명세서: content)
+ *    - 출력: { emotion: string, confidence: number }
+ *      - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
+ *    - KoBERT 분석 결과가 사용자에게 표시되는 감정이 됨
  * 
  * 2. 제미나이 API로 AI 코멘트 생성
- *    - 입력: KoBERT 결과 + data.emotion (사용자 선택 감정) + 페르소나
+ *    - 입력: 일기 내용(제목, 본문, 기분, 날씨, 활동) + KoBERT 감정 분석 결과 + 페르소나
  *    - 페르소나: localStorage.getItem('aiPersona')
  *    - 페르소나 종류: friend(베프), parent(부모님), expert(전문가), 
  *                      mentor(멘토), therapist(상담사), poet(시인)
  *    - 각 페르소나에 맞는 말투와 스타일로 코멘트 생성
  * 
- * 처리 흐름:
- * 1. 일기 데이터 저장
- * 2. KoBERT로 감정 분석 (백그라운드)
- * 3. 제미나이 API로 AI 코멘트 생성
- * 4. emotionCategory와 aiComment를 포함한 DiaryDetail 반환
+ * 3. 제미나이 API로 음식 추천 생성
+ *    - 입력: 일기 내용(제목, 본문, 기분, 날씨, 활동) + KoBERT 감정 분석 결과
+ *    - 출력: { name: string, reason: string }
+ *    - 추천된 음식을 DB에 저장
  */
 export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail> {
   // [백엔드 팀] 실제 API 호출로 대체
-  // const token = localStorage.getItem('token');
+  // const token = localStorage.getItem('accessToken');
   // const response = await fetch('/api/diaries', {
   //   method: 'POST',
   //   headers: {
@@ -530,42 +622,105 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
   
   await delay(500); // API 응답 시뮬레이션
   
+  // [백엔드 팀] 실제 API 응답에서 emotion, aiComment, imageUrl, recommendedFood를 받아옴
+  // 백엔드에서 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성이 모두 처리됨
+  
   // [AI 팀 작업 필요] generateAIComment를 실제 제미나이 API 호출로 대체
   // const persona = localStorage.getItem('aiPersona') || 'friend';
-  // const aiComment = await callGeminiAPI(data.note, data.emotion, persona, kobertResult);
-  const aiComment = generateAIComment(data.mood, data.note);
+  // const aiComment = await callGeminiAPI(data.content, emotion, persona, kobertResult);
+  const aiComment = generateAIComment(data.mood || '', data.content);
   
-  // [AI 팀 작업 필요] emotionCategory는 KoBERT 분석 결과로 대체
-  // const kobertResult = await analyzeEmotionWithKoBERT(data.note);
-  // 현재는 사용자 선택 감정을 기반으로 간단히 매핑 (Mock)
+  // [백엔드 팀] 실제 API 응답에서 emotion을 받아옴 (한글: "행복", "슬픔" 등)
+  // Mock: 간단한 텍스트 분석으로 감정 추정 (실제로는 백엔드에서 KoBERT로 분석)
+  const lowerContent = data.content.toLowerCase();
+  let emotion = '중립'; // 기본값
+  if (lowerContent.includes('행복') || lowerContent.includes('기쁘') || lowerContent.includes('좋아')) {
+    emotion = '행복';
+  } else if (lowerContent.includes('슬프') || lowerContent.includes('우울') || lowerContent.includes('힘들')) {
+    emotion = '슬픔';
+  } else if (lowerContent.includes('화') || lowerContent.includes('짜증') || lowerContent.includes('분노')) {
+    emotion = '분노';
+  } else if (lowerContent.includes('불안') || lowerContent.includes('걱정') || lowerContent.includes('두려')) {
+    emotion = '불안';
+  } else if (lowerContent.includes('혐오') || lowerContent.includes('싫어')) {
+    emotion = '혐오';
+  } else if (lowerContent.includes('당황') || lowerContent.includes('놀라')) {
+    emotion = '당황';
+  }
+  
+  // emotionCategory는 emotion(한글) 기반으로 계산
+  const emotionCategoryMap: { [key: string]: string } = {
+    '행복': 'positive',
+    '중립': 'neutral',
+    '당황': 'neutral',
+    '슬픔': 'negative',
+    '분노': 'negative',
+    '불안': 'negative',
+    '혐오': 'negative',
+  };
+  const emotionCategory = emotionCategoryMap[emotion] || 'neutral';
+  
+  // [AI 팀 작업 필요] 음식 추천 생성 (제미나이 API)
+  // const recommendedFood = await generateFoodRecommendation({
+  //   title: data.title,
+  //   content: data.content,
+  //   mood: data.mood,
+  //   weather: data.weather,
+  //   activities: data.activities,
+  //   emotion: emotion
+  // });
+  const recommendedFood = {
+    name: '따뜻한 국밥',
+    reason: '몸을 따뜻하게 해주는 음식이 기분 전환에 도움이 될 수 있어요'
+  };
+  
+  // [백엔드 팀] 실제 API 응답에서 imageUrl을 받아옴 (AI 생성 이미지)
+  const imageUrl = undefined; // 백엔드에서 생성 후 반환
+  
   const newDiary: DiaryDetail = {
     id: `d${Date.now()}`, // 실제: DB에서 자동 생성
-    ...data,
-    emotionCategory: data.emotion === '😊' || data.emotion === '😄' || data.emotion === '🌟' ? 'happy' :
-                     data.emotion === '🥰' || data.emotion === '💖' ? 'love' :
-                     data.emotion === '😌' ? 'calm' :
-                     data.emotion === '🎉' || data.emotion === '✨' ? 'excited' :
-                     data.emotion === '🤗' ? 'grateful' :
-                     data.emotion === '😴' ? 'tired' : 'neutral',
-    aiComment,
+    date: data.date,
+    title: data.title,
+    content: data.content, // API 명세서: content
+    emotion: emotion, // 백엔드에서 KoBERT 분석 결과 (한글)
+    emotionCategory, // 프론트엔드에서 계산
+    mood: data.mood || '',
+    weather: data.weather,
+    activities: data.activities,
+    images: data.images, // API 명세서: images
+    imageUrl, // 백엔드에서 AI 생성 이미지 URL 반환
+    aiComment, // 백엔드에서 AI 코멘트 생성 후 반환
+    recommendedFood, // 백엔드에서 음식 추천 생성 후 반환
   };
   
   // Mock 데이터 저장 (실제 환경에서는 백엔드 DB에 저장)
   mockDiaryDetails[data.date] = newDiary;
   
   // 캘린더 히트맵 데이터 업데이트
+  // emotion을 이모지로 변환 (캘린더 표시용)
+  const emotionEmojiMap: { [key: string]: string } = {
+    '행복': '😊',
+    '중립': '😐',
+    '당황': '😳',
+    '슬픔': '😢',
+    '분노': '😠',
+    '불안': '😰',
+    '혐오': '🤢',
+  };
+  const emotionEmoji = emotionEmojiMap[emotion] || '😐';
+  
   const existingIndex = mockEmotionData.findIndex(e => e.date === data.date);
   if (existingIndex >= 0) {
     mockEmotionData[existingIndex] = {
       date: data.date,
-      emotion: data.emotion,
-      emotionCategory: newDiary.emotionCategory,
+      emotion: emotionEmoji, // 캘린더 표시용 이모지
+      emotionCategory,
     };
   } else {
     mockEmotionData.push({
       date: data.date,
-      emotion: data.emotion,
-      emotionCategory: newDiary.emotionCategory,
+      emotion: emotionEmoji, // 캘린더 표시용 이모지
+      emotionCategory,
     });
   }
   
@@ -573,18 +728,45 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
 }
 
 /**
- * PATCH /diaries/{id}
+ * PUT /api/diaries/{diaryId}
  * 일기 수정 API
  * 
+ * [API 명세서 참고]
+ * - 엔드포인트: PUT /api/diaries/{diaryId}
+ * - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
+ * 
+ * [플로우 4.3: 일기 수정 저장 및 처리]
+ * 
+ * 처리 순서:
+ * 1. KoBERT 감정 분석 실행 (수정된 본문 분석) → 새로운 감정 추출
+ *    - 수정된 본문을 분석하여 7가지 감정 중 하나로 재분류
+ *    - 주요 감정을 추출하여 `emotion` 컬럼에 업데이트
+ *    - 참고: 일기 수정 시에는 이미지를 재생성하지 않으므로 KoBERT 결과는 코멘트 및 추천에만 사용
+ * 2. 일기 데이터 저장 (수정된 일기 데이터 전송: 제목, 본문, 기분, 날씨, 활동, AI 생성 이미지 URL, 사용자 업로드 이미지 URL 목록)
+ *    - 새로운 `emotion` 값과 업데이트된 `kobert_analysis` JSON을 포함하여 수정된 일기 데이터 저장
+ *    - 이미지는 재생성하지 않음
+ * 3. AI 코멘트 재생성 (Gemini API) - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과, 페르소나 스타일 활용
+ * 4. 음식 추천 재생성 (Gemini API) - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 반영하여 추천 음식 1개 재생성
+ *    - 재생성된 음식을 DB에 업데이트
+ * 
+ * [ERD 설계서 참고 - 데이터 업데이트 구조]
+ * - Diaries 테이블: 일기 기본 정보 업데이트 (title, content, emotion, mood, weather, image_url, ai_comment, recommended_food, kobert_analysis, updated_at)
+ * - Diary_Activities 테이블: 기존 활동 삭제 후 새로 저장 (CASCADE 관계로 기존 레코드 삭제 후 재생성)
+ * - Diary_Images 테이블: 기존 이미지 삭제 후 새로 저장 (CASCADE 관계로 기존 레코드 삭제 후 재생성)
+ * - image_url: 재생성하지 않고 기존 값 유지 (ERD: Diaries.image_url)
+ * 
  * [백엔드 팀 작업 필요]
- * - 엔드포인트: PATCH /api/diaries/{id}
+ * - 엔드포인트: PUT /api/diaries/{diaryId}
  * - 헤더: Authorization: Bearer {JWT_TOKEN}
  * - 요청 본문: UpdateDiaryRequest 인터페이스 참고
  * - 응답: DiaryDetail 인터페이스 참고
+ * - activities 배열 업데이트: Diary_Activities 테이블에서 기존 레코드 삭제 후 새로 저장
+ * - images 배열 업데이트: Diary_Images 테이블에서 기존 레코드 삭제 후 새로 저장
  * 
  * [AI 팀 작업 필요]
  * - createDiary와 동일하게 KoBERT + 제미나이 API 호출
  * - 수정된 내용을 기반으로 새로운 감정 분석 및 AI 코멘트 생성
+ * - 음식 추천도 재생성
  * 
  * @param id - 일기 고유 ID
  * @param date - 일기 날짜 (YYYY-MM-DD)
@@ -592,9 +774,9 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
  */
 export async function updateDiary(id: string, date: string, data: UpdateDiaryRequest): Promise<DiaryDetail> {
   // [백엔드 팀] 실제 API 호출로 대체
-  // const token = localStorage.getItem('token');
+  // const token = localStorage.getItem('accessToken');
   // const response = await fetch(`/api/diaries/${id}`, {
-  //   method: 'PATCH',
+  //   method: 'PUT',
   //   headers: {
   //     'Content-Type': 'application/json',
   //     'Authorization': `Bearer ${token}`
@@ -610,32 +792,93 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     throw new Error('Diary not found');
   }
   
-  // [AI 팀] generateAIComment를 실제 제미나이 API 호출로 대체
-  const aiComment = generateAIComment(data.mood, data.note);
+  // [백엔드 팀] 실제 API 응답에서 emotion, aiComment, recommendedFood를 받아옴
+  // 백엔드에서 KoBERT 감정 재분석, AI 코멘트 재생성, 음식 추천 재생성이 모두 처리됨
   
-  // [AI 팀] emotionCategory는 KoBERT 분석 결과로 대체
+  // [AI 팀] generateAIComment를 실제 제미나이 API 호출로 대체
+  const aiComment = generateAIComment(data.mood || '', data.content);
+  
+  // [백엔드 팀] 실제 API 응답에서 emotion을 받아옴 (한글: "행복", "슬픔" 등)
+  // Mock: 간단한 텍스트 분석으로 감정 추정 (실제로는 백엔드에서 KoBERT로 재분석)
+  const lowerContent = data.content.toLowerCase();
+  let emotion = '중립'; // 기본값
+  if (lowerContent.includes('행복') || lowerContent.includes('기쁘') || lowerContent.includes('좋아')) {
+    emotion = '행복';
+  } else if (lowerContent.includes('슬프') || lowerContent.includes('우울') || lowerContent.includes('힘들')) {
+    emotion = '슬픔';
+  } else if (lowerContent.includes('화') || lowerContent.includes('짜증') || lowerContent.includes('분노')) {
+    emotion = '분노';
+  } else if (lowerContent.includes('불안') || lowerContent.includes('걱정') || lowerContent.includes('두려')) {
+    emotion = '불안';
+  } else if (lowerContent.includes('혐오') || lowerContent.includes('싫어')) {
+    emotion = '혐오';
+  } else if (lowerContent.includes('당황') || lowerContent.includes('놀라')) {
+    emotion = '당황';
+  }
+  
+  // emotionCategory는 emotion(한글) 기반으로 계산
+  const emotionCategoryMap: { [key: string]: string } = {
+    '행복': 'positive',
+    '중립': 'neutral',
+    '당황': 'neutral',
+    '슬픔': 'negative',
+    '분노': 'negative',
+    '불안': 'negative',
+    '혐오': 'negative',
+  };
+  const emotionCategory = emotionCategoryMap[emotion] || 'neutral';
+  
+  // [AI 팀 작업 필요] 음식 추천 재생성 (제미나이 API)
+  // const recommendedFood = await generateFoodRecommendation({
+  //   title: data.title,
+  //   content: data.content,
+  //   mood: data.mood,
+  //   weather: data.weather,
+  //   activities: data.activities,
+  //   emotion: emotion
+  // });
+  const recommendedFood = {
+    name: '따뜻한 국밥',
+    reason: '몸을 따뜻하게 해주는 음식이 기분 전환에 도움이 될 수 있어요'
+  };
+  
   const updatedDiary: DiaryDetail = {
     ...existing,
-    ...data,
-    emotionCategory: data.emotion === '😊' || data.emotion === '😄' || data.emotion === '🌟' ? 'happy' :
-                     data.emotion === '🥰' || data.emotion === '💖' ? 'love' :
-                     data.emotion === '😌' ? 'calm' :
-                     data.emotion === '🎉' || data.emotion === '✨' ? 'excited' :
-                     data.emotion === '🤗' ? 'grateful' :
-                     data.emotion === '😴' ? 'tired' : 'neutral',
-    aiComment,
+    title: data.title,
+    content: data.content, // API 명세서: content
+    emotion: emotion, // 백엔드에서 KoBERT 재분석 결과 (한글)
+    emotionCategory, // 프론트엔드에서 계산
+    mood: data.mood || '',
+    weather: data.weather,
+    activities: data.activities,
+    imageUrl: data.imageUrl, // 기존 AI 이미지 유지 (재생성 안 함)
+    images: data.images, // API 명세서: images (사용자 업로드 이미지, 수정된 내용 반영)
+    aiComment, // 백엔드에서 재생성된 AI 코멘트
+    recommendedFood, // 백엔드에서 재생성된 음식 추천
   };
   
   // Mock 데이터 업데이트
   mockDiaryDetails[date] = updatedDiary;
   
   // 캘린더 히트맵 데이터 업데이트
+  // emotion을 이모지로 변환 (캘린더 표시용)
+  const emotionEmojiMap: { [key: string]: string } = {
+    '행복': '😊',
+    '중립': '😐',
+    '당황': '😳',
+    '슬픔': '😢',
+    '분노': '😠',
+    '불안': '😰',
+    '혐오': '🤢',
+  };
+  const emotionEmoji = emotionEmojiMap[emotion] || '😐';
+  
   const existingIndex = mockEmotionData.findIndex(e => e.date === date);
   if (existingIndex >= 0) {
     mockEmotionData[existingIndex] = {
       date: date,
-      emotion: data.emotion,
-      emotionCategory: updatedDiary.emotionCategory,
+      emotion: emotionEmoji, // 캘린더 표시용 이모지
+      emotionCategory,
     };
   }
   
@@ -927,7 +1170,7 @@ export async function searchDiaries(params: DiarySearchParams): Promise<DiarySea
     const lowerKeyword = keyword.toLowerCase();
     filtered = filtered.filter(diary => 
       diary.title.toLowerCase().includes(lowerKeyword) ||
-      diary.note.toLowerCase().includes(lowerKeyword)
+      diary.content.toLowerCase().includes(lowerKeyword) // API 명세서: content
     );
   }
   

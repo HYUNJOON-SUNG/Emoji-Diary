@@ -8,6 +8,7 @@
  * - 감정 패턴 자동 분석
  * - 위험 레벨 판정 (none/low/medium/high)
  * - 위험 신호 감지 시 알림 모달 표시
+ * - 위험 신호 세션 관리 (세션 중 한 번만 표시)
  * 
  * 분석 기준 (플로우 9.1):
  * - High: 5일 이상 연속 부정 감정 OR 14일 중 8일 이상 high-risk 감정
@@ -21,12 +22,17 @@
  * 
  * [백엔드 팀] 실제 구현 시:
  * - 서버 사이드에서 분석 수행 권장 (성능 최적화)
- * - 엔드포인트: GET /api/users/risk-analysis
+ * - 엔드포인트: GET /api/risk-detection/analyze (API 명세서 Section 6.1)
  * - 응답: RiskAnalysis 인터페이스
  * - 캐싱 전략 필요 (매 요청마다 14일 분석은 비효율적)
  */
 
 import { DiaryDetail, fetchDiaryDetails } from './diaryApi';
+
+/**
+ * 지연 함수 (네트워크 지연 시뮬레이션)
+ */
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * 위험 분석 결과 인터페이스 (플로우 9.1)
@@ -250,4 +256,82 @@ export function getRiskNotificationMessage(riskLevel: 'low' | 'medium' | 'high')
     default:
       return '';
   }
+}
+
+/**
+ * GET /risk-detection/session-status
+ * 위험 신호 세션 확인
+ * 
+ * [API 명세서 Section 6.2]
+ * 
+ * 동작:
+ * - 로그인 후 다이어리 메인 화면 진입 시 위험 알림 모달이 표시되었는지 여부 확인
+ * - `alreadyShown: true`이면 세션 중 다시 표시하지 않음
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - GET /api/risk-detection/session-status
+ * - Headers: { Authorization: Bearer {accessToken} }
+ * - Response: { success: true, data: { alreadyShown: boolean } }
+ * - 세션 정보는 서버에서 관리 (Redis 등)
+ */
+export async function getRiskSessionStatus(): Promise<{ alreadyShown: boolean }> {
+  await delay(300);
+  
+  // [백엔드 팀] 실제 구현 시:
+  // const response = await fetch('/api/risk-detection/session-status', {
+  //   method: 'GET',
+  //   headers: {
+  //     'Authorization': `Bearer ${TokenStorage.getAccessToken()}`,
+  //   },
+  // });
+  // const result = await response.json();
+  // return { alreadyShown: result.data.alreadyShown };
+  
+  // Mock 구현: localStorage에서 세션 상태 확인
+  const sessionKey = 'riskAlertShown';
+  const alreadyShown = localStorage.getItem(sessionKey) === 'true';
+  
+  return {
+    alreadyShown,
+  };
+}
+
+/**
+ * POST /risk-detection/mark-shown
+ * 위험 알림 표시 완료 기록
+ * 
+ * [API 명세서 Section 6.3]
+ * 
+ * 동작:
+ * - 위험 알림 모달을 표시한 후 호출하여 세션 중 다시 표시하지 않도록 기록
+ * - 세션 종료 시(로그아웃) 기록 초기화
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - POST /api/risk-detection/mark-shown
+ * - Headers: { Authorization: Bearer {accessToken} }
+ * - Response: { success: true, data: { message: string } }
+ * - 세션 정보는 서버에서 관리 (Redis 등)
+ */
+export async function markRiskAlertShown(): Promise<{ message: string }> {
+  await delay(300);
+  
+  // [백엔드 팀] 실제 구현 시:
+  // const response = await fetch('/api/risk-detection/mark-shown', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Authorization': `Bearer ${TokenStorage.getAccessToken()}`,
+  //   },
+  // });
+  // const result = await response.json();
+  // return { message: result.data.message };
+  
+  // Mock 구현: localStorage에 세션 상태 저장
+  const sessionKey = 'riskAlertShown';
+  localStorage.setItem(sessionKey, 'true');
+  
+  console.log('[Risk Alert Marked as Shown]');
+  
+  return {
+    message: '위험 알림 표시 완료 기록됨',
+  };
 }

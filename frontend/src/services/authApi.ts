@@ -54,6 +54,7 @@ interface MockUser {
   email: string;
   password: string; // ⚠️ 실제로는 해시값 저장 필요
   name: string;
+  persona: string; // 페르소나 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
   notificationEnabled: boolean;
   createdAt: string;
 }
@@ -64,6 +65,7 @@ const mockUsers: MockUser[] = [
     email: 'test@example.com',
     password: 'password123',
     name: '홍길동',
+    persona: '베프', // API 명세서: 기본값 "베프"
     notificationEnabled: true,
     createdAt: '2024-01-01T00:00:00Z',
   },
@@ -72,6 +74,7 @@ const mockUsers: MockUser[] = [
     email: 'user@diary.com',
     password: '1234',
     name: '김철수',
+    persona: '베프', // API 명세서: 기본값 "베프"
     notificationEnabled: false,
     createdAt: '2024-01-02T00:00:00Z',
   },
@@ -189,12 +192,30 @@ export const TokenStorage = {
 
 /**
  * 사용자 타입
+ * 
+ * [API 명세서 참고]
+ * - GET /api/users/me 응답 형식
+ * - persona: 페르소나 종류 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
+ * - createdAt: 계정 생성일 (ISO 8601 형식)
+ * 
+ * [ERD 설계서 참고 - Users 테이블]
+ * - id: BIGINT (PK) → string (사용자 고유 ID)
+ * - email: VARCHAR(255), UNIQUE → string (이메일 주소)
+ * - name: VARCHAR(100) → string (사용자 이름)
+ * - password_hash: VARCHAR(255) → (프론트엔드에 포함하지 않음, 백엔드 내부 처리)
+ * - persona: ENUM → string (페르소나: 베프, 부모님, 전문가, 멘토, 상담사, 시인, 기본값: 베프)
+ * - email_verified: BOOLEAN → (API 응답에 포함되지 않을 수 있음, 백엔드 내부 처리)
+ * - created_at: DATETIME → createdAt (ISO 8601 형식)
+ * - updated_at: DATETIME → (API 응답에 포함되지 않을 수 있음)
+ * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
  */
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  notificationEnabled: boolean;
+  id: string; // 사용자 고유 ID (ERD: Users.id, BIGINT)
+  email: string; // 이메일 주소 (ERD: Users.email, VARCHAR(255), UNIQUE)
+  name: string; // 사용자 이름 (ERD: Users.name, VARCHAR(100))
+  persona: string; // 페르소나 (ERD: Users.persona, ENUM, 기본값: "베프", API 명세서 필수 필드)
+  notificationEnabled?: boolean; // 알림 설정 (API 명세서에 없지만 기존 기능 유지, ERD에 없음)
+  createdAt?: string; // 계정 생성일 (ERD: Users.created_at, DATETIME, ISO 8601 형식, API 명세서 필수 필드)
 }
 
 /**
@@ -217,19 +238,26 @@ export interface LoginResponse {
 /**
  * 회원가입 요청 데이터
  * 
+ * [API 명세서 Section 2.2.4]
+ * - POST /api/auth/register
+ * - Request: { name, email, password, emailVerified, persona? }
+ * 
  * [플로우 1.3: 회원가입 플로우]
  * - email: 이메일 (인증 완료된 이메일)
  * - password: 비밀번호 (영문, 숫자, 특수문자 포함 8자 이상)
  * - name: 이름 (2~10자)
- * - verificationCode: 이메일 인증 코드 (6자리)
- * - termsAccepted: 필수 약관 동의 여부
+ * - verificationCode: 이메일 인증 코드 (6자리) - 프론트엔드에서만 사용
+ * - termsAccepted: 필수 약관 동의 여부 - 프론트엔드에서만 사용
+ * - persona: 페르소나 (선택, 미제공 시 기본값 "베프")
+ *   * 페르소나 종류: 베프, 부모님, 전문가, 멘토, 상담사, 시인
  */
 export interface SignupRequest {
   email: string;
   password: string;
   name: string;
-  verificationCode: string;
-  termsAccepted: boolean;
+  verificationCode: string; // 프론트엔드에서만 사용 (백엔드에는 emailVerified: true로 전송)
+  termsAccepted: boolean; // 프론트엔드에서만 사용
+  persona?: string; // [API 명세서] 선택 필드 (기본값: "베프")
 }
 
 /**
@@ -314,6 +342,7 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
       id: user.id,
       email: user.email,
       name: user.name,
+      persona: user.persona, // API 명세서: persona 필드 추가
       notificationEnabled: user.notificationEnabled,
     },
   };
@@ -364,11 +393,18 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
   }
   
   // Create new user
+  // [API 명세서] persona는 회원가입 시 선택 필드, 미제공 시 기본값 "베프"
+  const validPersonas = ['베프', '부모님', '전문가', '멘토', '상담사', '시인'];
+  const persona = data.persona && validPersonas.includes(data.persona) 
+    ? data.persona 
+    : '베프'; // 기본값 "베프"
+  
   const newUser: MockUser = {
     id: generateId(),
     email: data.email,
     password: data.password,
     name: data.name,
+    persona: persona, // API 명세서: 선택 필드, 미제공 시 기본값 "베프"
     notificationEnabled: true,
     createdAt: new Date().toISOString(),
   };
@@ -388,6 +424,7 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
       id: newUser.id,
       email: newUser.email,
       name: newUser.name,
+      persona: newUser.persona, // API 명세서: persona 필드 추가
       notificationEnabled: newUser.notificationEnabled,
     },
   };
@@ -615,8 +652,61 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
 }
 
 /**
- * GET /auth/me
+ * POST /auth/refresh
+ * 토큰 재발급
+ * 
+ * [API 명세서 Section 2.4]
+ * - Access Token 만료 시 Refresh Token으로 재발급
+ * - Refresh Token도 만료되면 로그인 화면으로 이동
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - POST /api/auth/refresh
+ * - Request: { refreshToken: string }
+ * - Response: { success: true, data: { accessToken: string, refreshToken: string } }
+ * - Refresh Token 검증 후 새로운 Access Token과 Refresh Token 발급
+ * - 기존 Refresh Token은 무효화 처리 (Refresh Token Rotation)
+ */
+export async function refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  await delay(500);
+  
+  // [백엔드 팀] 실제 구현 시:
+  // 1. Refresh Token 검증 (JWT verify)
+  // 2. Refresh Token이 유효하면 새로운 Access Token과 Refresh Token 발급
+  // 3. 기존 Refresh Token은 무효화 처리
+  // 4. 만료되었거나 유효하지 않으면 에러 반환
+  
+  // Mock 구현: Refresh Token에서 사용자 ID 추출 (실제로는 JWT decode)
+  const tokenMatch = refreshToken.match(/mock-refresh-token-(\w+)-/);
+  if (!tokenMatch) {
+    throw new Error('유효하지 않은 토큰입니다.');
+  }
+  
+  const userId = tokenMatch[1];
+  const user = mockUsers.find(u => u.id === userId);
+  
+  if (!user) {
+    throw new Error('사용자를 찾을 수 없습니다.');
+  }
+  
+  // 새로운 토큰 생성
+  const newAccessToken = `mock-access-token-${user.id}-${Date.now()}`;
+  const newRefreshToken = `mock-refresh-token-${user.id}-${Date.now()}`;
+  
+  // localStorage에 새 토큰 저장
+  TokenStorage.setTokens(newAccessToken, newRefreshToken);
+  
+  return {
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  };
+}
+
+/**
+ * GET /users/me
  * 현재 로그인한 사용자 정보 조회
+ * 
+ * [API 명세서 Section 3.1]
+ * - 엔드포인트: GET /api/users/me
  * 
  * [플로우 16.1: 데이터 동기화 플로우]
  * 
@@ -626,9 +716,9 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
  * 3. 사용자 정보 반환
  * 
  * [백엔드 팀] 실제 구현 시:
- * - GET /api/auth/me
+ * - GET /api/users/me
  * - Headers: { Authorization: 'Bearer {accessToken}' }
- * - Response: { id, email, name, notificationEnabled }
+ * - Response: { success: true, data: { id, email, name, persona, createdAt } }
  * - JWT 토큰 검증 후 userId 추출
  * - users 테이블에서 정보 조회
  */
@@ -641,7 +731,63 @@ export async function getCurrentUser(): Promise<User> {
     throw new Error('로그인이 필요합니다.');
   }
   
-  return JSON.parse(userStr);
+  const user = JSON.parse(userStr);
+  
+  // [API 명세서] persona 필드가 없으면 기본값 "베프" 설정
+  if (!user.persona) {
+    user.persona = '베프';
+  }
+  
+  return user;
+}
+
+/**
+ * PUT /users/me/persona
+ * 페르소나 설정 변경
+ * 
+ * [API 명세서 Section 3.2]
+ * - 회원가입 직후 페르소나 설정 화면에서 초기 설정 시 사용
+ * - 이미 페르소나가 설정된 경우 변경 시에도 사용
+ * 
+ * 페르소나 종류:
+ * - 베프, 부모님, 전문가, 멘토, 상담사, 시인
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - PUT /api/users/me/persona
+ * - Headers: { Authorization: 'Bearer {accessToken}' }
+ * - Request: { persona: string }
+ * - Response: { success: true, data: { message: string, persona: string } }
+ */
+export async function updatePersona(data: { persona: string }): Promise<{ message: string; persona: string }> {
+  await delay(800);
+  
+  // 페르소나 유효성 검증
+  const validPersonas = ['베프', '부모님', '전문가', '멘토', '상담사', '시인'];
+  if (!validPersonas.includes(data.persona)) {
+    throw new Error('유효하지 않은 페르소나입니다.');
+  }
+  
+  const userStr = localStorage.getItem('user');
+  if (!userStr) {
+    throw new Error('로그인이 필요합니다.');
+  }
+  
+  const user = JSON.parse(userStr);
+  user.persona = data.persona;
+  
+  // Update localStorage
+  localStorage.setItem('user', JSON.stringify(user));
+  
+  // Update mock users array
+  const mockUser = mockUsers.find(u => u.id === user.id);
+  if (mockUser) {
+    mockUser.persona = data.persona;
+  }
+  
+  return {
+    message: '페르소나가 설정되었습니다',
+    persona: data.persona,
+  };
 }
 
 /**
@@ -688,29 +834,38 @@ export async function updateProfile(data: { name: string }): Promise<{ message: 
 }
 
 /**
- * PUT /auth/password
+ * PUT /users/me/password
  * 비밀번호 변경
+ * 
+ * [API 명세서 Section 3.3]
  * 
  * [플로우 9: 마이페이지 - 비밀번호 변경]
  * 
  * 동작:
  * 1. 현재 비밀번호 검증
  * 2. 새 비밀번호 검증 (영문/숫자/특수문자 8자 이상)
- * 3. 비밀번호 업데이트
+ * 3. 새 비밀번호 확인 (newPassword === confirmPassword)
+ * 4. 비밀번호 업데이트
  * 
  * [백엔드 팀] 실제 구현 시:
- * - PUT /api/auth/password
+ * - PUT /api/users/me/password
  * - Headers: { Authorization: 'Bearer {accessToken}' }
- * - Request: { currentPassword, newPassword }
- * - Response: { success: boolean, message }
+ * - Request: { currentPassword, newPassword, confirmPassword }
+ * - Response: { success: true, data: { message: string } }
  * - bcrypt.compare()로 현재 비밀번호 검증
  * - bcrypt.hash()로 새 비밀번호 해시화
  */
 export async function updatePassword(data: {
   currentPassword: string;
   newPassword: string;
+  confirmPassword: string; // [API 명세서] 새 비밀번호 확인 필드 추가
 }): Promise<{ message: string }> {
   await delay(800);
+  
+  // 새 비밀번호 확인 검증
+  if (data.newPassword !== data.confirmPassword) {
+    throw new Error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+  }
   
   const userStr = localStorage.getItem('user');
   if (!userStr) {

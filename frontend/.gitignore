@@ -6,6 +6,8 @@ node_modules/
 /.pnp
 .pnp.js
 
+frontend/reference/
+
 # Python
 venv/
 env/

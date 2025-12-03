@@ -29,3 +29,9 @@ export * from './termsData';
 
 // ========== 이미지 생성기 (Image Generator) ==========
 export * from './imageGenerator';
+
+// ========== 파일 업로드 API (Upload API) ==========
+export * from './uploadApi';
+
+// ========== 통계 API (Statistics API) ==========
+export * from './statisticsApi';
