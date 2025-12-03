@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "risk_detection_sessions", indexes = {
         @Index(name = "idx_risk_sessions_user_id", columnList = "user_id"),
-        @Index(name = "idx_risk_sessions_created_at", columnList = "created_at")
+        @Index(name = "idx_risk_sessions_created_at", columnList = "created_at"),
+        @Index(name = "idx_risk_sessions_user_created", columnList = "user_id, created_at") // 최신 세션 조회 최적화
 }) // 테이블명 설정 - risk_detection_sessions, 인덱스 설정
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 인자가 필요없는 생성자 생성
 @AllArgsConstructor // 모든 인자를 필요로하는 생성자 생성

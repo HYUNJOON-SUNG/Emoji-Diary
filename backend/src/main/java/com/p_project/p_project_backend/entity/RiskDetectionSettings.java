@@ -24,37 +24,42 @@ public class RiskDetectionSettings {
     @Builder.Default
     private Integer monitoringPeriod = 14;
 
-    // High 레벨 연속 부정 감정 임계 일수 (high_consecutive_days)
-    @Column(name = "high_consecutive_days", nullable = false, columnDefinition = "INT DEFAULT 5")
+    // High 레벨 연속 부정 감정 임계 점수 (high_consecutive_score)
+    @Column(name = "high_consecutive_score", nullable = false, columnDefinition = "INT DEFAULT 8")
     @Builder.Default
-    private Integer highConsecutiveDays = 5;
+    private Integer highConsecutiveScore = 8;
 
-    // High 레벨 부정 감정 임계 일수 (high_negative_days)
-    @Column(name = "high_negative_days", nullable = false, columnDefinition = "INT DEFAULT 8")
+    // High 레벨 모니터링 기간 내 부정 감정 임계 점수 (high_score_in_period)
+    @Column(name = "high_score_in_period", nullable = false, columnDefinition = "INT DEFAULT 12")
     @Builder.Default
-    private Integer highNegativeDays = 8;
+    private Integer highScoreInPeriod = 12;
 
-    // Medium 레벨 연속 부정 감정 임계 일수 (medium_consecutive_days)
-    @Column(name = "medium_consecutive_days", nullable = false, columnDefinition = "INT DEFAULT 3")
+    // Medium 레벨 연속 부정 감정 임계 점수 (medium_consecutive_score)
+    @Column(name = "medium_consecutive_score", nullable = false, columnDefinition = "INT DEFAULT 5")
     @Builder.Default
-    private Integer mediumConsecutiveDays = 3;
+    private Integer mediumConsecutiveScore = 5;
 
-    // Medium 레벨 부정 감정 임계 일수 (medium_negative_days)
-    @Column(name = "medium_negative_days", nullable = false, columnDefinition = "INT DEFAULT 5")
+    // Medium 레벨 모니터링 기간 내 부정 감정 임계 점수 (medium_score_in_period)
+    @Column(name = "medium_score_in_period", nullable = false, columnDefinition = "INT DEFAULT 8")
     @Builder.Default
-    private Integer mediumNegativeDays = 5;
+    private Integer mediumScoreInPeriod = 8;
 
-    // Low 레벨 연속 부정 감정 임계 일수 (low_consecutive_days)
-    @Column(name = "low_consecutive_days", nullable = false, columnDefinition = "INT DEFAULT 2")
+    // Low 레벨 연속 부정 감정 임계 점수 (low_consecutive_score)
+    @Column(name = "low_consecutive_score", nullable = false, columnDefinition = "INT DEFAULT 2")
     @Builder.Default
-    private Integer lowConsecutiveDays = 2;
+    private Integer lowConsecutiveScore = 2;
 
-    // Low 레벨 부정 감정 임계 일수 (low_negative_days)
-    @Column(name = "low_negative_days", nullable = false, columnDefinition = "INT DEFAULT 3")
+    // Low 레벨 모니터링 기간 내 부정 감정 임계 점수 (low_score_in_period)
+    @Column(name = "low_score_in_period", nullable = false, columnDefinition = "INT DEFAULT 4")
     @Builder.Default
-    private Integer lowNegativeDays = 3;
+    private Integer lowScoreInPeriod = 4;
 
     // 수정일시 (updated_at)
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // 수정한 관리자 ID (updated_by) - FK (NULL 가능)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private Admin updatedBy;
 }

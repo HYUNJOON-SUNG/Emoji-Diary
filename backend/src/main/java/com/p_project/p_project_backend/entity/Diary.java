@@ -13,8 +13,11 @@ import java.time.LocalDateTime;
         @Index(name = "idx_diaries_date", columnList = "date"),
         @Index(name = "idx_diaries_emotion", columnList = "emotion"),
         @Index(name = "idx_diaries_deleted_at", columnList = "deleted_at"),
-        @Index(name = "idx_diaries_user_date", columnList = "user_id, date", unique = true) // 복합 유니크 인덱스 (deleted_at IS
-                                                                                            // NULL 조건은 DB 레벨에서 처리 필요)
+        @Index(name = "idx_diaries_user_date", columnList = "user_id, date", unique = true), // 복합 유니크 인덱스 (deleted_at IS NULL 조건은 DB 레벨에서 처리 필요)
+        @Index(name = "idx_diaries_user_emotion", columnList = "user_id, emotion"), // 위험 신호 감지 최적화
+        @Index(name = "idx_diaries_user_emotion_date", columnList = "user_id, emotion, date"), // 위험 신호 감지 최적화 (모니터링 기간 내 일기 조회)
+        @Index(name = "idx_diaries_emotion_date", columnList = "emotion, date") // 통계 조회 최적화
+        // FULLTEXT 인덱스 (title, content)는 DatabaseIndexInitializer에서 애플리케이션 시작 시 자동 생성됨
 }) // 테이블명 설정 - diaries, 인덱스 설정
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 인자가 필요없는 생성자 생성
 @AllArgsConstructor // 모든 인자를 필요로하는 생성자 생성
@@ -66,6 +69,10 @@ public class Diary {
     @Column(name = "ai_comment", columnDefinition = "TEXT")
     private String aiComment;
 
+    // 음식 추천 정보 (recommended_food) - JSON
+    @Column(name = "recommended_food", columnDefinition = "JSON")
+    private String recommendedFood;
+
     // KoBERT 감정 분석 결과 (kobert_analysis) - JSON
     @Column(name = "kobert_analysis", columnDefinition = "JSON")
     private String kobertAnalysis;
@@ -83,7 +90,13 @@ public class Diary {
     private LocalDateTime deletedAt;
 
     public enum Emotion {
-        JOY, LOVE, PEACE, GRATITUDE, FLUTTER, EXCITEMENT, INSPIRATION, SADNESS, ANNOYANCE, ANXIETY, ANGER, TIREDNESS
+        JOY,        // 행복
+        NEUTRAL,    // 중립
+        SURPRISE,   // 당황
+        SADNESS,    // 슬픔
+        ANGER,      // 분노
+        ANXIETY,    // 불안
+        DISGUST     // 혐오
     }
 
     public enum Weather {
