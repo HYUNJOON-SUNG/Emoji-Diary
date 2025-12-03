@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // Allow all auth endpoints
                         .requestMatchers("/api/admin/auth/login").permitAll() // Allow admin login
+                        .requestMatchers("/api/admin/auth/logout").permitAll() // Allow admin logout (Controller에서 토큰 검증)
                         .requestMatchers("/", "/index.html", "/static/**", "/*.html", "/*.css", "/*.js").permitAll() // Allow
                                                                                                                      // static
                                                                                                                      // resources

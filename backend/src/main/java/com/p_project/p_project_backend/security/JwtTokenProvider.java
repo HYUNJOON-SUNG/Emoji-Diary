@@ -70,6 +70,23 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
+    /**
+     * 만료된 토큰에서도 이메일 추출 (로그아웃 등에서 사용)
+     * 잘못된 토큰의 경우 null 반환
+     */
+    public String getEmailFromTokenEvenIfExpired(String token) {
+        try {
+            return getEmailFromToken(token);
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰이어도 클레임에서 이메일 추출 가능
+            return e.getClaims().getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            // 잘못된 형식의 토큰은 null 반환
+            log.warn("Invalid JWT token format: {}", e.getMessage());
+            return null;
+        }
+    }
+
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
