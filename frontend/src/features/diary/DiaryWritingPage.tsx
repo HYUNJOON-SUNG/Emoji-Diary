@@ -1,29 +1,32 @@
 import { useState, useEffect, useRef } from 'react';
-import { Smile, Cloud, Sun, CloudRain, CloudSnow, Wind, MapPin, Camera, X, Save, Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X } from 'lucide-react';
 import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest } from '../../services/diaryApi';
 import { theme } from '../../styles/theme';
 
 /**
- * 감정 데이터 (플로우 3.2)
- * - 12가지 감정 선택 옵션
- * - 긍정 7가지, 부정 5가지
+ * KoBERT 감정 분석 결과 매핑 (플로우 3.3, 3.4)
+ * 
+ * [AI 팀] KoBERT 모델이 분석하는 7가지 감정:
+ * - 행복(😊), 중립(😐), 당황(😳), 슬픔(😢), 분노(😠), 불안(😰), 혐오(🤢)
+ * 
+ * 카테고리 분류:
+ * - 긍정: 행복
+ * - 중립: 중립, 당황
+ * - 부정: 슬픔, 분노, 불안, 혐오
+ * 
+ * [백엔드 팀] KoBERT API 응답 형식:
+ * - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
+ * - confidence: 0.0 ~ 1.0 (신뢰도)
  */
-const EMOTIONS = [
-  // 긍정 감정
-  { id: 'joy', name: '기쁨', emoji: '😊', category: 'positive' },
-  { id: 'love', name: '사랑', emoji: '❤️', category: 'positive' },
-  { id: 'peace', name: '평온', emoji: '😌', category: 'positive' },
-  { id: 'gratitude', name: '감사', emoji: '🙏', category: 'positive' },
-  { id: 'excitement', name: '설렘', emoji: '🤩', category: 'positive' },
-  { id: 'energetic', name: '신남', emoji: '🎉', category: 'positive' },
-  { id: 'inspired', name: '영감', emoji: '✨', category: 'positive' },
-  // 부정 감정
-  { id: 'sad', name: '슬픔', emoji: '😢', category: 'negative' },
-  { id: 'annoyed', name: '짜증', emoji: '😤', category: 'negative' },
-  { id: 'anxious', name: '불안', emoji: '😰', category: 'negative' },
-  { id: 'angry', name: '화남', emoji: '😡', category: 'negative' },
-  { id: 'tired', name: '피곤', emoji: '😴', category: 'negative' },
-];
+const KOBERT_EMOTIONS = {
+  '행복': { emoji: '😊', name: '행복', category: 'positive' },
+  '중립': { emoji: '😐', name: '중립', category: 'neutral' },
+  '당황': { emoji: '😳', name: '당황', category: 'neutral' },
+  '슬픔': { emoji: '😢', name: '슬픔', category: 'negative' },
+  '분노': { emoji: '😠', name: '분노', category: 'negative' },
+  '불안': { emoji: '😰', name: '불안', category: 'negative' },
+  '혐오': { emoji: '🤢', name: '혐오', category: 'negative' },
+};
 
 /**
  * 날씨 선택 옵션 (플로우 3.2)
@@ -91,12 +94,16 @@ export function DiaryWritingPage({
   /** 제목 (필수) */
   const [title, setTitle] = useState(existingDiary?.title || '');
   
-  /** 선택된 감정 ID (필수) */
-  // existingDiary.emotion은 이모지이므로 ID로 변환
-  const [selectedEmotion, setSelectedEmotion] = useState<string | null>(() => {
+  /**
+   * KoBERT 감정 분석 결과 (플로우 3.3, 4.3)
+   * - 일기 저장 시 KoBERT API로 자동 분석됨
+   * - 수정 모드: 기존 일기의 감정 정보 (이모지 형식)
+   * - 새 작성 모드: null (저장 시 분석됨)
+   */
+  const [kobertEmotion, setKobertEmotion] = useState<string | null>(() => {
+    // 수정 모드: 기존 일기의 감정 이모지 사용
     if (existingDiary?.emotion) {
-      const emotionData = EMOTIONS.find(e => e.emoji === existingDiary.emotion);
-      return emotionData?.id || null;
+      return existingDiary.emotion;
     }
     return null;
   });
@@ -121,14 +128,14 @@ export function DiaryWritingPage({
   
   // ========== UI 상태 ==========
   
-  /** 감정 선택 모달 표시 여부 */
-  const [showEmotionModal, setShowEmotionModal] = useState(false);
-  
   /** 저장 중 로딩 상태 */
   const [isSaving, setIsSaving] = useState(false);
   
   /** AI 이미지 생성 중 */
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  
+  /** KoBERT 감정 분석 중 */
+  const [isAnalyzingEmotion, setIsAnalyzingEmotion] = useState(false);
   
   /** 에러 메시지 */
   const [error, setError] = useState('');
@@ -145,27 +152,13 @@ export function DiaryWritingPage({
    * 필수 항목 검증 (플로우 3.3)
    * - 제목: 빈 값이 아닐 것
    * - 본문: 빈 값이 아닐 것
-   * - 감정: 선택되어 있을 것
+   * - 감정: KoBERT 자동 분석되므로 검증 불필요
    */
   const isValid = 
     title.trim() !== '' && 
-    content.trim() !== '' && 
-    selectedEmotion !== null;
+    content.trim() !== '';
   
   // ========== 이벤트 핸들러 ==========
-  
-  /**
-   * 감정 선택 핸들러 (플로우 3.2)
-   * 
-   * 동작:
-   * 1. 감정 카드 클릭
-   * 2. 감정 선택 상태 업데이트
-   * 3. 모달 자동 닫기
-   */
-  const handleEmotionSelect = (emotionId: string) => {
-    setSelectedEmotion(emotionId);
-    setShowEmotionModal(false);
-  };
   
   /**
    * 취소 버튼 클릭 핸들러 (플로우 3.5, 4.4)
@@ -190,7 +183,6 @@ export function DiaryWritingPage({
       const hasChanges = 
         title.trim() !== existingDiary.title ||
         content.trim() !== existingDiary.content ||
-        selectedEmotion !== existingDiary.emotion ||
         mood.trim() !== (existingDiary.mood || '') ||
         weather !== (existingDiary.weather || '') ||
         JSON.stringify(activities) !== JSON.stringify(existingDiary.activities || []) ||
@@ -206,7 +198,6 @@ export function DiaryWritingPage({
       const hasContent = 
         title.trim() !== '' || 
         content.trim() !== '' || 
-        selectedEmotion !== null || 
         mood.trim() !== '' || 
         weather !== '' || 
         activities.length > 0 || 
@@ -385,40 +376,118 @@ export function DiaryWritingPage({
    * 일기 저장 핸들러 (플로우 3.3, 4.3)
    * 
    * ===== 새 작성 모드 (플로우 3.3) =====
-   * 1. KoBERT 감정 분석
+   * 1. KoBERT 감정 분석 (일기 본문 분석) → 7가지 감정 중 하나로 분류
+   *    - 분석 결과: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+   *    - KoBERT 분석 결과가 사용자에게 표시되는 감정이 됨
    * 2. AI 이미지 생성 (나노바나나 API)
-   * 3. 일기 저장
+   *    - 일기 작성 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 활용
+   * 3. 일기 저장 API 호출
+   *    - 일기 데이터 전송 (제목, 본문, 기분, 날씨, 활동, 사용자 업로드 이미지 URL 목록, KoBERT 감정 분석 결과, AI 생성 이미지 URL)
+   *    - 감정 분석 결과는 `emotion` 컬럼에 저장됨
    * 4. AI 코멘트 생성 (제미나이 API)
-   * 5. 감정 분석 모달 표시
+   *    - 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과, 페르소나 스타일 반영
+   * 5. 음식 추천 생성 (제미나이 API)
+   *    - 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 반영하여 추천 음식 1개 생성
+   *    - 추천된 음식을 DB에 저장
+   * 6. 감정 분석 모달 표시 (플로우 3.4)
    * 
    * ===== 수정 모드 (플로우 4.3) =====
-   * 1. KoBERT 감정 분석 (수정된 본문)
+   * 1. KoBERT 감정 분석 (수정된 본문 분석)
+   *    - 수정된 본문을 분석하여 7가지 감정 중 하나로 재분류
+   *    - 주요 감정을 추출하여 `emotion` 컬럼에 업데이트
+   *    - 참고: 일기 수정 시에는 이미지를 재생성하지 않으므로 KoBERT 결과는 코멘트 및 추천에만 사용
    * 2. AI 이미지 재생성 안 함 (기존 AI 이미지 유지)
    * 3. 일기 수정 저장
+   *    - 수정된 일기 데이터 전송 (제목, 본문, 기분, 날씨, 활동, AI 생성 이미지 URL, 사용자 업로드 이미지 URL 목록)
    * 4. AI 코멘트 재생성 (제미나이 API)
-   * 5. 감정 분석 모달 표시 안 함 → 바로 상세보기로 이동
+   *    - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과, 페르소나 스타일 반영
+   * 5. 음식 추천 재생성 (제미나이 API)
+   *    - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 반영하여 추천 음식 1개 재생성
+   *    - 재생성된 음식을 DB에 업데이트
+   * 6. 감정 분석 모달 표시 안 함 → 바로 상세보기로 이동
    * 
    * [백엔드 팀 API]
-   * - POST /api/ai/analyze-emotion (KoBERT) - 새 작성 & 수정 모두 사용
+   * - POST /api/ai/kobert-analyze (KoBERT) - 새 작성 & 수정 모두 사용
+   *   - Request: { content: string } (일기 본문)
+   *   - Response: { emotion: string, confidence: number }
+   *     - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
    * - POST /api/ai/generate-image (나노바나나) - 새 작성만 사용
-   * - POST /api/diary/save - 새 작성
-   * - PUT /api/diary/update - 수정
+   * - POST /api/diaries - 새 작성
+   * - PUT /api/diaries/{id} - 수정
    * - POST /api/ai/generate-comment (제미나이) - 새 작성 & 수정 모두 사용
+   * - POST /api/ai/generate-food-recommendation (제미나이) - 새 작성 & 수정 모두 사용
+   *   - Request: { title, content, mood, weather, activities, emotion }
+   *   - Response: { name: string, reason: string }
    */
   const handleSave = async () => {
     if (!isValid || !selectedDate) return;
     
     setIsSaving(true);
+    setIsAnalyzingEmotion(true);
     setError('');
     
     try {
       // 1. KoBERT 감정 분석 (플로우 3.3, 4.3)
-      // [TODO: 백엔드 팀] KoBERT 모델 연동
-      const kobertResult = {
-        emotion: selectedEmotion,
-        confidence: 0.85,
-        details: { positive: 0.7, negative: 0.3 },
-      };
+      // [백엔드 팀] KoBERT 모델 연동 필요
+      // POST /api/ai/kobert-analyze
+      // Request: { content: string } (일기 본문)
+      // Response: { emotion: string, confidence: number }
+      //   - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
+      
+      let kobertEmotionResult: string = '중립'; // 기본값
+      let kobertConfidence: number = 0;
+      
+      try {
+        // [TODO: 백엔드 팀] 실제 KoBERT API 호출로 대체
+        // const response = await fetch('/api/ai/kobert-analyze', {
+        //   method: 'POST',
+        //   headers: { 
+        //     'Content-Type': 'application/json',
+        //     'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        //   },
+        //   body: JSON.stringify({ content: content.trim() })
+        // });
+        // const data = await response.json();
+        // kobertEmotionResult = data.emotion; // "행복", "슬픔" 등
+        // kobertConfidence = data.confidence;
+        
+        // Mock: 간단한 텍스트 분석 (실제로는 KoBERT API 사용)
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('행복') || lowerContent.includes('기쁘') || lowerContent.includes('좋아')) {
+          kobertEmotionResult = '행복';
+        } else if (lowerContent.includes('슬프') || lowerContent.includes('우울') || lowerContent.includes('힘들')) {
+          kobertEmotionResult = '슬픔';
+        } else if (lowerContent.includes('화') || lowerContent.includes('짜증') || lowerContent.includes('분노')) {
+          kobertEmotionResult = '분노';
+        } else if (lowerContent.includes('불안') || lowerContent.includes('걱정') || lowerContent.includes('두려')) {
+          kobertEmotionResult = '불안';
+        } else if (lowerContent.includes('혐오') || lowerContent.includes('싫어')) {
+          kobertEmotionResult = '혐오';
+        } else if (lowerContent.includes('당황') || lowerContent.includes('놀라')) {
+          kobertEmotionResult = '당황';
+        } else {
+          kobertEmotionResult = '중립';
+        }
+        kobertConfidence = 0.85;
+        
+        // KoBERT 분석 결과를 이모지로 변환
+        const emotionData = KOBERT_EMOTIONS[kobertEmotionResult as keyof typeof KOBERT_EMOTIONS];
+        if (emotionData) {
+          setKobertEmotion(emotionData.emoji);
+        }
+      } catch (err) {
+        console.error('KoBERT 감정 분석 실패:', err);
+        // 기본값 사용
+        kobertEmotionResult = '중립';
+        setKobertEmotion('😐');
+      } finally {
+        setIsAnalyzingEmotion(false);
+      }
+      
+      // KoBERT 분석 결과를 이모지로 변환
+      const emotionData = KOBERT_EMOTIONS[kobertEmotionResult as keyof typeof KOBERT_EMOTIONS];
+      const emotionEmoji = emotionData?.emoji || '😐';
+      const emotionCategory = emotionData?.category || 'neutral';
       
       // 2. AI 이미지 생성 (나노바나나 API) - 새 작성만 (플로우 3.3)
       let aiImageUrl = existingDiary?.aiImage || ''; // 수정 모드는 기존 AI 이미지 유지 (플로우 4.3)
@@ -427,10 +496,11 @@ export function DiaryWritingPage({
         // 새 작성 모드만 AI 이미지 생성
         setIsGeneratingImage(true);
         try {
-          const selectedEmotionData = EMOTIONS.find(e => e.id === selectedEmotion);
+          // [AI 팀] 나노바나나 API 호출
+          // 일기 작성 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 활용
           aiImageUrl = await onGenerateImage(
-            content, 
-            selectedEmotionData?.emoji || '😊', 
+            `${title}\n${content}`, 
+            emotionEmoji, 
             weather
           );
         } catch (err) {
@@ -440,27 +510,50 @@ export function DiaryWritingPage({
         }
       }
       
-      // 3. 일기 저장 API 호출 (플로우 3.3, 4.3)
+      // 3. 사용자 업로드 이미지 URL 목록 준비
+      // [백엔드 팀] 실제 이미지 업로드 API 연동 필요
+      // 현재는 로컬 URL이지만, 실제로는 서버에 업로드 후 URL 받아야 함
+      const imageUrls: string[] = [];
+      for (const image of images) {
+        if (image.url && !image.url.startsWith('blob:')) {
+          // 이미 서버 URL인 경우
+          imageUrls.push(image.url);
+        } else {
+          // [TODO: 백엔드 팀] 실제 이미지 업로드 API 호출
+          // const formData = new FormData();
+          // formData.append('image', image.file!);
+          // const uploadResponse = await fetch('/api/upload/image', {
+          //   method: 'POST',
+          //   headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
+          //   body: formData,
+          // });
+          // const result = await uploadResponse.json();
+          // if (result.success) {
+          //   imageUrls.push(result.data.imageUrl);
+          // }
+        }
+      }
+      
+      // 4. 일기 저장 API 호출 (플로우 3.3, 4.3)
       // 로컬 시간대로 날짜 변환 (UTC 시간대 문제 방지)
       const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-      
-      // 감정 ID를 이모지로 변환
-      const selectedEmotionData = EMOTIONS.find(e => e.id === selectedEmotion);
-      const emotionEmoji = selectedEmotionData?.emoji || '😊';
       
       if (isEditMode) {
         // 수정 모드 (플로우 4.3)
         const updateRequest: UpdateDiaryRequest = {
           title: title.trim(),
-          note: content.trim(),
-          emotion: emotionEmoji,
-          mood: mood.trim(),
+          content: content.trim(), // API 명세서: content
+          mood: mood.trim() || undefined,
           weather: weather || undefined,
           activities: activities.length > 0 ? activities : undefined,
-          imageUrl: aiImageUrl || undefined,
+          imageUrl: aiImageUrl || undefined, // AI 생성 이미지 (기존 이미지 유지, 재생성 안 함)
+          images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
         };
         
-        // existingDiary가 있다면 id도 필요하지만, 지금은 date로 식별
+        // [백엔드 팀] 일기 수정 API 호출
+        // PUT /api/diaries/{id}
+        // - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
+        // - AI 코멘트 재생성 및 음식 추천 재생성은 백엔드에서 처리
         await updateDiary('diary-' + dateKey, dateKey, updateRequest);
         console.log('일기 수정 완료:', updateRequest);
       } else {
@@ -468,25 +561,27 @@ export function DiaryWritingPage({
         const createRequest: CreateDiaryRequest = {
           date: dateKey,
           title: title.trim(),
-          note: content.trim(),
-          emotion: emotionEmoji,
-          mood: mood.trim(),
+          content: content.trim(), // API 명세서: content
+          mood: mood.trim() || undefined,
           weather: weather || undefined,
           activities: activities.length > 0 ? activities : undefined,
-          imageUrl: aiImageUrl || undefined,
+          images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
         };
         
+        // [백엔드 팀] 일기 작성 API 호출
+        // POST /api/diaries
+        // - emotion 필드는 제거됨 (KoBERT가 자동으로 분석하여 저장)
+        // - AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성은 백엔드에서 처리
         await createDiary(createRequest);
         console.log('일기 저장 완료:', createRequest);
       }
       
-      // 4. AI 코멘트 생성/재생성 (제미나이 API) - 플로우 3.3, 4.3
-      // [TODO: AI 팀] 제미나이 API 연동
-      // - KoBERT 감정 분석 결과 활용
-      // - 사용자가 선택한 감정 정보 활용
-      // - localStorage.getItem('aiPersona')에서 페르소나 스타일 가져오기
+      // 5. AI 코멘트 생성/재생성 및 음식 추천 생성/재생성은 백엔드에서 처리됨
+      // [AI 팀] 백엔드에서 제미나이 API 호출하여 처리
+      // - AI 코멘트: 일기 내용 + KoBERT 감정 분석 결과 + 페르소나 스타일
+      // - 음식 추천: 일기 내용 + KoBERT 감정 분석 결과
       
-      // 5. 저장 완료 후 처리
+      // 6. 저장 완료 후 처리
       if (onWritingComplete && selectedDate) {
         onWritingComplete(selectedDate);
       }
@@ -496,15 +591,13 @@ export function DiaryWritingPage({
         onSaveSuccess(dateKey);
       } else {
         // 새 작성 모드: 감정 분석 모달 표시 (플로우 3.4)
-        const selectedEmotionData = EMOTIONS.find(e => e.id === selectedEmotion);
-        if (selectedEmotionData) {
-          onFinish({
-            emotion: selectedEmotionData.emoji,
-            emotionName: selectedEmotionData.name,
-            emotionCategory: selectedEmotionData.category,
-            date: selectedDate,
-          });
-        }
+        // KoBERT 분석 결과를 전달
+        onFinish({
+          emotion: emotionEmoji, // KoBERT 분석 결과 이모지
+          emotionName: emotionData?.name || '중립', // KoBERT 분석 결과 이름
+          emotionCategory: emotionCategory, // 긍정/중립/부정
+          date: selectedDate,
+        });
       }
       
     } catch (err) {
@@ -512,11 +605,9 @@ export function DiaryWritingPage({
       setError('일기 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
+      setIsAnalyzingEmotion(false);
     }
   };
-  
-  // ========== 선택된 감정 데이터 조회 ==========
-  const selectedEmotionData = EMOTIONS.find(e => e.id === selectedEmotion);
   
   // ========== 날짜 포맷팅 ==========
   const formattedDate = selectedDate 
@@ -548,14 +639,31 @@ export function DiaryWritingPage({
         
         <button
           onClick={handleSave}
-          disabled={!isValid || isSaving || isGeneratingImage}
-          className={`px-4 py-2 rounded-lg transition-all min-h-[44px] ${
-            isValid && !isSaving && !isGeneratingImage
+          disabled={!isValid || isSaving || isGeneratingImage || isAnalyzingEmotion}
+          className={`px-4 py-2 rounded-lg transition-all min-h-[44px] flex items-center gap-2 ${
+            isValid && !isSaving && !isGeneratingImage && !isAnalyzingEmotion
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {isSaving ? '저장 중...' : '완료'}
+          {isAnalyzingEmotion ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              감정 분석 중...
+            </>
+          ) : isGeneratingImage ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              그림 생성 중...
+            </>
+          ) : isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              저장 중...
+            </>
+          ) : (
+            '완료'
+          )}
         </button>
       </div>
 
@@ -583,31 +691,26 @@ export function DiaryWritingPage({
               />
             </div>
             
-            {/* 2. 감정 선택 (필수) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                오늘의 감정 <span className="text-rose-500">*</span>
-              </label>
-              <button
-                onClick={() => setShowEmotionModal(true)}
-                className={`w-full px-4 py-3 rounded-lg border-2 transition-all ${
-                  selectedEmotionData
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-blue-300 bg-white hover:border-blue-400 hover:bg-blue-50'
-                }`}
-              >
-                {selectedEmotionData ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{selectedEmotionData.emoji}</span>
-                    <span className="text-sm text-slate-700">{selectedEmotionData.name}</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Smile className="w-5 h-5" />
-                    <span className="text-sm">감정을 선택해주세요</span>
-                  </div>
-                )}
-              </button>
+            {/* 
+              감정 분석 안내 (플로우 3.2)
+              
+              명세서 요구사항:
+              - 감정 선택 기능 없음
+              - 일기 저장 시 KoBERT가 자동으로 감정 분석
+              - 사용자에게는 안내 메시지만 표시
+            */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-blue-800 font-medium mb-1">
+                    AI가 감정을 자동으로 분석해드려요
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    일기를 작성하고 저장하면, AI가 본문을 분석하여 감정을 자동으로 파악합니다.
+                  </p>
+                </div>
+              </div>
             </div>
             
             {/* 3. 기분 입력 (선택) */}
@@ -755,80 +858,11 @@ export function DiaryWritingPage({
           {/* 필수 항목 안내 */}
           {!isValid && (
             <div className="mt-3 text-xs text-slate-500 text-right">
-              * 제목, 감정, 본문은 필수 항목입니다
+              * 제목, 본문은 필수 항목입니다
             </div>
           )}
         </div>
       </div>
-      
-      {/* 
-        감정 선택 모달 (플로우 3.2)
-        
-        12가지 감정 선택:
-        - 긍정 7가지: 기쁨, 사랑, 평온, 감사, 설렘, 신남, 영감
-        - 부정 5가지: 슬픔, 짜증, 불안, 화남, 피곤
-      */}
-      {showEmotionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-2xl max-h-[80vh] overflow-y-auto border-2 border-blue-200">
-            {/* 모달 헤더 */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-100 to-cyan-100 px-4 sm:px-6 py-4 border-b-2 border-blue-200 flex items-center justify-between">
-              <h3 className="text-base sm:text-lg text-slate-800">오늘의 감정을 선택하세요</h3>
-              <button
-                onClick={() => setShowEmotionModal(false)}
-                className="p-1 hover:bg-blue-200 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            
-            {/* 감정 그리드 */}
-            <div className="p-4 sm:p-6">
-              {/* 긍정 감정 */}
-              <div className="mb-6">
-                <h4 className="text-sm text-slate-600 mb-3">긍정 감정</h4>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-                  {EMOTIONS.filter(e => e.category === 'positive').map((emotion) => (
-                    <button
-                      key={emotion.id}
-                      onClick={() => handleEmotionSelect(emotion.id)}
-                      className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                        selectedEmotion === emotion.id
-                          ? 'border-blue-500 bg-blue-100 shadow-lg scale-105'
-                          : 'border-blue-200 bg-white hover:border-blue-300 hover:bg-blue-50 hover:scale-102'
-                      }`}
-                    >
-                      <div className="text-3xl sm:text-4xl mb-2">{emotion.emoji}</div>
-                      <div className="text-xs sm:text-sm text-slate-700">{emotion.name}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* 부정 감정 */}
-              <div>
-                <h4 className="text-sm text-slate-600 mb-3">부정 감정</h4>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
-                  {EMOTIONS.filter(e => e.category === 'negative').map((emotion) => (
-                    <button
-                      key={emotion.id}
-                      onClick={() => handleEmotionSelect(emotion.id)}
-                      className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                        selectedEmotion === emotion.id
-                          ? 'border-blue-500 bg-blue-100 shadow-lg scale-105'
-                          : 'border-blue-200 bg-white hover:border-blue-300 hover:bg-blue-50 hover:scale-102'
-                      }`}
-                    >
-                      <div className="text-3xl sm:text-4xl mb-2">{emotion.emoji}</div>
-                      <div className="text-xs sm:text-sm text-slate-700">{emotion.name}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* 
         취소 확인 모달 (플로우 3.5)
