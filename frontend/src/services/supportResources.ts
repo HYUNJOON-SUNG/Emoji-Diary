@@ -22,15 +22,34 @@
 
 /**
  * 지원 리소스 인터페이스 (플로우 9.3)
+ * 
+ * [ERD 설계서 참고 - Counseling_Resources 테이블]
+ * - id: BIGINT (PK) → string (상담 기관 고유 ID)
+ * - name: VARCHAR(255) → string (기관명)
+ * - category: ENUM → string (카테고리: 긴급상담, 전문상담, 상담전화, 의료기관)
+ * - phone: VARCHAR(50) → string (전화번호, NULL 가능)
+ * - website: VARCHAR(500) → string (웹사이트 URL, NULL 가능)
+ * - description: TEXT → string (설명, NULL 가능)
+ * - operating_hours: VARCHAR(255) → hours (운영 시간, NULL 가능)
+ * - is_urgent: BOOLEAN → isUrgent (긴급 상담 기관 여부, 기본값: FALSE, High 레벨 위험 신호 시 전화번호 표시)
+ * - is_available: BOOLEAN → (이용 가능 여부, 기본값: TRUE, API 응답에 포함되지 않을 수 있음)
+ * - created_at: DATETIME → (생성일시, API 응답에 포함되지 않을 수 있음)
+ * - updated_at: DATETIME → (수정일시, API 응답에 포함되지 않을 수 있음)
+ * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
+ * 
+ * [관계]
+ * - 관리자 페이지에서 상담 기관 리소스 관리 (추가/수정/삭제)
+ * - is_urgent = TRUE인 기관의 전화번호는 High 레벨 위험 신호 표시 시 자동으로 포함됨
  */
 export interface SupportResource {
-  id: string; // 고유 ID
-  name: string; // 기관명
-  description: string; // 설명
-  phone?: string; // 전화번호 (선택, 클릭 시 전화 걸기)
-  website?: string; // 웹사이트 URL (선택, 새 창 열기)
-  hours?: string; // 운영 시간
-  category: 'emergency' | 'counseling' | 'hotline' | 'community'; // 카테고리
+  id: string; // 상담 기관 고유 ID (ERD: Counseling_Resources.id, BIGINT)
+  name: string; // 기관명 (ERD: Counseling_Resources.name, VARCHAR(255))
+  description: string; // 설명 (ERD: Counseling_Resources.description, TEXT)
+  phone?: string; // 전화번호 (ERD: Counseling_Resources.phone, VARCHAR(50), NULL 가능)
+  website?: string; // 웹사이트 URL (ERD: Counseling_Resources.website, VARCHAR(500), NULL 가능)
+  hours?: string; // 운영 시간 (ERD: Counseling_Resources.operating_hours, VARCHAR(255), NULL 가능)
+  category: 'emergency' | 'counseling' | 'hotline' | 'community'; // 카테고리 (ERD: Counseling_Resources.category, ENUM: 긴급상담, 전문상담, 상담전화, 의료기관)
+  isUrgent?: boolean; // 긴급 상담 기관 여부 (ERD: Counseling_Resources.is_urgent, BOOLEAN, 기본값: FALSE, High 레벨 위험 신호 시 전화번호 표시)
 }
 
 /**

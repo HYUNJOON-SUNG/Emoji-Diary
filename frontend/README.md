@@ -22,6 +22,19 @@
   - **비밀번호 변경**: `confirmPassword` 필드 추가
   - **일기 API 필드명 수정**: `note` → `content`, `userImageUrls` → `images`
   - **일기 API**: `emotion` 필드 제거 (KoBERT가 자동 분석)
+  
+  ### 관리자 API 명세서 반영 (2025-01-XX)
+  - **관리자 API 서비스 파일 생성**: `src/services/adminApi.ts`
+    - 관리자 인증 API (10.1): `adminLogin`, `adminLogout`
+    - 서비스 통계 API (10.2): `getDashboardStats`, `getDiaryTrend`, `getUserActivityStats`, `getRiskLevelDistribution`
+    - 공지사항 관리 API (10.3): `getNoticeList`, `createNotice`, `updateNotice`, `deleteNotice`, `pinNotice`
+    - 시스템 설정 API (10.4): `getRiskDetectionSettings`, `updateRiskDetectionSettings`, `getCounselingResources`, `createCounselingResource`, `updateCounselingResource`, `deleteCounselingResource`
+    - 에러 로그 조회 API (10.5): `getErrorLogList`, `getErrorLogDetail`
+  - **대시보드 API 분리**: `dashboard.tsx`에서 4개의 별도 API로 분리
+    - `GET /api/admin/dashboard/stats` - 서비스 통계 카드
+    - `GET /api/admin/dashboard/diary-trend` - 일지 작성 추이 차트
+    - `GET /api/admin/dashboard/user-activity-stats` - 사용자 활동 통계 차트
+    - `GET /api/admin/dashboard/risk-level-distribution` - 위험 레벨 분포 통계
 
   ### 사용자 기반 상세기능명세서 반영
 
@@ -187,6 +200,163 @@
   ### NanoVana API
   - **AI 이미지 생성**: 일기 내용 + KoBERT 감정 분석 결과
 
+  ## 관리자 기능 (2025-01-XX)
+
+  ### 관리자 기반 상세기능명세서 반영
+
+  ### 1. 관리자 인증 플로우 (1.1)
+  - **관리자 로그인**: 이메일/비밀번호 입력, 클라이언트 검증 없이 즉시 API 호출
+  - **JWT 토큰 저장**: localStorage에 `admin_jwt_token` 저장
+  - **로그인 시도 이력**: 성공/실패 모두 에러 로그에 기록
+  - **파일**: `src/features/admin/components/login-page.tsx`
+
+  ### 2. 서비스 통계 플로우 (2.1-2.5)
+  - **전체 통계 카드 6개** (2.2):
+    - 전체 사용자 수 (기간 필터: 주간/월간/연간)
+    - 활성 사용자 수 (DAU/WAU/MAU 선택)
+    - 신규 가입자 수 (일/주/월 선택)
+    - 총 일지 작성 수 (전체 누적)
+    - 일평균 일지 작성 수 (기간 필터: 주간/월간/연간)
+    - 위험 레벨별 사용자 수 (High/Medium/Low/None)
+  - **일지 작성 추이 차트** (2.3): 막대 그래프, 기간 필터 (주간/월간/연간)
+  - **사용자 활동 통계 차트** (2.4): 라인 차트, 지표 선택 (DAU/WAU/MAU/신규 가입자/유지율)
+  - **위험 레벨 분포 통계** (2.5): 파이/막대 차트, High/Medium/Low/None 레벨별 분포
+  - **파일**: `src/features/admin/components/dashboard.tsx`
+
+  ### 3. 공지사항 관리 플로우 (3.1-3.6)
+  - **공지사항 목록 조회** (3.1): 테이블 형태, 고정 여부/제목/작성자/작성일/조회수/공개 상태/액션
+  - **공지사항 작성** (3.2): HTML 에디터, 편집/미리보기 탭, 공개 상태/상단 고정 옵션
+  - **공지사항 조회** (3.3): 모달 형태, HTML 렌더링
+  - **공지사항 수정** (3.4): 작성과 동일한 구조, 기존 내용 자동 로드
+  - **공지사항 삭제** (3.5): 확인 다이얼로그
+  - **공지사항 고정** (3.6): 고정/고정 해제 토글
+  - **파일**: `src/features/admin/components/notice-management.tsx`
+
+  ### 4. 시스템 설정 플로우 (4.1-4.3)
+  - **위험 신호 기준 변경** (4.2):
+    - 모니터링 기간 (일)
+    - High/Medium/Low 레벨 판정 기준 (연속 부정 감정 임계 점수, 모니터링 기간 내 부정 감정 임계 점수)
+    - 설정 변경 이력 자동 기록
+  - **상담 기관 리소스 관리** (4.3):
+    - 상담 기관 추가/수정/삭제
+    - 카테고리: 긴급 상담/전문 상담/상담 전화/의료 기관
+    - 긴급 상담 기관 표시 옵션
+  - **파일**: `src/features/admin/components/system-settings.tsx`
+
+  ### 5. 에러 로그 조회 플로우 (5.1-5.3)
+  - **에러 로그 목록 조회** (5.1): 통계 카드 4개 (전체/ERROR/WARN/INFO), 테이블 형태
+  - **필터링 및 검색** (5.2): 심각도 필터, 날짜 필터, 검색 기능
+  - **에러 로그 상세 조회** (5.3): 모달 형태, Stack Trace 표시
+  - **파일**: `src/features/admin/components/error-logs.tsx`
+
+  ### 6. 로그아웃 플로우 (6.1)
+  - **관리자 로그아웃**: 확인 모달, JWT 토큰 삭제, 로그인 페이지로 이동
+  - **파일**: `src/features/admin/components/navigation-tabs.tsx`
+
+  ## 관리자 백엔드 연동 필요 사항
+
+  ### 관리자 인증 API (10.1)
+  - **관리자 로그인**: `POST /api/admin/auth/login` (email, password)
+    - Response: `{ success: true, data: { accessToken, admin: { id, email, name } } }`
+  - **관리자 로그아웃**: `POST /api/admin/auth/logout` (JWT 토큰 필요)
+    - Response: `{ success: true, data: { message } }`
+
+  ### 서비스 통계 API (10.2)
+  - **서비스 통계 카드** (10.2.1): `GET /api/admin/dashboard/stats?period={weekly|monthly|yearly}&activeUserType={dau|wau|mau}&newUserPeriod={daily|weekly|monthly}`
+    - Response: `{ success: true, data: { totalUsers, activeUsers, newUsers, totalDiaries, averageDailyDiaries, riskLevelUsers } }`
+  - **일지 작성 추이 차트** (10.2.2): `GET /api/admin/dashboard/diary-trend?period={weekly|monthly|yearly}&year={year}&month={month}`
+    - Response: `{ success: true, data: { period, trend: [{ date, count }] } }`
+  - **사용자 활동 통계 차트** (10.2.3): `GET /api/admin/dashboard/user-activity-stats?period={weekly|monthly|yearly}&year={year}&month={month}&metrics={dau,wau,mau,newUsers,retentionRate}`
+    - Response: `{ success: true, data: { period, year, month, metrics, trend: [{ date, dau, wau, mau, newUsers, retentionRate }] } }`
+  - **위험 레벨 분포 통계** (10.2.4): `GET /api/admin/dashboard/risk-level-distribution?period={weekly|monthly|yearly}&year={year}&month={month}`
+    - Response: `{ success: true, data: { period, year, month, distribution: { high, medium, low, none }, total } }`
+
+  ### 공지사항 관리 API (10.3)
+  - **공지사항 목록 조회** (10.3.1): `GET /api/admin/notices?page={page}&limit={limit}`
+    - Response: `{ success: true, data: { total, page, limit, notices: [] } }`
+  - **공지사항 작성** (10.3.2): `POST /api/admin/notices` (title, content, isPublic, isPinned)
+    - Response: `{ success: true, data: { id, title, content, author, createdAt, isPinned, isPublic } }`
+  - **공지사항 수정** (10.3.3): `PUT /api/admin/notices/{noticeId}` (title, content, isPublic, isPinned)
+    - Response: `{ success: true, data: { id, title, content, updatedAt } }`
+  - **공지사항 삭제** (10.3.4): `DELETE /api/admin/notices/{noticeId}`
+    - Response: `{ success: true, data: { message } }`
+  - **공지사항 고정/해제** (10.3.5): `PUT /api/admin/notices/{noticeId}/pin` (isPinned)
+    - Response: `{ success: true, data: { id, isPinned } }`
+
+  ### 시스템 설정 API (10.4)
+  - **위험 신호 감지 기준 조회** (10.4.1): `GET /api/admin/settings/risk-detection`
+    - Response: `{ success: true, data: { monitoringPeriod, high: { consecutiveScore, scoreInPeriod }, medium: {...}, low: {...} } }`
+  - **위험 신호 감지 기준 변경** (10.4.2): `PUT /api/admin/settings/risk-detection` (monitoringPeriod, high, medium, low)
+    - Response: `{ success: true, data: { message, updatedAt } }`
+  - **상담 기관 리소스 목록 조회** (10.4.3): `GET /api/admin/settings/counseling-resources`
+    - Response: `{ success: true, data: { resources: [] } }`
+  - **상담 기관 리소스 추가** (10.4.4): `POST /api/admin/settings/counseling-resources` (name, category, phone, website, description, operatingHours, isUrgent)
+    - Response: `{ success: true, data: { id, name, category, ... } }`
+  - **상담 기관 리소스 수정** (10.4.5): `PUT /api/admin/settings/counseling-resources/{resourceId}` (name, category, phone, website, description, operatingHours, isUrgent)
+    - Response: `{ success: true, data: { id, name, category, ... } }`
+  - **상담 기관 리소스 삭제** (10.4.6): `DELETE /api/admin/settings/counseling-resources/{resourceId}`
+    - Response: `{ success: true, data: { message } }`
+
+  ### 에러 로그 조회 API (10.5)
+  - **에러 로그 목록 조회** (10.5.1): `GET /api/admin/error-logs?level={ALL|ERROR|WARN|INFO}&startDate={YYYY-MM-DD}&endDate={YYYY-MM-DD}&search={query}&page={page}&limit={limit}`
+    - Response: `{ success: true, data: { total, summary: { error, warn, info }, logs: [] } }`
+  - **에러 로그 상세 조회** (10.5.2): `GET /api/admin/error-logs/{logId}`
+    - Response: `{ success: true, data: { id, timestamp, level, message, errorCode, endpoint, userId, stackTrace } }`
+
+  ## ERD 설계서 반영 사항 (2025-01-XX)
+
+  ### 주요 테이블 매핑
+  - **Users 테이블**: `authApi.ts`의 `User` 인터페이스
+    - `persona`: ENUM (베프, 부모님, 전문가, 멘토, 상담사, 시인), 기본값: "베프"
+    - `email_verified`: BOOLEAN (API 응답에 포함되지 않을 수 있음)
+    - `deleted_at`: 소프트 삭제 (API 응답에 포함되지 않음)
+  
+  - **Diaries 테이블**: `diaryApi.ts`의 `DiaryDetail` 인터페이스
+    - `emotion`: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오) - KoBERT 분석 결과
+    - `kobert_analysis`: JSON (백엔드 내부 처리용, API 응답에 포함되지 않음)
+    - `recommended_food`: JSON 형식 (음식 추천 정보)
+    - `Diary_Images`: 사용자 업로드 이미지 (별도 테이블, API 응답에서는 `images` 배열)
+    - `Diary_Activities`: 활동 목록 (별도 테이블, API 응답에서는 `activities` 배열)
+  
+  - **Notices 테이블**: `announcementApi.ts`, `adminApi.ts`의 `Announcement`, `Notice` 인터페이스
+    - `is_public`: BOOLEAN → `isPublished` (공개 여부)
+    - `views`: INT (조회수, 조회 시 자동 증가)
+    - `admin_id`: FK → `author` (작성자 이름으로 반환)
+  
+  - **Counseling_Resources 테이블**: `supportResources.ts`, `adminApi.ts`의 `SupportResource`, `CounselingResource` 인터페이스
+    - `category`: ENUM (긴급상담, 전문상담, 상담전화, 의료기관)
+    - `is_urgent`: BOOLEAN → `isUrgent` (High 레벨 위험 신호 시 전화번호 표시)
+  
+  - **Error_Logs 테이블**: `adminApi.ts`의 `ErrorLog` 인터페이스
+    - `level`: ENUM (ERROR, WARN, INFO)
+    - `user_id`: FK, NULL 가능 → `userId`
+    - `admin_id`: FK, NULL 가능 → `adminId`
+  
+  - **Risk_Detection_Sessions 테이블**: `riskDetection.ts`의 `RiskAnalysis` 인터페이스
+    - `risk_level`: ENUM (none, low, medium, high) → `riskLevel`
+    - `shown_at`: DATETIME (알림 표시 완료 일시, NULL이면 미표시)
+  
+  - **Risk_Detection_Settings 테이블**: `adminApi.ts`의 `RiskDetectionSettings` 인터페이스
+    - 단일 레코드만 존재 (id=1)
+    - 점수 기준: 고위험 부정 감정(슬픔, 분노) 2점, 중위험 부정 감정(불안, 혐오) 1점
+  
+  - **Diary_Images 테이블**: `uploadApi.ts`의 `UploadImageResponse` 인터페이스
+    - 사용자 업로드 이미지 저장 (별도 테이블)
+    - `Diaries.image_url`은 AI 생성 이미지와 구분
+
+  ### 관계 매핑
+  - **Users ↔ Diaries (1:N)**: `Diaries.user_id` → `Users.id`
+  - **Diaries ↔ Diary_Images (1:N)**: `Diary_Images.diary_id` → `Diaries.id` (CASCADE)
+  - **Diaries ↔ Diary_Activities (1:N)**: `Diary_Activities.diary_id` → `Diaries.id` (CASCADE)
+  - **Admins ↔ Notices (1:N)**: `Notices.admin_id` → `Admins.id` (CASCADE)
+  - **Users ↔ Risk_Detection_Sessions (1:N)**: `Risk_Detection_Sessions.user_id` → `Users.id` (CASCADE)
+  - **Error_Logs ↔ Users/Admins (N:1)**: `Error_Logs.user_id` → `Users.id`, `Error_Logs.admin_id` → `Admins.id` (NULL 가능)
+
+  ### 주요 인덱스 활용
+  - `idx_diaries_emotion_date`: 통계 조회 최적화
+  - `idx_diaries_user_emotion_date`: 위험 신호 감지 최적화
+  - `idx_notices_is_pinned_created_at`: 공지사항 목록 조회 최적화
+
   ## 주요 파일 구조
 
   ```
@@ -196,8 +366,20 @@
   │   │   ├── DiaryWritingPage.tsx      # 일기 작성/수정 페이지
   │   │   ├── DaySummaryPage.tsx         # 일기 상세보기 페이지
   │   │   └── CalendarPage.tsx          # 캘린더 페이지
-  │   └── analysis/
-  │       └── EmotionAnalysisModal.tsx   # 감정 분석 결과 모달
+  │   ├── analysis/
+  │   │   └── EmotionAnalysisModal.tsx   # 감정 분석 결과 모달
+  │   └── admin/
+  │       ├── AdminApp.tsx                # 관리자 앱 메인
+  │       └── components/
+  │           ├── login-page.tsx          # 관리자 로그인 페이지
+  │           ├── dashboard.tsx           # 서비스 통계 대시보드
+  │           ├── notice-management.tsx    # 공지사항 관리
+  │           ├── system-settings.tsx     # 시스템 설정
+  │           ├── error-logs.tsx          # 에러 로그 조회
+  │           ├── navigation-tabs.tsx     # 네비게이션 탭
+  │           ├── layout.tsx              # 레이아웃
+  │           ├── metric-card.tsx         # 통계 카드 컴포넌트
+  │           └── weekly-diary-chart.tsx  # 일지 작성 추이 차트
   ├── services/
   │   ├── authApi.ts                     # 인증 API (로그인, 회원가입, 페르소나, 토큰 재발급)
   │   ├── diaryApi.ts                    # 일기 API 클라이언트
@@ -205,9 +387,11 @@
   │   ├── statisticsApi.ts               # 통계 API (감정 통계, 변화 추이)
   │   ├── riskDetection.ts               # 위험 신호 감지 API
   │   ├── announcementApi.ts             # 공지사항 API
-  │   └── supportResources.ts            # 상담 기관 리소스
+  │   ├── supportResources.ts            # 상담 기관 리소스
+  │   └── adminApi.ts                    # 관리자 API (인증, 대시보드, 공지사항, 시스템 설정, 에러 로그)
   └── reference/
-      ├── 사용자 기반 상세기능명세서.md  # 명세서
+      ├── 사용자 기반 상세기능명세서.md  # 사용자 명세서
+      ├── 관리자 기반 상세기능명세서.md  # 관리자 명세서
       ├── API 명세서.md                   # API 명세서
       └── ERD 설계서.md                   # ERD 설계서
   ```

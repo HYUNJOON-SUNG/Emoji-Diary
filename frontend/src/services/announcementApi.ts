@@ -42,15 +42,34 @@
 
 /**
  * 공지사항 타입 (플로우 10.4)
+ * 
+ * [ERD 설계서 참고 - Notices 테이블]
+ * - id: BIGINT (PK) → string (공지사항 고유 ID)
+ * - admin_id: BIGINT (FK) → author (작성자, API 응답에서는 작성자 이름으로 반환)
+ * - title: VARCHAR(255) → string (공지사항 제목)
+ * - content: TEXT → string (공지사항 내용, HTML 가능)
+ * - is_pinned: BOOLEAN → isPinned (상단 고정 여부)
+ * - views: INT → views (조회수, 기본값: 0)
+ * - is_public: BOOLEAN → isPublished (공개 여부, 기본값: TRUE)
+ * - created_at: DATETIME → createdAt (ISO 8601 형식)
+ * - updated_at: DATETIME → updatedAt (ISO 8601 형식)
+ * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
+ * 
+ * [관계]
+ * - Notices.admin_id → Admins.id (FK, CASCADE)
+ * - 사용자 조회 시: is_public = TRUE AND deleted_at IS NULL인 공지사항만 표시
+ * - 조회 시 views 자동 증가
  */
 export interface Announcement {
-  id: string; // 공지사항 ID
-  title: string; // 제목
-  content: string; // 내용 (HTML 가능)
-  isPinned: boolean; // 고정 여부 (true: 상단 고정, false: 일반)
-  isPublished: boolean; // 공개 여부 (true: 공개, false: 비공개)
-  createdAt: string; // 작성일 (ISO 8601 형식)
-  updatedAt: string; // 수정일 (ISO 8601 형식)
+  id: string; // 공지사항 고유 ID (ERD: Notices.id, BIGINT)
+  title: string; // 제목 (ERD: Notices.title, VARCHAR(255))
+  content: string; // 내용 (HTML 가능, ERD: Notices.content, TEXT)
+  isPinned: boolean; // 고정 여부 (ERD: Notices.is_pinned, BOOLEAN, 기본값: FALSE)
+  isPublished: boolean; // 공개 여부 (ERD: Notices.is_public, BOOLEAN, 기본값: TRUE)
+  author?: string; // 작성자 (ERD: Notices.admin_id → Admins.name, API 응답에서 작성자 이름으로 반환)
+  views?: number; // 조회수 (ERD: Notices.views, INT, 기본값: 0)
+  createdAt: string; // 작성일 (ERD: Notices.created_at, DATETIME, ISO 8601 형식)
+  updatedAt: string; // 수정일 (ERD: Notices.updated_at, DATETIME, ISO 8601 형식)
 }
 
 /**

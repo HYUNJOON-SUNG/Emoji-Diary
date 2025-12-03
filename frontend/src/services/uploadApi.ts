@@ -27,9 +27,25 @@ export interface UploadImageRequest {
  * 
  * [API 명세서 Section 9.1]
  * - Response: { success: true, data: { imageUrl: string } }
+ * 
+ * [ERD 설계서 참고 - Diary_Images 테이블]
+ * - 업로드된 이미지 URL은 Diary_Images 테이블에 저장됨
+ * - id: BIGINT (PK) → (이미지 고유 ID, API 응답에 포함되지 않음)
+ * - diary_id: BIGINT (FK) → (일기 ID, 일기 저장 시 연결, Diaries.id 참조)
+ * - image_url: VARCHAR(500) → imageUrl (이미지 URL, 업로드 후 반환된 URL)
+ * - created_at: DATETIME → (생성일시, API 응답에 포함되지 않음)
+ * 
+ * [관계]
+ * - Diary_Images.diary_id → Diaries.id (FK, CASCADE)
+ * - 일기 작성/수정 시 images 배열로 전송되면 백엔드에서 Diary_Images 테이블에 저장
+ * - 일기 삭제 시 Diary_Images 레코드도 함께 삭제 (CASCADE)
+ * 
+ * [참고]
+ * - Diaries.image_url은 AI 생성 이미지 (NanoVana API)
+ * - Diary_Images는 사용자가 직접 업로드한 이미지
  */
 export interface UploadImageResponse {
-  imageUrl: string; // 업로드된 이미지 URL
+  imageUrl: string; // 업로드된 이미지 URL (ERD: Diary_Images.image_url, VARCHAR(500), 일기 저장 시 Diary_Images 테이블에 저장)
 }
 
 /**

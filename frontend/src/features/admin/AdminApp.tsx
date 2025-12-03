@@ -51,7 +51,7 @@ export default function AdminApp() {
   // ========================================
   // State 관리
   // ========================================
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null: 로딩 중, true/false: 인증 상태
   const [activeTab, setActiveTab] = useState('dashboard'); // 8.1 네비게이션 현재 탭
 
   /**
@@ -62,6 +62,7 @@ export default function AdminApp() {
    * - 관리자 정보 확인 (admin_info)
    * - 유효한 세션이 있으면 자동 로그인
    * - 토큰 만료 시 자동 로그아웃 (9.1)
+   * - /admin 접근 시 로그인 상태에 따라 리다이렉트
    */
   useEffect(() => {
     // Check authentication status (9.1)
@@ -72,8 +73,18 @@ export default function AdminApp() {
     if (isAuth) {
       const adminInfo = getAdminInfo();
       console.log('[AdminApp] Admin session restored:', adminInfo);
+      
+      // 로그인 상태이고 /admin만 입력한 경우 dashboard로 리다이렉트
+      if (location.pathname === '/admin' || location.pathname === '/admin/') {
+        navigate('/admin/dashboard', { replace: true });
+      }
+    } else {
+      // 로그아웃 상태이고 /admin 접근 시 로그인 페이지로 리다이렉트
+      if (location.pathname !== '/admin' && location.pathname !== '/admin/') {
+        navigate('/admin', { replace: true });
+      }
     }
-  }, []);
+  }, [location.pathname, navigate]);
 
   /**
    * URL 변경 시 activeTab 업데이트
@@ -175,6 +186,19 @@ export default function AdminApp() {
     navigate(`/admin/${tab}`);
   };
 
+  // 인증 상태 확인 중 (로딩 중)
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700 mx-auto mb-4"></div>
+          <p className="text-slate-600">인증 상태를 확인하는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 로그인되지 않은 경우
   if (!isAuthenticated) {
     return <LoginPage onLogin={handleLogin} />;
   }

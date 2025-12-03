@@ -35,3 +35,6 @@ export * from './uploadApi';
 
 // ========== 통계 API (Statistics API) ==========
 export * from './statisticsApi';
+
+// ========== 관리자 API (Admin API) ==========
+export * from './adminApi';
