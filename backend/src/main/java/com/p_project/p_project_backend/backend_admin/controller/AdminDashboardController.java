@@ -1,5 +1,6 @@
 package com.p_project.p_project_backend.backend_admin.controller;
 
+import com.p_project.p_project_backend.backend_admin.dto.dashboard.DiaryTrendResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.RiskLevelDistributionResponse;
 import com.p_project.p_project_backend.backend_admin.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,20 @@ public class AdminDashboardController {
             @RequestParam(required = false) Integer month
     ) {
         RiskLevelDistributionResponse response = adminDashboardService.getRiskLevelDistribution(period, year, month);
+        return ResponseEntity.ok(Map.of("success", true, "data", response));
+    }
+
+    /**
+     * 일지 작성 추이 차트 조회
+     * GET /api/admin/dashboard/diary-trend
+     */
+    @GetMapping("/diary-trend")
+    public ResponseEntity<?> getDiaryTrend(
+            @RequestParam(required = false, defaultValue = "monthly") String period,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month
+    ) {
+        DiaryTrendResponse response = adminDashboardService.getDiaryTrend(period, year, month);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 }
