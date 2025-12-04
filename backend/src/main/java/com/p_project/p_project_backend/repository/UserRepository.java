@@ -8,4 +8,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    /**
+     * 삭제되지 않은 사용자 수 조회
+     */
+    long countByDeletedAtIsNull();
 }
