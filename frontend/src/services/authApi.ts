@@ -32,6 +32,8 @@
  * - 로그 전송 (추후 Sentry 등 연동)
  */
 
+import type { User } from '../types';
+
 // ========== Mock 데이터 ==========
 
 /**
@@ -190,33 +192,6 @@ export const TokenStorage = {
 
 // ========== TypeScript 타입 정의 ==========
 
-/**
- * 사용자 타입
- * 
- * [API 명세서 참고]
- * - GET /api/users/me 응답 형식
- * - persona: 페르소나 종류 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
- * - createdAt: 계정 생성일 (ISO 8601 형식)
- * 
- * [ERD 설계서 참고 - Users 테이블]
- * - id: BIGINT (PK) → string (사용자 고유 ID)
- * - email: VARCHAR(255), UNIQUE → string (이메일 주소)
- * - name: VARCHAR(100) → string (사용자 이름)
- * - password_hash: VARCHAR(255) → (프론트엔드에 포함하지 않음, 백엔드 내부 처리)
- * - persona: ENUM → string (페르소나: 베프, 부모님, 전문가, 멘토, 상담사, 시인, 기본값: 베프)
- * - email_verified: BOOLEAN → (API 응답에 포함되지 않을 수 있음, 백엔드 내부 처리)
- * - created_at: DATETIME → createdAt (ISO 8601 형식)
- * - updated_at: DATETIME → (API 응답에 포함되지 않을 수 있음)
- * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
- */
-export interface User {
-  id: string; // 사용자 고유 ID (ERD: Users.id, BIGINT)
-  email: string; // 이메일 주소 (ERD: Users.email, VARCHAR(255), UNIQUE)
-  name: string; // 사용자 이름 (ERD: Users.name, VARCHAR(100))
-  persona: string; // 페르소나 (ERD: Users.persona, ENUM, 기본값: "베프", API 명세서 필수 필드)
-  notificationEnabled?: boolean; // 알림 설정 (API 명세서에 없지만 기존 기능 유지, ERD에 없음)
-  createdAt?: string; // 계정 생성일 (ERD: Users.created_at, DATETIME, ISO 8601 형식, API 명세서 필수 필드)
-}
 
 /**
  * 로그인 요청 데이터

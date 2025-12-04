@@ -64,21 +64,7 @@
 
 import { useState, useEffect } from 'react';
 import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin } from 'lucide-react';
-
-// ========================================
-// 공지사항 데이터 타입
-// ========================================
-interface Notice {
-  id: string;           // 공지사항 ID
-  title: string;        // 제목
-  content: string;      // 내용 (HTML)
-  author: string;       // 작성자 (관리자 이메일)
-  createdAt: string;    // 작성일 (YYYY-MM-DD HH:mm)
-  updatedAt: string;    // 수정일
-  isPinned: boolean;    // 고정 여부
-  isPublic: boolean;    // 공개 상태 (true: 공개, false: 비공개)
-  views: number;        // 조회수
-}
+import type { Notice } from '../types';
 
 export function NoticeManagement() {
   // ========================================
@@ -115,32 +101,32 @@ export function NoticeManagement() {
     if (stored) {
       setNotices(JSON.parse(stored));
     } else {
-      // Mock 데이터 (기본 공지사항 3개)
+      // Mock 데이터 (기본 공지사항 3개) - 연동 전까지 유지
       const defaultNotices: Notice[] = [
         {
-          id: 'NOT001',
+          id: 1,
           title: '서비스 정기 점검 안내',
           content: '<h3>정기 점검 안내</h3><p>2025년 11월 25일 새벽 2시부터 4시까지 시스템 정기 점검이 진행됩니다.</p><p>점검 시간 동안 서비스 이용이 제한될 수 있습니다.</p><p>양해 부탁드립니다.</p>',
           author: 'admin@example.com',
-          createdAt: '2025-11-20 10:30',
-          updatedAt: '2025-11-20 10:30',
+          createdAt: '2025-11-20T10:30:00Z',
+          updatedAt: '2025-11-20T10:30:00Z',
           isPinned: true,
           isPublic: true,
           views: 1245
         },
         {
-          id: 'NOT002',
+          id: 2,
           title: '개인정보 처리방침 개정 안내',
           content: '<h3>개인정보 처리방침 개정</h3><p>2025년 12월 1일부터 개정된 개인정보 처리방침이 적용됩니다.</p><p>자세한 내용은 설정 > 개인정보 처리방침에서 확인하실 수 있습니다.</p>',
           author: 'admin@example.com',
-          createdAt: '2025-11-18 14:20',
-          updatedAt: '2025-11-18 14:20',
+          createdAt: '2025-11-18T14:20:00Z',
+          updatedAt: '2025-11-18T14:20:00Z',
           isPinned: false,
           isPublic: true,
           views: 856
         },
         {
-          id: 'NOT003',
+          id: 3,
           title: '신규 기능 업데이트 안내',
           content: '<h3>새로운 기능이 추가되었습니다</h3><ul><li>감정 분석 고도화</li><li>상담 기관 검색 기능</li><li>일지 백업 기능</li></ul><p>업데이트된 기능을 경험해보세요!</p>',
           author: 'admin@example.com',
@@ -163,7 +149,7 @@ export function NoticeManagement() {
   // ========================================
   const handleCreate = () => {
     setEditingNotice({
-      id: '',
+      id: 0, // 새로 추가할 때는 0 (저장 시 서버에서 생성)
       title: '',
       content: '',
       author: 'admin@example.com',
@@ -209,7 +195,7 @@ export function NoticeManagement() {
    *    - 성공 시: 성공 메시지, 목록에서 제거, 목록 갱신
    * 4. "취소" → 다이얼로그 닫기
    */
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('이 공지사항을 삭제하시겠습니까?\n\n삭제된 공지사항은 복구할 수 없습니다.')) {
       return;
     }
@@ -257,9 +243,9 @@ export function NoticeManagement() {
         // [백엔드 작업] Create new: POST /api/admin/notices
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        const newNotice = {
+        const newNotice: Notice = {
           ...notice,
-          id: `NOT${String(notices.length + 1).padStart(3, '0')}`,
+          id: notices.length > 0 ? Math.max(...notices.map(n => n.id)) + 1 : 1, // Mock 데이터 - 연동 전까지 유지
           createdAt: now,
           updatedAt: now,
           views: 0
@@ -311,7 +297,7 @@ export function NoticeManagement() {
    * - 목록은 자동으로 재정렬됨 (고정 먼저, 최신순)
    * - localStorage에 저장되어 새로고침 시에도 유지
    */
-  const togglePin = async (id: string) => {
+  const togglePin = async (id: number) => {
     try {
       // [백엔드 작업] Mock API call: PATCH /api/admin/notices/:id/pin
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -330,7 +316,7 @@ export function NoticeManagement() {
   // ========================================
   // 공개/비공개 토글
   // ========================================
-  const togglePublic = async (id: string) => {
+  const togglePublic = async (id: number) => {
     try {
       // [백엔드 작업] Mock API call: PATCH /api/admin/notices/:id/public
       await new Promise(resolve => setTimeout(resolve, 300));

@@ -1,18 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Layout } from './components/layout';
 import { Dashboard } from './components/dashboard';
 import { SystemSettings } from './components/system-settings';
 import { NoticeManagement } from './components/notice-management';
 import { ErrorLogs } from './components/error-logs';
 import { LoginPage } from './components/login-page';
-import { 
-  isAuthenticated as checkAuth, 
-  login, 
-  logout,
-  getAdminInfo,
-  type AdminInfo 
-} from './utils/session-manager';
+import { login, logout, type AdminInfo } from './utils/session-manager';
+import { useAuth } from './hooks/useAuth';
 // Import admin-specific CSS
 import './index.css';
 import './styles/admin-globals.css';
@@ -46,70 +41,9 @@ import './styles/admin-globals.css';
 
 export default function AdminApp() {
   const navigate = useNavigate();
-  const location = useLocation();
   
-  // ========================================
-  // State 관리
-  // ========================================
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null: 로딩 중, true/false: 인증 상태
-  const [activeTab, setActiveTab] = useState('dashboard'); // 8.1 네비게이션 현재 탭
-
-  /**
-   * 초기 로드 시 세션 확인 (9.1 관리자 세션 관리)
-   * 
-   * @description
-   * - localStorage에서 JWT 토큰 확인 (admin_jwt_token)
-   * - 관리자 정보 확인 (admin_info)
-   * - 유효한 세션이 있으면 자동 로그인
-   * - 토큰 만료 시 자동 로그아웃 (9.1)
-   * - /admin 접근 시 로그인 상태에 따라 리다이렉트
-   */
-  useEffect(() => {
-    // Check authentication status (9.1)
-    const isAuth = checkAuth();
-    setIsAuthenticated(isAuth);
-    
-    // Log admin info if authenticated
-    if (isAuth) {
-      const adminInfo = getAdminInfo();
-      console.log('[AdminApp] Admin session restored:', adminInfo);
-      
-      // 로그인 상태이고 /admin만 입력한 경우 dashboard로 리다이렉트
-      if (location.pathname === '/admin' || location.pathname === '/admin/') {
-        navigate('/admin/dashboard', { replace: true });
-      }
-    } else {
-      // 로그아웃 상태이고 /admin 접근 시 로그인 페이지로 리다이렉트
-      if (location.pathname !== '/admin' && location.pathname !== '/admin/') {
-        navigate('/admin', { replace: true });
-      }
-    }
-  }, [location.pathname, navigate]);
-
-  /**
-   * URL 변경 시 activeTab 업데이트
-   */
-  useEffect(() => {
-    if (isAuthenticated) {
-      const path = location.pathname.split('/admin/')[1];
-      if (path) {
-        const tabMap: Record<string, string> = {
-          'dashboard': 'dashboard',
-          'notices': 'notices',
-          'settings': 'settings',
-          'errorlogs': 'errorlogs'
-        };
-        const tab = path.split('/')[0];
-        if (tabMap[tab]) {
-          setActiveTab(tabMap[tab]);
-        } else {
-          setActiveTab('dashboard');
-        }
-      } else {
-        setActiveTab('dashboard');
-      }
-    }
-  }, [location.pathname, isAuthenticated]);
+  // Custom hook으로 인증 로직 분리
+  const { isAuthenticated, activeTab, setActiveTab, setIsAuthenticated } = useAuth();
 
   /**
    * 관리자 로그인 처리 (9.1 관리자 세션 관리)

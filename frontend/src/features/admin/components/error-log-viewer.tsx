@@ -1,18 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Filter, Search, RefreshCw, Eye, X, Calendar, Clock, Code } from 'lucide-react';
-
-type Severity = 'ERROR' | 'WARN' | 'INFO';
-
-interface ErrorLog {
-  id: string;
-  timestamp: string;
-  level: Severity;
-  message: string;
-  stackTrace?: string;
-  endpoint?: string;
-  userId?: string;
-  errorCode?: string;
-}
+import type { ErrorLog } from '../types';
 
 export function ErrorLogViewer() {
   const [logs, setLogs] = useState<ErrorLog[]>([]);
@@ -21,7 +9,7 @@ export function ErrorLogViewer() {
   const [selectedLog, setSelectedLog] = useState<ErrorLog | null>(null);
   
   // Filters
-  const [severityFilter, setSeverityFilter] = useState<Severity | 'ALL'>('ALL');
+  const [severityFilter, setSeverityFilter] = useState<'ALL' | 'ERROR' | 'WARN' | 'INFO'>('ALL');
   const [dateFilter, setDateFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 

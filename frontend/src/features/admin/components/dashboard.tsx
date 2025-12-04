@@ -68,218 +68,25 @@
  * ====================================================================================================
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { MetricCard } from './metric-card';
 import { WeeklyDiaryChart } from './weekly-diary-chart';
 import { Users, BookOpen, TrendingUp, Calendar, UserPlus, Activity, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { 
-  getDashboardStats, 
-  getDiaryTrend, 
-  getUserActivityStats, 
-  getRiskLevelDistribution
-} from '@/services/adminApi';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 export function Dashboard() {
   // ========================================
   // State 관리 (2.1-2.5)
   // ========================================
-  const [stats, setStats] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-  
-  // 2.2 활성 사용자 수 필터 (DAU/WAU/MAU)
   const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau');
-  
-  // 2.2 신규 가입자 수 필터 (일/주/월)
   const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today');
-  
-  // 2.4 사용자 활동 통계 차트 지표 선택
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['dau', 'newUsers']);
-  
-  // 2.5 위험 레벨 분포 통계 차트 타입 선택 (파이/막대)
   const [riskChartType, setRiskChartType] = useState<'pie' | 'bar'>('pie');
 
-  // ========================================
-  // 대시보드 데이터 조회 함수 (API 명세서에 따라 4개 API로 분리)
-  // ========================================
-  /**
-   * [백엔드 작업] 대시보드 통계 데이터 조회 (2.1-2.5)
-   * 
-   * API 명세서에 따라 4개의 별도 API로 분리:
-   * 1. GET /api/admin/dashboard/stats - 서비스 통계 카드 (10.2.1)
-   * 2. GET /api/admin/dashboard/diary-trend - 일지 작성 추이 차트 (10.2.2)
-   * 3. GET /api/admin/dashboard/user-activity-stats - 사용자 활동 통계 차트 (10.2.3)
-   * 4. GET /api/admin/dashboard/risk-level-distribution - 위험 레벨 분포 통계 (10.2.4)
-   */
-  const fetchDashboardData = useCallback(async (period: 'week' | 'month' | 'year', selectedMetrics: string[]) => {
-    try {
-      const periodParam = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly';
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-      
-      console.log('fetchDashboardData called with:', { period, periodParam, selectedMetrics });
-      
-      // 4개의 API를 병렬로 호출 (각각 try-catch로 감싸서 하나가 실패해도 나머지는 진행)
-      let statsRes, trendRes, activityRes, riskRes;
-      
-      try {
-        statsRes = await getDashboardStats({ period: periodParam });
-        console.log('getDashboardStats response:', statsRes);
-      } catch (e) {
-        console.error('getDashboardStats failed:', e);
-        throw new Error(`통계 카드 데이터를 불러오는데 실패했습니다: ${e}`);
-      }
-      
-      try {
-        trendRes = await getDiaryTrend({ period: periodParam, year: currentYear, month: currentMonth });
-        console.log('getDiaryTrend response:', trendRes);
-      } catch (e) {
-        console.error('getDiaryTrend failed:', e);
-        throw new Error(`일지 작성 추이 데이터를 불러오는데 실패했습니다: ${e}`);
-      }
-      
-      try {
-        activityRes = await getUserActivityStats({ period: periodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') });
-        console.log('getUserActivityStats response:', activityRes);
-      } catch (e) {
-        console.error('getUserActivityStats failed:', e);
-        throw new Error(`사용자 활동 통계 데이터를 불러오는데 실패했습니다: ${e}`);
-      }
-      
-      try {
-        riskRes = await getRiskLevelDistribution({ period: periodParam, year: currentYear, month: currentMonth });
-        console.log('getRiskLevelDistribution response:', riskRes);
-      } catch (e) {
-        console.error('getRiskLevelDistribution failed:', e);
-        throw new Error(`위험 레벨 분포 데이터를 불러오는데 실패했습니다: ${e}`);
-      }
-      
-      // API 응답 검증
-      if (!statsRes || !statsRes.data) {
-        throw new Error('통계 카드 API 응답이 올바르지 않습니다.');
-      }
-      if (!trendRes || !trendRes.data) {
-        throw new Error('일지 작성 추이 API 응답이 올바르지 않습니다.');
-      }
-      if (!activityRes || !activityRes.data) {
-        throw new Error('사용자 활동 통계 API 응답이 올바르지 않습니다.');
-      }
-      if (!riskRes || !riskRes.data) {
-        throw new Error('위험 레벨 분포 API 응답이 올바르지 않습니다.');
-      }
-      
-      // API 응답을 컴포넌트에서 사용하는 형식으로 변환
-      const stats = statsRes.data;
-      const trend = trendRes.data.trend || [];
-      const activity = activityRes.data.trend || [];
-      const risk = riskRes.data.distribution;
-      
-      // 일지 작성 추이 차트 데이터 변환 (day 필드 추가)
-      const weeklyData = Array.isArray(trend) ? trend.map((item: any, index: number) => {
-        if (period === 'week') {
-          const days = ['월', '화', '수', '목', '금', '토', '일'];
-          return { day: days[index] || `Day ${index + 1}`, diaries: item?.count || 0 };
-        } else if (period === 'month') {
-          return { day: `${index + 1}주차`, diaries: item?.count || 0 };
-        } else {
-          const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-          return { day: months[index] || `Month ${index + 1}`, diaries: item?.count || 0 };
-        }
-      }) : [];
-      
-      // 사용자 활동 통계 차트 데이터 변환 (date 형식 통일)
-      const userActivityData = Array.isArray(activity) ? activity.map((item: any) => ({
-        date: item?.date || '',
-        dau: item?.dau ?? 0,
-        wau: item?.wau ?? 0,
-        mau: item?.mau ?? 0,
-        newUsers: item?.newUsers ?? 0,
-        retentionRate: item?.retentionRate ?? 0
-      })) : [];
-      
-      // 위험 레벨 분포 통계 데이터 변환
-      const riskDistributionData = [
-        { level: 'High', count: risk?.high?.count ?? 0, percentage: risk?.high?.percentage ?? 0 },
-        { level: 'Medium', count: risk?.medium?.count ?? 0, percentage: risk?.medium?.percentage ?? 0 },
-        { level: 'Low', count: risk?.low?.count ?? 0, percentage: risk?.low?.percentage ?? 0 },
-        { level: 'None', count: risk?.none?.count ?? 0, percentage: risk?.none?.percentage ?? 0 }
-      ];
-      
-      const result = {
-        // 2.2 전체 통계 카드 데이터
-        totalUsers: stats?.totalUsers?.count ?? 0,
-        activeUsers: {
-          dau: stats?.activeUsers?.dau ?? 0,
-          wau: stats?.activeUsers?.wau ?? 0,
-          mau: stats?.activeUsers?.mau ?? 0
-        },
-        newUsers: {
-          today: stats?.newUsers?.daily ?? 0,
-          thisWeek: stats?.newUsers?.weekly ?? 0,
-          thisMonth: stats?.newUsers?.monthly ?? 0
-        },
-        totalDiaries: stats?.totalDiaries?.count ?? 0,
-        avgDailyDiaries: stats?.averageDailyDiaries?.count ?? 0,
-        riskLevelUsers: stats?.riskLevelUsers || { high: 0, medium: 0, low: 0, none: 0 },
-        // 2.3 일지 작성 추이 차트 데이터
-        weeklyData: weeklyData,
-        // 2.4 사용자 활동 통계 차트 데이터
-        userActivityData: userActivityData,
-        // 2.5 위험 레벨 분포 통계 데이터
-        riskDistributionData: riskDistributionData
-      };
-      
-      console.log('fetchDashboardData result:', result);
-      return result;
-    } catch (error: any) {
-      console.error('fetchDashboardData error:', error);
-      console.error('Error stack:', error?.stack);
-      throw error;
-    }
-  }, []);
-
-  // ========================================
-  // 대시보드 데이터 로드
-  // ========================================
-  useEffect(() => {
-    const loadStats = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        console.log('Loading dashboard data...', { period, selectedMetrics });
-        const data = await fetchDashboardData(period, selectedMetrics);
-        console.log('Dashboard data loaded:', data);
-        setStats(data);
-      } catch (error: any) {
-        console.error('Failed to load dashboard stats:', error);
-        console.error('Error details:', {
-          message: error?.message,
-          stack: error?.stack,
-          period,
-          selectedMetrics
-        });
-        setError(error?.message || '데이터를 불러오는 중 오류가 발생했습니다.');
-        // 에러 발생 시에도 기본 데이터 구조 설정
-        setStats({
-          totalUsers: 0,
-          activeUsers: { dau: 0, wau: 0, mau: 0 },
-          newUsers: { today: 0, thisWeek: 0, thisMonth: 0 },
-          totalDiaries: 0,
-          avgDailyDiaries: 0,
-          riskLevelUsers: { high: 0, medium: 0, low: 0, none: 0 },
-          weeklyData: [],
-          userActivityData: [],
-          riskDistributionData: []
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStats();
-  }, [period, selectedMetrics, fetchDashboardData]);
+  // Custom hook으로 데이터 로딩 로직 분리
+  const { stats, isLoading, error } = useDashboardData(period, selectedMetrics);
 
   // ========================================
   // 로딩 상태 UI

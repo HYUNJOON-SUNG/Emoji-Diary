@@ -93,6 +93,44 @@
     - `src/services/uploadApi.ts` - 이미지 업로드/삭제 API 함수
     - `images` 필드로 서버에 전송 (API 명세서: `userImageUrls` → `images`)
 
+  ## 코드 구조 개선 (2025-01-XX)
+
+  ### 폴더 구조 정리
+  - **공통 Hooks** (`src/hooks/`): 재사용 가능한 custom hooks
+    - `use-mobile.ts`: 모바일 화면 감지
+    - `use-modal.ts`: 모달 상태 관리
+    - `use-async.ts`: 비동기 작업 관리
+  - **공통 Types** (`src/types/`): 공통 타입 정의
+    - `User`, `ApiResponse`, `Pagination`, `LoadingState` 등
+  - **공통 Utils** (`src/utils/`): 유틸리티 함수
+    - `cn()`: className 병합 함수
+  - **Features별 Hooks**: 각 feature에 맞는 hooks 분리
+    - `features/auth/hooks/`: `useAuth` - 인증 로직
+    - `features/user/hooks/`: `useUser` - 사용자 정보 관리
+    - `features/diary/hooks/`: `useDiary` - 다이어리 상태 관리
+    - `features/admin/hooks/`: `useDashboardData`, `useAuth`, `useErrorLogs` - 관리자 기능
+
+  ### TypeScript 설정
+  - `tsconfig.json` 생성: React + TypeScript + Vite 설정
+  - IDE에서 React 코드 에러 표시 문제 해결
+  - `forceConsistentCasingInFileNames` 옵션 추가
+
+  ### 관리자 기능 코드 개선 (2025-01-XX)
+  - **타입 정의 통합**: 모든 중복 타입 정의를 `features/admin/types/index.ts`로 통합
+    - `ErrorLog`, `Notice`, `RiskThreshold`, `CounselingResource` 등
+    - API 명세서 및 ERD 설계서 기반으로 타입 정의
+  - **Import 경로 정리**: 모든 컴포넌트에서 공통 types import 사용
+    - `error-logs.tsx`, `error-log-viewer.tsx`, `notice-management.tsx`, `system-settings.tsx`
+  - **타입 일관성 확보**: Mock 데이터도 API 명세서에 맞춰 타입 통일
+    - `id`: string → number (ERD: BIGINT)
+    - `category`: 영어 → 한글 (API 명세서 기준)
+    - `availability` → `operatingHours` (ERD 필드명)
+  - **AdminApp.tsx 에러 수정**: `setIsAuthenticated is not defined` 해결
+    - `useAuth` hook에서 `setIsAuthenticated` 반환 추가
+  - **코드 간결화**: Custom hooks로 반복되는 로직 분리
+    - `dashboard.tsx`: `useDashboardData` hook 사용 (200+ 줄 감소)
+    - 타입 정의 중앙화로 중복 제거
+
   ## 주요 플로우
 
   ### 일기 작성 플로우 (플로우 3.2, 3.3, 3.4)
