@@ -32,6 +32,13 @@ public class GlobalExceptionHandler {
                         Map.of("code", "ADMIN_NOT_FOUND", "message", ex.getMessage())));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                Map.of("success", false, "error",
+                        Map.of("code", "INVALID_INPUT", "message", ex.getMessage())));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
