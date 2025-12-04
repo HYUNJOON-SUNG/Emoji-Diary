@@ -62,31 +62,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertCircle, AlertTriangle, Info, FileText, Clock, Activity, Search, Filter, X, Calendar, User, Code } from 'lucide-react';
-
-// ========================================
-// 에러 로그 데이터 타입 (6.1)
-// ========================================
-interface ErrorLog {
-  id: string;                         // 로그 ID
-  timestamp: string;                  // 발생 시간 (ISO 8601)
-  level: 'ERROR' | 'WARN' | 'INFO';  // 로그 레벨
-  message: string;                    // 에러 메시지
-  endpoint: string;                   // API 엔드포인트 또는 페이지
-  stackTrace?: string;                // 스택 트레이스 (상세보기)
-  userId?: string;                    // 연관 사용자 ID (옵션)
-  userAgent?: string;                 // 사용자 브라우저 정보 (옵션)
-  errorCode?: string;                 // 오류 코드 (옵션)
-}
-
-// ========================================
-// 로그 통계 데이터 타입
-// ========================================
-interface LogStats {
-  total: number;       // 전체 로그 수
-  error: number;       // ERROR 레벨 개수
-  warn: number;        // WARN 레벨 개수
-  info: number;        // INFO 레벨 개수
-}
+import type { ErrorLog, LogStats } from '../types';
 
 export function ErrorLogs() {
   // ========================================
@@ -174,81 +150,85 @@ export function ErrorLogs() {
   /**
    * Mock 에러 로그 생성 (개발/테스트용)
    */
+  /**
+   * Mock 에러 로그 생성 (개발/테스트용)
+   * [백엔드 연동 전까지 유지]
+   */
   const generateMockLogs = (): ErrorLog[] => {
     return [
       {
-        id: 'LOG001',
+        id: 1,
         timestamp: new Date('2025-11-30T14:35:22').toISOString(),
         level: 'ERROR',
         message: 'Database connection timeout: Failed to connect to MariaDB server',
         endpoint: '/api/users/profile',
         stackTrace: 'Error: Connection timeout\n  at Database.connect (db.ts:45)\n  at UserService.getProfile (user.service.ts:23)\n  at ProfileController.getProfile (profile.controller.ts:67)',
-        userId: 'U123',
+        userId: 123,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
         errorCode: 'DB_CONNECTION_TIMEOUT'
       },
       {
-        id: 'LOG002',
+        id: 2,
         timestamp: new Date('2025-11-30T13:22:10').toISOString(),
         level: 'WARN',
         message: 'Slow query detected: SELECT statement took 3.5 seconds',
         endpoint: '/api/analytics/dashboard',
         stackTrace: 'Warning: Query performance issue\n  at QueryBuilder.execute (query.ts:78)\n  at AnalyticsService.getDashboardData (analytics.service.ts:45)',
-        userId: 'U045',
+        userId: 45,
         userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/17.0',
         errorCode: 'SLOW_QUERY'
       },
       {
-        id: 'LOG003',
+        id: 3,
         timestamp: new Date('2025-11-30T12:15:45').toISOString(),
         level: 'INFO',
         message: 'User authentication successful',
         endpoint: '/api/auth/login',
-        userId: 'U078'
+        userId: 78
       },
       {
-        id: 'LOG004',
+        id: 4,
         timestamp: new Date('2025-11-30T11:48:33').toISOString(),
         level: 'ERROR',
         message: 'Failed to send email notification: SMTP server unreachable',
         endpoint: '/api/notifications/send',
         stackTrace: 'Error: SMTP connection failed\n  at EmailService.send (email.service.ts:56)\n  at NotificationController.sendAlert (notification.controller.ts:89)\n  at async Promise.all (index 0)',
-        userId: 'U234',
+        userId: 234,
         errorCode: 'SMTP_CONNECTION_FAILED'
       },
       {
-        id: 'LOG005',
+        id: 5,
         timestamp: new Date('2025-11-30T10:30:12').toISOString(),
         level: 'WARN',
         message: 'API rate limit approaching for user: 95% of quota used',
         endpoint: '/api/diary/create',
-        userId: 'U456',
+        userId: 456,
         errorCode: 'RATE_LIMIT_WARNING'
       },
       {
-        id: 'LOG006',
+        id: 6,
         timestamp: new Date('2025-11-30T09:18:55').toISOString(),
         level: 'ERROR',
         message: 'Validation error: Invalid emotion category provided in diary entry',
         endpoint: '/api/diary/create',
         stackTrace: 'ValidationError: Invalid emotion category\n  at DiaryValidator.validate (validator.ts:34)\n  at DiaryController.create (diary.controller.ts:56)',
-        userId: 'U789',
+        userId: 789,
         errorCode: 'VALIDATION_ERROR'
       },
       {
-        id: 'LOG007',
+        id: 7,
         timestamp: new Date('2025-11-30T08:05:21').toISOString(),
         level: 'INFO',
         message: 'System health check completed successfully',
         endpoint: '/api/system/health'
       },
       {
-        id: 'LOG008',
+        id: 8,
         timestamp: new Date('2025-11-29T23:45:10').toISOString(),
         level: 'WARN',
         message: 'Deprecated API endpoint accessed: /api/v1/users (use /api/v2/users instead)',
         endpoint: '/api/v1/users',
-        userId: 'U123',
+        userId: 123,
         errorCode: 'DEPRECATED_ENDPOINT'
       }
     ];
@@ -340,13 +320,13 @@ export function ErrorLogs() {
       });
     }
 
-    // 검색 쿼리 적용 (메시지, 엔드포인트, 로그 ID)
+    // 검색 쿼리 적용 (메시지, 엔드포인트, 로그 ID, 에러 코드)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filteredLogs = filteredLogs.filter(log => 
         log.message.toLowerCase().includes(query) ||
-        log.endpoint.toLowerCase().includes(query) ||
-        log.id.toLowerCase().includes(query) ||
+        (log.endpoint && log.endpoint.toLowerCase().includes(query)) ||
+        log.id.toString().includes(query) ||
         (log.errorCode && log.errorCode.toLowerCase().includes(query))
       );
     }

@@ -1,55 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Save, Plus, Edit2, Trash2, Phone, Globe, Building2, X, Check } from 'lucide-react';
-
-// ========================================
-// 위험 신호 기준 데이터 타입 (5.2)
-// ========================================
-/**
- * 위험 신호 감지 기준 설정
- * - 사용자 명세서 9.1 "위험 신호 감지"와 연동
- * - High/Medium/Low/None 4단계 레벨 판정
- * 
- * @판정 로직 (5.2)
- * High 레벨: 연속 부정 감정 임계 일수 초과 OR 모니터링 기간 내 부정 감정 임계 일수 이상
- * Medium 레벨: 연속 부정 감정 임계 일수 이상 OR 모니터링 기간 내 부정 감정 임계 일수 이상 (단, High 기준 미충족)
- * Low 레벨: 연속 부정 감정 임계 일수 이상 OR 모니터링 기간 내 부정 감정 임계 일수 이상 (단, High/Medium 기준 미충족)
- * None 레벨: 위의 모든 기준 미충족
- */
-interface RiskThreshold {
-  // 모니터링 기간 (5.2)
-  monitoringPeriodDays: number;  // 위험도 평가 시 분석할 과거 일지의 기간 (1-365일), 기본값: 14일
-  
-  // High 레벨 판정 기준 (5.2)
-  highConsecutiveDays: number;    // 연속 부정 감정 임계 일수 (1-30일), 기본값: 5일
-  highTotalDays: number;          // 모니터링 기간 내 부정 감정 임계 일수 (1-모니터링 기간), 기본값: 8일
-  
-  // Medium 레벨 판정 기준 (5.2)
-  mediumConsecutiveDays: number;  // 연속 부정 감정 임계 일수 (1-30일), 기본값: 3일
-  mediumTotalDays: number;        // 모니터링 기간 내 부정 감정 임계 일수 (1-모니터링 기간), 기본값: 5일
-  
-  // Low 레벨 판정 기준 (5.2)
-  lowConsecutiveDays: number;     // 연속 부정 감정 임계 일수 (1-30일), 기본값: 2일
-  lowTotalDays: number;           // 모니터링 기간 내 부정 감정 임계 일수 (1-모니터링 기간), 기본값: 3일
-}
-
-// ========================================
-// 상담 기관 데이터 타입 (5.3)
-// ========================================
-/**
- * 상담 기관 리소스
- * - 사용자 명세서 9.3 "지원 리소스 페이지"와 연동
- * - 관리자가 관리하는 상담 기관이 사용자 화면에 표시됨
- */
-interface CounselingResource {
-  id: string;                                                      // 기관 ID
-  name: string;                                                    // 기관명
-  category: 'emergency' | 'professional' | 'counseling' | 'medical';  // 카테고리 (5.3)
-  phone: string;                                                   // 전화번호
-  website: string;                                                 // 웹사이트 주소
-  description: string;                                             // 설명
-  availability: string;                                            // 운영 시간
-  isUrgent: boolean;                                               // 긴급 상담 기관 여부 (5.3: High 레벨 모달에 표시)
-}
+import type { RiskThreshold, CounselingResource } from '../types';
 
 export function SystemSettings() {
   // ========================================
@@ -116,46 +67,46 @@ export function SystemSettings() {
     if (storedResources) {
       setResources(JSON.parse(storedResources));
     } else {
-      // Default resources
+      // Default resources (Mock 데이터 - 연동 전까지 유지)
       const defaultResources: CounselingResource[] = [
         {
-          id: 'R001',
+          id: 1,
           name: '자살예방 상담전화',
-          category: 'emergency',
+          category: '긴급상담',
           phone: '1393',
           website: 'https://www.suicide.or.kr',
           description: '24시간 위기상담 및 자살예방 전문 상담',
-          availability: '24시간',
+          operatingHours: '24시간',
           isUrgent: true
         },
         {
-          id: 'R002',
+          id: 2,
           name: '정신건강 위기상담 전화',
-          category: 'emergency',
+          category: '긴급상담',
           phone: '1577-0199',
           website: 'https://www.mentalhealth.go.kr',
           description: '정신건강 위기 상황에 대한 전문 상담',
-          availability: '24시간',
+          operatingHours: '24시간',
           isUrgent: true
         },
         {
-          id: 'R003',
+          id: 3,
           name: '청소년 상담전화',
-          category: 'counseling',
+          category: '상담전화',
           phone: '1388',
           website: 'https://www.cyber1388.kr',
           description: '청소년 대상 심리 상담 및 위기 지원',
-          availability: '평일 09:00-22:00',
+          operatingHours: '평일 09:00-22:00',
           isUrgent: false
         },
         {
-          id: 'R004',
+          id: 4,
           name: '한국심리상담협회',
-          category: 'professional',
+          category: '전문상담',
           phone: '02-3452-0091',
           website: 'https://www.krcpa.or.kr',
           description: '전문 심리상담사와의 1:1 상담',
-          availability: '평일 09:00-18:00',
+          operatingHours: '평일 09:00-18:00',
           isUrgent: false
         }
       ];
@@ -216,13 +167,13 @@ export function SystemSettings() {
 
   const handleAddResource = () => {
     setEditingResource({
-      id: '',
+      id: 0, // 새로 추가할 때는 0 (저장 시 서버에서 생성)
       name: '',
-      category: 'professional',
+      category: '전문상담',
       phone: '',
       website: '',
       description: '',
-      availability: '',
+      operatingHours: '',
       isUrgent: false
     });
     setShowResourceModal(true);
@@ -233,7 +184,7 @@ export function SystemSettings() {
     setShowResourceModal(true);
   };
 
-  const handleDeleteResource = async (id: string) => {
+  const handleDeleteResource = async (id: number) => {
     if (!confirm('정말 이 상담 기관을 삭제하시겠습니까?')) {
       return;
     }
@@ -276,10 +227,10 @@ export function SystemSettings() {
         updated = resources.map(r => r.id === resource.id ? resource : r);
         alert('상담 기관 정보가 수정되었습니다.');
       } else {
-        // Add new
-        const newResource = {
+        // Add new (Mock 데이터 - 연동 전까지 유지)
+        const newResource: CounselingResource = {
           ...resource,
-          id: `R${String(resources.length + 1).padStart(3, '0')}`
+          id: resources.length > 0 ? Math.max(...resources.map(r => r.id)) + 1 : 1
         };
         updated = [...resources, newResource];
         alert('새 상담 기관이 추가되었습니다.');
@@ -295,19 +246,6 @@ export function SystemSettings() {
     }
   };
 
-  /**
-   * 카테고리 레이블 변환 (5.3)
-   * - 사용자 명세서 9.3 지원 리소스 페이지의 필터와 매핑됨
-   */
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'emergency': return '긴급 상담';
-      case 'professional': return '전문 상담';
-      case 'counseling': return '상담 전화';
-      case 'medical': return '의료 기관';
-      default: return category;
-    }
-  };
 
   if (isLoading) {
     return (
@@ -696,7 +634,7 @@ export function SystemSettings() {
                               ? 'bg-red-100 text-red-700'
                               : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {getCategoryLabel(resource.category)}
+                            {resource.category}
                           </span>
                           {resource.isUrgent && (
                             <span className="px-2 py-1 bg-red-600 text-white text-xs rounded-full flex items-center gap-1 whitespace-nowrap">
@@ -721,9 +659,11 @@ export function SystemSettings() {
                               </a>
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <span className="break-words">운영시간: {resource.availability}</span>
-                          </div>
+                          {resource.operatingHours && (
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <span className="break-words">운영시간: {resource.operatingHours}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -827,13 +767,13 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
               <select
                 required
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value as CounselingResource['category'] })}
                 className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 min-w-0"
               >
-                <option value="emergency">긴급 상담</option>
-                <option value="professional">전문 상담</option>
-                <option value="counseling">상담 전화</option>
-                <option value="medical">의료 기관</option>
+                <option value="긴급상담">긴급 상담</option>
+                <option value="전문상담">전문 상담</option>
+                <option value="상담전화">상담 전화</option>
+                <option value="의료기관">의료 기관</option>
               </select>
             </div>
 
@@ -889,8 +829,8 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
               </label>
               <input
                 type="text"
-                value={formData.availability}
-                onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
+                value={formData.operatingHours || ''}
+                onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
                 className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-words min-w-0"
                 placeholder="예: 24시간, 평일 09:00-18:00"
               />
