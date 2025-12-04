@@ -25,6 +25,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final EmailVerificationCodeRepository emailVerificationCodeRepository;
     private final PasswordResetCodeRepository passwordResetCodeRepository;
@@ -62,7 +63,10 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public boolean checkEmailAvailability(String email) {
-        return !userRepository.existsByEmail(email);
+        // User와 Admin 모두 확인하여 중복 방지
+        boolean userExists = userRepository.existsByEmail(email);
+        boolean adminExists = adminRepository.existsByEmail(email);
+        return !userExists && !adminExists;
     }
 
     @Transactional
