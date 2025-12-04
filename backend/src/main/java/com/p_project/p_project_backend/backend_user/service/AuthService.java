@@ -44,8 +44,6 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Save Refresh Token
-        // refreshTokenRepository.deleteByUser(user); // Remove old tokens -> Removed to
-        // support multi-device login
         RefreshToken rt = RefreshToken.builder()
                 .user(user)
                 .token(refreshToken)
@@ -140,18 +138,18 @@ public class AuthService {
         userRepository.save(user);
 
         // Auto login
-        return login(new LoginRequest() {
-            {
-                setEmail(request.getEmail());
-                setPassword(request.getPassword());
-            }
-        });
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail(request.getEmail());
+        loginRequest.setPassword(request.getPassword());
+
+        return login(loginRequest);
     }
 
     @Transactional
     public void sendPasswordResetCode(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        if (!userRepository.existsByEmail(email)) {
+            throw new RuntimeException("User not found");
+        }
 
         String code = generateRandomCode();
         PasswordResetCode prc = PasswordResetCode.builder()
