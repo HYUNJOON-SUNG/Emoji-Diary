@@ -31,4 +31,11 @@ public class GlobalExceptionHandler {
                 Map.of("success", false, "error",
                         Map.of("code", "ADMIN_NOT_FOUND", "message", ex.getMessage())));
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                Map.of("success", false, "error",
+                        Map.of("code", "INTERNAL_SERVER_ERROR", "message", ex.getMessage())));
+    }
 }
