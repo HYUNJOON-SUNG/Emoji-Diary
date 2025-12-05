@@ -2,6 +2,7 @@ package com.p_project.p_project_backend.backend_admin.controller;
 
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.DiaryTrendResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.RiskLevelDistributionResponse;
+import com.p_project.p_project_backend.backend_admin.dto.dashboard.UserActivityStatsResponse;
 import com.p_project.p_project_backend.backend_admin.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,21 @@ public class AdminDashboardController {
             @RequestParam(required = false) Integer month
     ) {
         DiaryTrendResponse response = adminDashboardService.getDiaryTrend(period, year, month);
+        return ResponseEntity.ok(Map.of("success", true, "data", response));
+    }
+
+    /**
+     * 사용자 활동 통계 차트 조회
+     * GET /api/admin/dashboard/user-activity-stats
+     */
+    @GetMapping("/user-activity-stats")
+    public ResponseEntity<?> getUserActivityStats(
+            @RequestParam(required = false, defaultValue = "monthly") String period,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) String metrics
+    ) {
+        UserActivityStatsResponse response = adminDashboardService.getUserActivityStats(period, year, month, metrics);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 }
