@@ -1,5 +1,6 @@
 package com.p_project.p_project_backend.backend_admin.service;
 
+import com.p_project.p_project_backend.backend_admin.dto.dashboard.DashboardStatsResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.DiaryTrendItem;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.DiaryTrendResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.RiskLevelDistributionItem;
@@ -71,6 +72,16 @@ public class AdminDashboardService {
             METRIC_DAU, METRIC_WAU, METRIC_MAU, METRIC_NEW_USERS, METRIC_RETENTION_RATE
     );
 
+    // ActiveUserType 상수
+    private static final String ACTIVE_USER_TYPE_DAU = "dau";
+    private static final String ACTIVE_USER_TYPE_WAU = "wau";
+    private static final String ACTIVE_USER_TYPE_MAU = "mau";
+
+    // NewUserPeriod 상수
+    private static final String NEW_USER_PERIOD_DAILY = "daily";
+    private static final String NEW_USER_PERIOD_WEEKLY = "weekly";
+    private static final String NEW_USER_PERIOD_MONTHLY = "monthly";
+
     private final RiskDetectionSessionRepository riskDetectionSessionRepository;
     private final AdminDiaryRepository adminDiaryRepository;
     private final UserRepository userRepository;
@@ -133,6 +144,115 @@ public class AdminDashboardService {
                 .month(month)
                 .trend(trend)
                 .build();
+    }
+
+    /**
+     * 서비스 통계 카드 조회
+     */
+    @Transactional(readOnly = true)
+    public DashboardStatsResponse getDashboardStats(
+            String period,
+            String activeUserType,
+            String newUserPeriod
+    ) {
+        // 기본값 설정
+        String resolvedPeriod = (period != null && !period.trim().isEmpty()) ? period.toLowerCase() : PERIOD_MONTHLY;
+        String resolvedActiveUserType = (activeUserType != null && !activeUserType.trim().isEmpty()) ? activeUserType.toLowerCase() : ACTIVE_USER_TYPE_DAU;
+        String resolvedNewUserPeriod = (newUserPeriod != null && !newUserPeriod.trim().isEmpty()) ? newUserPeriod.toLowerCase() : NEW_USER_PERIOD_DAILY;
+
+        // 현재 기간 계산
+        PeriodRange currentPeriodRange = calculatePeriodRangeForStats(resolvedPeriod);
+        LocalDateTime currentStart = currentPeriodRange.getStartDate();
+        LocalDateTime currentEnd = currentPeriodRange.getEndDate();
+
+        // 이전 기간 계산 (증감 계산용)
+        PeriodRange previousPeriodRange = calculatePreviousPeriodRange(resolvedPeriod, currentStart);
+        LocalDateTime previousStart = previousPeriodRange.getStartDate();
+        LocalDateTime previousEnd = previousPeriodRange.getEndDate();
+
+        // 1. 전체 사용자 수 및 증감
+        DashboardStatsResponse.TotalUsersInfo totalUsers = calculateTotalUsersInfo(
+                resolvedPeriod, currentStart, currentEnd, previousStart, previousEnd
+        );
+
+        // 2. 활성 사용자 수 (DAU/WAU/MAU)
+        DashboardStatsResponse.ActiveUsersInfo activeUsers = calculateActiveUsers(resolvedActiveUserType);
+
+        // 3. 신규 가입자 수
+        DashboardStatsResponse.NewUsersInfo newUsers = calculateNewUsers(resolvedNewUserPeriod);
+
+        // 4. 총 일지 작성 수 및 증감
+        DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo(
+                currentStart, currentEnd, previousStart, previousEnd
+        );
+
+        // 5. 일평균 일지 작성 수
+        DashboardStatsResponse.AverageDailyDiariesInfo averageDailyDiaries = calculateAverageDailyDiaries(resolvedPeriod, currentStart, currentEnd);
+
+        // 6. 위험 레벨별 사용자 수
+        DashboardStatsResponse.RiskLevelUsersInfo riskLevelUsers = calculateRiskLevelUsers(currentStart, currentEnd);
+
+        return DashboardStatsResponse.builder()
+                .totalUsers(totalUsers)
+                .activeUsers(activeUsers)
+                .newUsers(newUsers)
+                .totalDiaries(totalDiaries)
+                .averageDailyDiaries(averageDailyDiaries)
+                .riskLevelUsers(riskLevelUsers)
+                .build();
+    }
+
+    /**
+     * 전체 사용자 수 정보 계산
+     */
+    private DashboardStatsResponse.TotalUsersInfo calculateTotalUsersInfo(
+            String period,
+            LocalDateTime currentStart,
+            LocalDateTime currentEnd,
+            LocalDateTime previousStart,
+            LocalDateTime previousEnd
+    ) {
+        long totalUsersCount = userRepository.countByDeletedAtIsNull();
+        long currentUsersCount = getLongValueOrZero(userRepository.countUsersInPeriod(currentStart, currentEnd));
+        long previousUsersCount = getLongValueOrZero(userRepository.countUsersInPeriod(previousStart, previousEnd));
+        long usersChange = currentUsersCount - previousUsersCount;
+
+        return DashboardStatsResponse.TotalUsersInfo.builder()
+                .count(totalUsersCount)
+                .change(usersChange)
+                .period(period)
+                .build();
+    }
+
+    /**
+     * 총 일지 작성 수 정보 계산
+     */
+    private DashboardStatsResponse.TotalDiariesInfo calculateTotalDiariesInfo(
+            LocalDateTime currentStart,
+            LocalDateTime currentEnd,
+            LocalDateTime previousStart,
+            LocalDateTime previousEnd
+    ) {
+        long totalDiariesCount = getLongValueOrZero(adminDiaryRepository.countTotalDiaries());
+        long currentDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
+                currentStart.toLocalDate(), currentEnd.toLocalDate()
+        ));
+        long previousDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
+                previousStart.toLocalDate(), previousEnd.toLocalDate()
+        ));
+        long diariesChange = currentDiariesCount - previousDiariesCount;
+
+        return DashboardStatsResponse.TotalDiariesInfo.builder()
+                .count(totalDiariesCount)
+                .change(diariesChange)
+                .build();
+    }
+
+    /**
+     * Long 값이 null이면 0L 반환
+     */
+    private long getLongValueOrZero(Long value) {
+        return value != null ? value : 0L;
     }
 
     /**
@@ -711,6 +831,198 @@ public class AdminDashboardService {
                 .count();
         
         return calculatePercentage(retainedUsers, previousUserIds.size());
+    }
+
+    /**
+     * 통계 카드용 기간 범위 계산
+     */
+    private PeriodRange calculatePeriodRangeForStats(String period) {
+        LocalDate now = LocalDate.now();
+        Integer currentYear = now.getYear();
+        Integer currentMonth = now.getMonthValue();
+
+        String periodLower = period.toLowerCase();
+        switch (periodLower) {
+            case PERIOD_WEEKLY:
+                return calculateWeeklyRange(currentYear, currentMonth);
+            case PERIOD_MONTHLY:
+                return calculateMonthlyRange(currentYear, currentMonth);
+            case PERIOD_YEARLY:
+                return calculateYearlyRange(currentYear);
+            default:
+                throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
+        }
+    }
+
+    /**
+     * 이전 기간 범위 계산 (증감 계산용)
+     */
+    private PeriodRange calculatePreviousPeriodRange(String period, LocalDateTime currentStart) {
+        LocalDate startDate = currentStart.toLocalDate();
+        String periodLower = period.toLowerCase();
+
+        switch (periodLower) {
+            case PERIOD_WEEKLY:
+                LocalDate previousWeekStart = startDate.minusWeeks(1);
+                LocalDate previousWeekEnd = previousWeekStart.plusDays(WEEKLY_DAYS);
+                return new PeriodRange(previousWeekStart.atStartOfDay(), previousWeekEnd.atStartOfDay());
+            case PERIOD_MONTHLY:
+                YearMonth previousMonth = YearMonth.from(startDate).minusMonths(1);
+                LocalDate previousMonthStart = previousMonth.atDay(FIRST_DAY_OF_MONTH);
+                LocalDate previousMonthEnd = previousMonth.atEndOfMonth().plusDays(DAYS_INCREMENT);
+                return new PeriodRange(previousMonthStart.atStartOfDay(), previousMonthEnd.atStartOfDay());
+            case PERIOD_YEARLY:
+                YearMonth previousYearStart = YearMonth.of(startDate.getYear() - 1, FIRST_MONTH_OF_YEAR);
+                YearMonth previousYearEnd = YearMonth.of(startDate.getYear() - 1, 12);
+                LocalDate previousYearStartDate = previousYearStart.atDay(FIRST_DAY_OF_MONTH);
+                LocalDate previousYearEndDate = previousYearEnd.atEndOfMonth().plusDays(DAYS_INCREMENT);
+                return new PeriodRange(previousYearStartDate.atStartOfDay(), previousYearEndDate.atStartOfDay());
+            default:
+                throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
+        }
+    }
+
+    /**
+     * 활성 사용자 수 계산
+     */
+    private DashboardStatsResponse.ActiveUsersInfo calculateActiveUsers(String activeUserType) {
+        LocalDate today = LocalDate.now();
+        long dau = getLongValueOrZero(adminDiaryRepository.countDistinctUsersByDate(today));
+
+        LocalDate wauStart = today.minusDays(WEEKLY_DAYS - 1);
+        long wau = getLongValueOrZero(adminDiaryRepository.countDistinctUsersInPeriod(
+                wauStart, today.plusDays(DAYS_INCREMENT)
+        ));
+
+        LocalDate mauStart = today.minusDays(MONTHLY_DAYS - 1);
+        long mau = getLongValueOrZero(adminDiaryRepository.countDistinctUsersInPeriod(
+                mauStart, today.plusDays(DAYS_INCREMENT)
+        ));
+
+        return DashboardStatsResponse.ActiveUsersInfo.builder()
+                .dau(dau)
+                .wau(wau)
+                .mau(mau)
+                .type(activeUserType)
+                .build();
+    }
+
+    /**
+     * 신규 가입자 수 계산
+     */
+    private DashboardStatsResponse.NewUsersInfo calculateNewUsers(String newUserPeriod) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.plusDays(DAYS_INCREMENT).atStartOfDay();
+
+        // 일별 신규 가입자 수
+        List<Object[]> dailyResults = userRepository.countNewUsersByDateInPeriod(todayStart, todayEnd);
+        Long daily = dailyResults.stream()
+                .filter(result -> {
+                    java.sql.Date sqlDate = (java.sql.Date) result[0];
+                    return sqlDate.toLocalDate().equals(today);
+                })
+                .mapToLong(result -> ((Number) result[1]).longValue())
+                .findFirst()
+                .orElse(0L);
+
+        // 주별 신규 가입자 수
+        LocalDate weekStart = today.minusDays(WEEKLY_DAYS - 1);
+        LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
+        List<Object[]> weeklyResults = userRepository.countNewUsersByDateInPeriod(weekStartDateTime, todayEnd);
+        Long weekly = weeklyResults.stream()
+                .mapToLong(result -> ((Number) result[1]).longValue())
+                .sum();
+
+        // 월별 신규 가입자 수
+        LocalDate monthStart = today.withDayOfMonth(FIRST_DAY_OF_MONTH);
+        LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
+        List<Object[]> monthlyResults = userRepository.countNewUsersByDateInPeriod(monthStartDateTime, todayEnd);
+        Long monthly = monthlyResults.stream()
+                .mapToLong(result -> ((Number) result[1]).longValue())
+                .sum();
+
+        return DashboardStatsResponse.NewUsersInfo.builder()
+                .daily(daily)
+                .weekly(weekly)
+                .monthly(monthly)
+                .period(newUserPeriod)
+                .build();
+    }
+
+    /**
+     * 일평균 일지 작성 수 계산
+     */
+    private DashboardStatsResponse.AverageDailyDiariesInfo calculateAverageDailyDiaries(
+            String period,
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime
+    ) {
+        LocalDate startDate = startDateTime.toLocalDate();
+        LocalDate endDate = endDateTime.toLocalDate();
+
+        List<Object[]> diaryCounts;
+        if (PERIOD_YEARLY.equalsIgnoreCase(period)) {
+            // 연간: 월별 집계 후 평균
+            diaryCounts = adminDiaryRepository.countDiariesByMonthInPeriod(startDate, endDate);
+            if (diaryCounts.isEmpty()) {
+                return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
+                        .count(0L)
+                        .period(period)
+                        .build();
+            }
+            // 월별 일지 작성 수의 합을 일수로 나누기
+            long totalDiaries = diaryCounts.stream()
+                    .mapToLong(result -> ((Number) result[2]).longValue())
+                    .sum();
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
+            long average = daysBetween > 0 ? totalDiaries / daysBetween : 0L;
+            return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
+                    .count(average)
+                    .period(period)
+                    .build();
+        } else {
+            // 주간/월간: 일별 집계 후 평균
+            diaryCounts = adminDiaryRepository.countDiariesByDateInPeriod(startDate, endDate);
+            if (diaryCounts.isEmpty()) {
+                return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
+                        .count(0L)
+                        .period(period)
+                        .build();
+            }
+            long totalDiaries = diaryCounts.stream()
+                    .mapToLong(result -> ((Number) result[1]).longValue())
+                    .sum();
+            long daysCount = diaryCounts.size();
+            long average = daysCount > 0 ? totalDiaries / daysCount : 0L;
+            return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
+                    .count(average)
+                    .period(period)
+                    .build();
+        }
+    }
+
+    /**
+     * 위험 레벨별 사용자 수 계산
+     */
+    private DashboardStatsResponse.RiskLevelUsersInfo calculateRiskLevelUsers(LocalDateTime startDateTime, LocalDateTime endDateTime) {
+        List<Object[]> riskLevelCounts = riskDetectionSessionRepository.countUsersByRiskLevelInPeriod(
+                startDateTime, endDateTime
+        );
+
+        Map<RiskDetectionSession.RiskLevel, Long> riskLevelMap = new HashMap<>();
+        for (Object[] result : riskLevelCounts) {
+            RiskDetectionSession.RiskLevel level = (RiskDetectionSession.RiskLevel) result[0];
+            Long count = ((Number) result[1]).longValue();
+            riskLevelMap.put(level, count);
+        }
+
+        return DashboardStatsResponse.RiskLevelUsersInfo.builder()
+                .high(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.HIGH, 0L))
+                .medium(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.MEDIUM, 0L))
+                .low(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.LOW, 0L))
+                .none(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.NONE, 0L))
+                .build();
     }
 
     /**

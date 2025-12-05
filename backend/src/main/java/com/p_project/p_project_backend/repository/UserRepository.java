@@ -56,4 +56,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
     );
+
+    /**
+     * 기간별 사용자 수 조회
+     * 이전 기간 대비 증감 계산용
+     * 
+     * @param startDateTime 기간 시작일시
+     * @param endDateTime 기간 종료일시
+     * @return 사용자 수
+     */
+    @Query("SELECT COUNT(u.id) " +
+           "FROM User u " +
+           "WHERE u.deletedAt IS NULL " +
+           "AND u.createdAt >= :startDateTime AND u.createdAt < :endDateTime")
+    Long countUsersInPeriod(
+            @Param("startDateTime") LocalDateTime startDateTime,
+            @Param("endDateTime") LocalDateTime endDateTime
+    );
 }
