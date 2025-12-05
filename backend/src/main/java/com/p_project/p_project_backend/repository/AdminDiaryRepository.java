@@ -143,5 +143,32 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    /**
+     * 삭제되지 않은 전체 일지 작성 수 조회
+     * 
+     * @return 전체 일지 작성 수
+     */
+    @Query("SELECT COUNT(d.id) " +
+           "FROM Diary d " +
+           "WHERE d.deletedAt IS NULL")
+    Long countTotalDiaries();
+
+    /**
+     * 기간별 일지 작성 수 조회
+     * 이전 기간 대비 증감 계산용
+     * 
+     * @param startDate 기간 시작일
+     * @param endDate 기간 종료일
+     * @return 일지 작성 수
+     */
+    @Query("SELECT COUNT(d.id) " +
+           "FROM Diary d " +
+           "WHERE d.deletedAt IS NULL " +
+           "AND d.date >= :startDate AND d.date < :endDate")
+    Long countDiariesInPeriod(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 }
 

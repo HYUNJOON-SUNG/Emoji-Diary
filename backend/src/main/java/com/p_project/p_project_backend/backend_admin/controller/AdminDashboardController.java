@@ -1,5 +1,6 @@
 package com.p_project.p_project_backend.backend_admin.controller;
 
+import com.p_project.p_project_backend.backend_admin.dto.dashboard.DashboardStatsResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.DiaryTrendResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.RiskLevelDistributionResponse;
 import com.p_project.p_project_backend.backend_admin.dto.dashboard.UserActivityStatsResponse;
@@ -16,6 +17,20 @@ import java.util.Map;
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;
+
+    /**
+     * 서비스 통계 카드 조회
+     * GET /api/admin/dashboard/stats
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getDashboardStats(
+            @RequestParam(required = false, defaultValue = "monthly") String period,
+            @RequestParam(required = false, defaultValue = "dau") String activeUserType,
+            @RequestParam(required = false, defaultValue = "daily") String newUserPeriod
+    ) {
+        DashboardStatsResponse response = adminDashboardService.getDashboardStats(period, activeUserType, newUserPeriod);
+        return ResponseEntity.ok(Map.of("success", true, "data", response));
+    }
 
     /**
      * 위험 레벨 분포 통계 조회
