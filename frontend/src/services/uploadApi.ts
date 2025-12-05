@@ -117,25 +117,24 @@ export async function uploadImage(data: UploadImageRequest): Promise<UploadImage
   }
   
   // [백엔드 팀] 실제 구현 시:
-  // 1. FormData 생성
+  // const token = TokenStorage.getAccessToken();
   // const formData = new FormData();
   // formData.append('image', data.image);
   // 
-  // 2. API 호출
   // const response = await fetch('/api/upload/image', {
   //   method: 'POST',
   //   headers: {
-  //     'Authorization': `Bearer ${TokenStorage.getAccessToken()}`,
+  //     'Authorization': `Bearer ${token}`,
   //   },
   //   body: formData,
   // });
   // 
-  // 3. 응답 처리
-  // const result = await response.json();
-  // if (!result.success) {
-  //   throw new Error(result.error.message);
+  // if (!response.ok) {
+  //   throw new Error('이미지 업로드에 실패했습니다.');
   // }
-  // return { imageUrl: result.data.imageUrl };
+  // 
+  // const result = await response.json();
+  // return result.success ? { imageUrl: result.data.imageUrl } : { imageUrl: '' };
   
   // Mock 구현: 임시 URL 생성
   const mockImageUrl = `https://example.com/uploaded/${Date.now()}-${data.image.name}`;
@@ -183,20 +182,22 @@ export async function deleteImage(data: DeleteImageRequest): Promise<DeleteImage
   }
   
   // [백엔드 팀] 실제 구현 시:
+  // const token = TokenStorage.getAccessToken();
   // const response = await fetch('/api/upload/image', {
   //   method: 'DELETE',
   //   headers: {
-  //     'Authorization': `Bearer ${TokenStorage.getAccessToken()}`,
+  //     'Authorization': `Bearer ${token}`,
   //     'Content-Type': 'application/json',
   //   },
   //   body: JSON.stringify({ imageUrl: data.imageUrl }),
   // });
   // 
-  // const result = await response.json();
-  // if (!result.success) {
-  //   throw new Error(result.error.message);
+  // if (!response.ok) {
+  //   throw new Error('이미지 삭제에 실패했습니다.');
   // }
-  // return { message: result.data.message };
+  // 
+  // const result = await response.json();
+  // return result.success ? { message: result.data.message } : { message: '이미지 삭제에 실패했습니다.' };
   
   // Mock 구현
   console.log('[Image Deleted]', { imageUrl: data.imageUrl });

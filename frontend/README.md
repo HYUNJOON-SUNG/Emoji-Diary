@@ -14,10 +14,15 @@
   ### API 명세서 반영 (2025-01-XX)
   - **User 인터페이스**: `persona` 필드 추가 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
   - **페르소나 설정 API**: `PUT /api/users/me/persona` 함수 구현
-  - **토큰 재발급 API**: `POST /api/auth/refresh` 함수 구현
+  - **토큰 재발급 API**: `POST /api/auth/refresh` 함수 구현 (엔드포인트 및 요청/응답 형식 수정)
+  - **비밀번호 재설정 API**: `POST /api/auth/password-reset/send-code`, `verify-code`, `reset` 함수 구현
+  - **사용자 정보 API**: `GET /api/users/me`, `PUT /api/users/me/persona`, `PUT /api/users/me/password`, `DELETE /api/users/me` 함수 구현
   - **이미지 업로드/삭제 API**: `POST/DELETE /api/upload/image` 함수 구현
   - **통계 API**: `GET /api/statistics/emotions`, `GET /api/statistics/emotion-trend` 함수 구현
-  - **위험 신호 세션 관리 API**: `GET /api/risk-detection/session-status`, `POST /api/risk-detection/mark-shown` 함수 구현
+  - **위험 신호 감지 API**: 점수 기반 분석으로 변경, `GET /api/risk-detection/analyze`, `GET /api/risk-detection/session-status`, `POST /api/risk-detection/mark-shown` 함수 구현
+  - **공지사항 API**: `GET /api/notices`, `GET /api/notices/{noticeId}` 함수 구현 (엔드포인트 및 인터페이스 수정)
+  - **상담 기관 리소스 API**: `GET /api/counseling-resources` 함수 구현 (신규 추가)
+  - **일기 검색 API**: `emotions` 파라미터로 변경 (한글 감정명 콤마 구분)
   - **회원가입**: `persona` 필드 추가 (선택, 기본값: "베프")
   - **비밀번호 변경**: `confirmPassword` 필드 추가
   - **일기 API 필드명 수정**: `note` → `content`, `userImageUrls` → `images`
@@ -171,16 +176,23 @@
   - **일기 수정**: `PUT /api/diaries/{diaryId}` (emotion 필드 제거, KoBERT 자동 분석)
   - **일기 조회**: `GET /api/diaries/date/{date}`
   - **캘린더 조회**: `GET /api/diaries/calendar`
-  - **일기 검색**: `GET /api/diaries/search` (emotions 필터: KoBERT 감정 종류)
+  - **일기 검색**: `GET /api/diaries/search` (emotions 파라미터: 한글 감정명 콤마 구분, 예: "행복,중립,슬픔")
 
   ### 통계 API
   - **감정 통계**: `GET /api/statistics/emotions` (period, year, month, week)
   - **감정 변화 추이**: `GET /api/statistics/emotion-trend` (period, year, month)
 
   ### 위험 신호 감지 API
-  - **위험 신호 분석**: `GET /api/risk-detection/analyze`
+  - **위험 신호 분석**: `GET /api/risk-detection/analyze` (점수 기반 분석: 연속 부정 감정 점수, 모니터링 기간 내 총 점수)
   - **세션 확인**: `GET /api/risk-detection/session-status`
   - **표시 완료 기록**: `POST /api/risk-detection/mark-shown`
+
+  ### 공지사항 API
+  - **공지사항 목록 조회**: `GET /api/notices` (page, limit 파라미터)
+  - **공지사항 상세 조회**: `GET /api/notices/{noticeId}` (조회 시 views 자동 증가)
+
+  ### 상담 기관 리소스 API
+  - **상담 기관 목록 조회**: `GET /api/counseling-resources` (category 파라미터: all, 긴급상담, 전문상담, 상담전화, 의료기관)
 
   ### 파일 업로드 API
   - **이미지 업로드**: `POST /api/upload/image` (multipart/form-data)
@@ -356,12 +368,13 @@
     - `Diary_Images`: 사용자 업로드 이미지 (별도 테이블, API 응답에서는 `images` 배열)
     - `Diary_Activities`: 활동 목록 (별도 테이블, API 응답에서는 `activities` 배열)
   
-  - **Notices 테이블**: `announcementApi.ts`, `adminApi.ts`의 `Announcement`, `Notice` 인터페이스
-    - `is_public`: BOOLEAN → `isPublished` (공개 여부)
+  - **Notices 테이블**: `announcementApi.ts`의 `Notice` 인터페이스 (사용자용), `adminApi.ts`의 `Notice` 인터페이스 (관리자용)
+    - `id`: BIGINT → number (공지사항 고유 ID)
+    - `is_public`: BOOLEAN → `isPublic` (공개 여부, 사용자용 API에서는 공개된 공지사항만 조회)
     - `views`: INT (조회수, 조회 시 자동 증가)
     - `admin_id`: FK → `author` (작성자 이름으로 반환)
   
-  - **Counseling_Resources 테이블**: `supportResources.ts`, `adminApi.ts`의 `SupportResource`, `CounselingResource` 인터페이스
+  - **Counseling_Resources 테이블**: `counselingResourcesApi.ts`, `adminApi.ts`의 `CounselingResource` 인터페이스
     - `category`: ENUM (긴급상담, 전문상담, 상담전화, 의료기관)
     - `is_urgent`: BOOLEAN → `isUrgent` (High 레벨 위험 신호 시 전화번호 표시)
   
@@ -419,13 +432,14 @@
   │           ├── metric-card.tsx         # 통계 카드 컴포넌트
   │           └── weekly-diary-chart.tsx  # 일지 작성 추이 차트
   ├── services/
-  │   ├── authApi.ts                     # 인증 API (로그인, 회원가입, 페르소나, 토큰 재발급)
+  │   ├── authApi.ts                     # 인증 API (로그인, 회원가입, 페르소나, 토큰 재발급, 비밀번호 재설정)
   │   ├── diaryApi.ts                    # 일기 API 클라이언트
   │   ├── uploadApi.ts                   # 이미지 업로드/삭제 API
   │   ├── statisticsApi.ts               # 통계 API (감정 통계, 변화 추이)
-  │   ├── riskDetection.ts               # 위험 신호 감지 API
-  │   ├── announcementApi.ts             # 공지사항 API
-  │   ├── supportResources.ts            # 상담 기관 리소스
+  │   ├── riskDetection.ts               # 위험 신호 감지 API (점수 기반 분석)
+  │   ├── announcementApi.ts             # 공지사항 API (사용자용: GET /api/notices)
+  │   ├── counselingResourcesApi.ts      # 상담 기관 리소스 API (사용자용: GET /api/counseling-resources)
+  │   ├── supportResources.ts            # 상담 기관 리소스 (정적 데이터, 레거시)
   │   └── adminApi.ts                    # 관리자 API (인증, 대시보드, 공지사항, 시스템 설정, 에러 로그)
   └── reference/
       ├── 사용자 기반 상세기능명세서.md  # 사용자 명세서

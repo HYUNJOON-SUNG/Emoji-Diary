@@ -1083,16 +1083,17 @@ function formatDateLabel(dateStr: string, type: 'weekly' | 'monthly'): string {
 /**
  * 일기 검색 파라미터 인터페이스 (플로우 6.1, 6.2)
  * 
- * [백엔드 팀 작업 필요]
+ * [API 명세서 Section 5.1]
  * - 엔드포인트: GET /api/diaries/search
  * - 파라미터:
  *   * keyword: 제목이나 내용으로 검색
  *   * startDate: 기간 검색 시작일 (YYYY-MM-DD)
  *   * endDate: 기간 검색 종료일 (YYYY-MM-DD)
- *   * emotionCategory: 감정 카테고리 필터 (여러 감정 중복 선택 가능, 콤마로 구분)
- *     예: "happy,love,excited" → 선택된 감정 중 하나라도 포함된 일기 검색
- *   * page: 현재 페이지 번호
- *   * limit: 페이지당 항목 수 (플로우 6.2: 10개)
+ *   * emotions: 감정 필터 (여러 개 가능, 쉼표로 구분, 예: 행복,중립,슬픔)
+ *     - KoBERT 감정 종류: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ *     - 선택된 감정 중 하나라도 포함된 일기 검색
+ *   * page: 현재 페이지 번호 (기본값: 1)
+ *   * limit: 페이지당 항목 수 (기본값: 10)
  * 
  * 플로우 6.2 요구사항:
  * - 키워드 검색: 제목이나 내용에서 검색
@@ -1104,11 +1105,11 @@ function formatDateLabel(dateStr: string, type: 'weekly' | 'monthly'): string {
  */
 export interface DiarySearchParams {
   keyword?: string; // 키워드 (제목 또는 내용)
-  startDate?: string; // 기간 검색 시작일
-  endDate?: string; // 기간 검색 종료일
-  emotionCategory?: string; // 감정 카테고리 필터 (콤마 구분: "happy,love,excited")
-  page?: number; // 현재 페이지 번호
-  limit?: number; // 페이지당 항목 수
+  startDate?: string; // 기간 검색 시작일 (YYYY-MM-DD)
+  endDate?: string; // 기간 검색 종료일 (YYYY-MM-DD)
+  emotions?: string; // [API 명세서] 감정 필터 (콤마 구분: "행복,중립,슬픔", KoBERT 감정 종류)
+  page?: number; // 현재 페이지 번호 (기본값: 1)
+  limit?: number; // 페이지당 항목 수 (기본값: 10)
 }
 
 /**
@@ -1131,19 +1132,25 @@ export interface DiarySearchResult {
 /**
  * 일기 검색 API (플로우 6.1, 6.2)
  * 
- * [백엔드 팀 작업 필요]
+ * [API 명세서 Section 5.1]
  * - 엔드포인트: GET /api/diaries/search
  * - 파라미터: DiarySearchParams
- * - 응답: DiarySearchResult
+ * - 응답: { success: true, data: DiarySearchResult }
  * 
  * 검색 기능 (플로우 6.2):
  * 1. 키워드 검색: 제목이나 내용에 키워드 포함된 일기
  * 2. 기간 검색: 시작일 ~ 종료일 범위 내 일기
  * 3. 감정별 검색: 여러 감정 중복 선택 가능
- *    - emotionCategory 파라미터: "happy,love,excited" (콤마로 구분)
+ *    - emotions 파라미터: "행복,중립,슬픔" (콤마로 구분, KoBERT 감정 종류)
  *    - 선택된 감정 중 하나라도 포함된 일기를 검색 결과에 표시
  * 4. 정렬: 최신순 (날짜 내림차순)
  * 5. 페이지네이션: 페이지당 10개 항목
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - GET /api/diaries/search
+ * - Headers: { Authorization: Bearer {accessToken} }
+ * - Query Parameters: { keyword?, startDate?, endDate?, emotions?, page?, limit? }
+ * - Response: { success: true, data: { total, page, limit, totalPages, diaries } }
  * 
  * Mock 구현:
  * - 실제 백엔드 API로 교체 필요
@@ -1157,7 +1164,7 @@ export async function searchDiaries(params: DiarySearchParams): Promise<DiarySea
     keyword = '',
     startDate,
     endDate,
-    emotionCategory,
+    emotions, // [API 명세서] emotions 파라미터 (KoBERT 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
     page = 1,
     limit = 10, // 플로우 6.2: 페이지당 10개
   } = params;
@@ -1185,11 +1192,14 @@ export async function searchDiaries(params: DiarySearchParams): Promise<DiarySea
   }
   
   // 4. 감정별 검색 (플로우 6.2: 여러 감정 중복 선택 가능)
-  // emotionCategory 예: "happy,love,excited" (콤마로 구분)
+  // [API 명세서] emotions 예: "행복,중립,슬픔" (콤마로 구분, KoBERT 감정 종류)
   // 선택된 감정 중 하나라도 포함된 일기를 검색 결과에 표시
-  if (emotionCategory) {
-    const categories = emotionCategory.split(',').map(c => c.trim());
-    filtered = filtered.filter(diary => categories.includes(diary.emotionCategory));
+  if (emotions) {
+    const emotionList = emotions.split(',').map(e => e.trim());
+    filtered = filtered.filter(diary => {
+      // diary.emotion은 한글 감정 (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+      return emotionList.includes(diary.emotion);
+    });
   }
   
   // 5. 정렬: 최신순 (날짜 내림차순)
