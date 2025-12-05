@@ -221,7 +221,8 @@ export interface LoginResponse {
  * - email: 이메일 (인증 완료된 이메일)
  * - password: 비밀번호 (영문, 숫자, 특수문자 포함 8자 이상)
  * - name: 이름 (2~10자)
- * - verificationCode: 이메일 인증 코드 (6자리) - 프론트엔드에서만 사용
+ * - emailVerified: 이메일 인증 완료 여부 (필수, true여야 함)
+ * - verificationCode: 이메일 인증 코드 (6자리) - 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증)
  * - termsAccepted: 필수 약관 동의 여부 - 프론트엔드에서만 사용
  * - persona: 페르소나 (선택, 미제공 시 기본값 "베프")
  *   * 페르소나 종류: 베프, 부모님, 전문가, 멘토, 상담사, 시인
@@ -230,7 +231,8 @@ export interface SignupRequest {
   email: string;
   password: string;
   name: string;
-  verificationCode: string; // 프론트엔드에서만 사용 (백엔드에는 emailVerified: true로 전송)
+  emailVerified: boolean; // [API 명세서] 필수 필드, true여야 함
+  verificationCode: string; // 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증)
   termsAccepted: boolean; // 프론트엔드에서만 사용
   persona?: string; // [API 명세서] 선택 필드 (기본값: "베프")
 }
@@ -259,12 +261,25 @@ export interface SignupVerificationCodeRequest {
 }
 
 /**
+ * 비밀번호 재설정 인증 코드 확인 요청
+ * [API 명세서 Section 2.3.2]
+ * POST /api/auth/password-reset/verify-code
+ */
+export interface VerifyPasswordResetCodeRequest {
+  email: string;
+  code: string;
+}
+
+/**
  * 비밀번호 재설정 요청
+ * [API 명세서 Section 2.3.3]
+ * POST /api/auth/password-reset/reset
  */
 export interface ResetPasswordRequest {
   email: string;
-  code: string;
+  resetToken: string; // verify-code에서 받은 resetToken
   newPassword: string;
+  confirmPassword: string; // [API 명세서] 새 비밀번호 확인 필드 추가
 }
 
 // ========== API 함수들 ==========
@@ -356,6 +371,11 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
 export async function signup(data: SignupRequest): Promise<SignupResponse> {
   await delay(1500);
   
+  // [API 명세서] emailVerified는 true여야 함
+  if (!data.emailVerified) {
+    throw new Error('이메일 인증이 완료되지 않았습니다.');
+  }
+  
   // Check if email already exists
   const existingUser = mockUsers.find(u => u.email === data.email);
   if (existingUser) {
@@ -439,21 +459,24 @@ export async function checkEmailDuplicate(email: string): Promise<{ available: b
 }
 
 /**
- * POST /auth/send-verification-code
- * 비밀번호 찾기 - 인증 코드 발송 (5분 유효)
+ * POST /api/auth/password-reset/send-code
+ * 비밀번호 재설정 인증 코드 발송 (5분 유효)
  * 
- * [플로우 1.4] 비밀번호 찾기 전용
+ * [API 명세서 Section 2.3.1]
  * - 가입된 이메일인지 확인 필요
  * - 가입되지 않은 이메일: 에러
  * - **5분 유효 시간** (명세서 요구사항)
  * 
  * [백엔드 팀] 실제 구현 시:
+ * - POST /api/auth/password-reset/send-code
+ * - Request: { email }
+ * - Response: { success: true, data: { message: string, expiresIn: 300 } }
  * - 이메일 발송 서비스 연동 (AWS SES, SendGrid 등)
  * - 6자리 랜덤 숫자 코드 생성
  * - 코드와 만료 시간을 DB 또는 Redis에 저장
  * - 이메일 템플릿: "인증 코드: XXXXXX (5분 내 입력)"
  */
-export async function sendVerificationCode(data: VerificationCodeRequest): Promise<{ message: string; sentAt: number }> {
+export async function sendPasswordResetCode(data: VerificationCodeRequest): Promise<{ message: string; expiresIn: number }> {
   await delay(1000);
   
   // Check if email exists
@@ -477,27 +500,79 @@ export async function sendVerificationCode(data: VerificationCodeRequest): Promi
   console.log(`[Email Sent] To: ${data.email}, Code: ${code}`);
   
   return {
-    message: '인증 메일이 발송되었습니다. 스팸 메일함도 확인해주세요.',
-    sentAt,
+    message: '인증 코드가 발송되었습니다',
+    expiresIn: 300, // [API 명세서] 5분 = 300초
   };
 }
 
 /**
- * POST /auth/send-verification-code-for-signup
+ * POST /api/auth/password-reset/verify-code
+ * 비밀번호 재설정 인증 코드 확인
+ * 
+ * [API 명세서 Section 2.3.2]
+ * - 인증 코드 검증 후 resetToken 반환
+ * - resetToken은 비밀번호 재설정 시 사용
+ * 
+ * [백엔드 팀] 실제 구현 시:
+ * - POST /api/auth/password-reset/verify-code
+ * - Request: { email, code }
+ * - Response: { success: true, data: { verified: true, resetToken: string } }
+ */
+export async function verifyPasswordResetCode(data: VerifyPasswordResetCodeRequest): Promise<{ verified: boolean; resetToken: string }> {
+  await delay(800);
+  
+  const storedCode = verificationCodes[data.email];
+  
+  if (!storedCode) {
+    throw new Error('인증 코드가 만료되었거나 존재하지 않습니다. 재발송해주세요.');
+  }
+  
+  // Check expiration
+  if (Date.now() > storedCode.expiresAt) {
+    delete verificationCodes[data.email];
+    throw new Error('인증 시간이 만료되었습니다. 재발송해주세요.');
+  }
+  
+  // Check code match
+  if (storedCode.code !== data.code) {
+    throw new Error('인증 코드가 일치하지 않습니다. 다시 확인해주세요.');
+  }
+  
+  // Success - generate resetToken and delete code
+  const resetToken = `reset-token-${data.email}-${Date.now()}`;
+  delete verificationCodes[data.email];
+  
+  // Store resetToken temporarily (실제로는 백엔드에서 관리)
+  verificationCodes[`reset-${data.email}`] = {
+    code: resetToken,
+    expiresAt: Date.now() + 10 * 60 * 1000, // 10분 유효
+  };
+  
+  return {
+    verified: true,
+    resetToken,
+  };
+}
+
+/**
+ * POST /api/auth/send-verification-code
  * 회원가입 - 이메일 인증 코드 발송 (5분 유효)
  * 
- * [플로우 1.3] 회원가입 전용
+ * [API 명세서 Section 2.2.2]
  * - 이메일 중복 확인 완료 후 호출
  * - 이미 가입된 이메일: 에러
  * - **5분 유효 시간** (명세서 요구사항)
  * 
  * [백엔드 팀] 실제 구현 시:
+ * - POST /api/auth/send-verification-code
+ * - Request: { email }
+ * - Response: { success: true, data: { message: string, expiresIn: 300 } }
  * - 이메일 발송 서비스 연동
  * - 6자리 랜덤 숫자 코드 생성
  * - 코드와 만료 시간을 Redis에 저장 (TTL: 300초)
  * - 이메일 템플릿: "인증 코드: XXXXXX (5분 내 입력)"
  */
-export async function sendVerificationCodeForSignup(data: SignupVerificationCodeRequest): Promise<{ message: string; sentAt: number }> {
+export async function sendVerificationCodeForSignup(data: SignupVerificationCodeRequest): Promise<{ message: string; expiresIn: number }> {
   await delay(1000);
   
   // Check if email already exists
@@ -521,16 +596,17 @@ export async function sendVerificationCodeForSignup(data: SignupVerificationCode
   console.log(`[Signup Email Sent] To: ${data.email}, Code: ${code}`);
   
   return {
-    message: '인증 메일이 발송되었습니다. 스팸 메일함도 확인해주세요.',
-    sentAt,
+    message: '인증 코드가 발송되었습니다',
+    expiresIn: 300, // [API 명세서] 5분 = 300초
   };
 }
 
 /**
- * POST /auth/verify-code
- * 인증 코드 검증
+ * POST /api/auth/verify-code
+ * 회원가입 인증 코드 검증
  * 
- * [플로우 1.3, 1.4] 회원가입 및 비밀번호 찾기에서 사용
+ * [API 명세서 Section 2.2.3]
+ * - 회원가입 전용 인증 코드 검증
  * 
  * 동작:
  * 1. 이메일에 해당하는 인증 코드 조회
@@ -545,7 +621,7 @@ export async function sendVerificationCodeForSignup(data: SignupVerificationCode
  * [백엔드 팀] 실제 구현 시:
  * - POST /api/auth/verify-code
  * - Request: { email, code }
- * - Response: { success: boolean, message: string }
+ * - Response: { success: true, data: { verified: true, message: string } }
  * - Redis에서 코드 조회 및 검증
  * - 검증 성공 시 코드 삭제 (재사용 방지)
  * 
@@ -553,62 +629,75 @@ export async function sendVerificationCodeForSignup(data: SignupVerificationCode
  * - 테스트 코드: 123456 (항상 통과)
  * - ⚠️ 배포 전 삭제 필수
  */
-export async function verifyCode(email: string, code: string): Promise<{ message: string }> {
+export async function verifyCode(email: string, code: string): Promise<{ verified: boolean; message: string }> {
   await delay(800);
   
   // ⚠️ [임시 테스트 코드 - 배포 전 삭제 필수] ⚠️
   // UI 테스트를 위해 123456은 항상 통과시킴
   if (code === '123456') {
     console.log('[테스트 모드] 인증 코드 123456 입력 - 자동 통과');
-    return { message: '인증되었습니다.' };
+    return { verified: true, message: '이메일 인증이 완료되었습니다' };
   }
   // ⚠️ [여기까지 삭제] ⚠️
   
   const storedCode = verificationCodes[email];
   
   if (!storedCode) {
-    throw new Error('인증 코드가 만료되었거나 존재하지 않습니다. 재발송해주세요.');
+    throw new Error('인증 코드가 일치하지 않습니다');
   }
   
   // Check expiration
   if (Date.now() > storedCode.expiresAt) {
     delete verificationCodes[email];
-    throw new Error('인증 시간이 만료되었습니다. 재발송해주세요.');
+    throw new Error('인증 시간이 만료되었습니다. 재발송해주세요');
   }
   
   // Check code match
   if (storedCode.code !== code) {
-    throw new Error('인증 코드가 일치하지 않습니다. 다시 확인해주세요.');
+    throw new Error('인증 코드가 일치하지 않습니다');
   }
   
   // Success - delete code to prevent reuse
   delete verificationCodes[email];
   
   return {
-    message: '인증되었습니다.',
+    verified: true,
+    message: '이메일 인증이 완료되었습니다',
   };
 }
 
 /**
- * POST /auth/reset-password
+ * POST /api/auth/password-reset/reset
  * 비밀번호 재설정
  * 
- * [플로우 1.4: 비밀번호 찾기 플로우]
+ * [API 명세서 Section 2.3.3]
  * 
  * 동작:
- * 1. 인증 코드 재검증 (보안)
- * 2. 새 비밀번호 검증 (영문/숫자/특수문자 8자 이상)
- * 3. 비밀번호 업데이트
+ * 1. resetToken 검증
+ * 2. 새 비밀번호와 확인 비밀번호 일치 확인
+ * 3. 새 비밀번호 검증 (영문/숫자/특수문자 8자 이상)
+ * 4. 비밀번호 업데이트
  * 
  * [백엔드 팀] 실제 구현 시:
- * - POST /api/auth/reset-password
- * - Request: { email, code, newPassword }
- * - Response: { success: boolean, message: string }
+ * - POST /api/auth/password-reset/reset
+ * - Request: { email, resetToken, newPassword, confirmPassword }
+ * - Response: { success: true, data: { message: string } }
  * - 비밀번호는 bcrypt로 해시화하여 저장
- * - 인증 코드는 1회용 (사용 후 삭제)
+ * - resetToken은 1회용 (사용 후 삭제)
  */
 export async function resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
   await delay(1000);
+  
+  // 새 비밀번호 확인 검증
+  if (data.newPassword !== data.confirmPassword) {
+    throw new Error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+  }
+  
+  // resetToken 검증 (Mock)
+  const storedToken = verificationCodes[`reset-${data.email}`];
+  if (!storedToken || storedToken.code !== data.resetToken) {
+    throw new Error('유효하지 않은 재설정 토큰입니다.');
+  }
   
   // Find user
   const user = mockUsers.find(u => u.email === data.email);
@@ -619,10 +708,13 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
   // Update password (in real app, hash it first)
   user.password = data.newPassword;
   
+  // Delete resetToken
+  delete verificationCodes[`reset-${data.email}`];
+  
   console.log(`[Password Reset] Email: ${data.email}, New Password: ${data.newPassword}`);
   
   return {
-    message: '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.',
+    message: '비밀번호가 재설정되었습니다',
   };
 }
 

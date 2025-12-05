@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BookHeart, Mail, Lock, Loader2, Eye, EyeOff, KeyRound, CheckCircle2 } from 'lucide-react';
-import { sendVerificationCode, verifyCode, resetPassword } from '../../services/authApi';
+import { sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
 
 /**
  * ========================================
@@ -47,9 +47,9 @@ import { sendVerificationCode, verifyCode, resetPassword } from '../../services/
  * - 2초 후 자동으로 로그인 페이지로 이동
  * 
  * [백엔드 API 연동 필요]
- * - POST /api/auth/send-verification-code - 인증 코드 발송 (5분 유효)
- * - POST /api/auth/verify-code - 인증 코드 검증
- * - POST /api/auth/reset-password - 비밀번호 재설정
+ * - POST /api/auth/password-reset/send-code - 인증 코드 발송 (5분 유효)
+ * - POST /api/auth/password-reset/verify-code - 인증 코드 검증 (resetToken 반환)
+ * - POST /api/auth/password-reset/reset - 비밀번호 재설정
  * 
  * [UI 테스트용 Mock 기능]
  * - 테스트 계정: test@example.com, user@diary.com
@@ -113,6 +113,9 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   
   /** 인증 코드 발송 시각 (timestamp) */
   const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
+  
+  /** 비밀번호 재설정 토큰 (인증 코드 확인 후 받음) */
+  const [resetToken, setResetToken] = useState<string | null>(null);
   
   // ========== 입력 검증 에러 메시지 상태 ==========
   
@@ -192,9 +195,9 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setIsLoading(true);
     
     try {
-      const response = await sendVerificationCode({ email });
+      const response = await sendPasswordResetCode({ email });
       setSuccess(response.message);
-      setCodeSentAt(response.sentAt);
+      setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
       setTimeLeft(300); // Reset to 5 minutes
       setTimerActive(true);
       setCodeExpired(false);
@@ -221,9 +224,9 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setIsLoading(true);
     
     try {
-      const response = await sendVerificationCode({ email });
+      const response = await sendPasswordResetCode({ email });
       setSuccess(response.message);
-      setCodeSentAt(response.sentAt);
+      setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
       setTimeLeft(300); // Reset to 5 minutes
       setTimerActive(true);
       setCodeExpired(false);
@@ -296,8 +299,9 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setIsLoading(true);
     
     try {
-      const response = await verifyCode(email, code);
-      setSuccess(response.message);
+      const response = await verifyPasswordResetCode({ email, code });
+      setSuccess('인증이 완료되었습니다.');
+      setResetToken(response.resetToken); // [API 명세서] resetToken 저장
       setTimerActive(false);
       
       // Move to password step after 1 second
@@ -383,11 +387,17 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setIsLoading(true);
     
     try {
-      const code = verificationCode.join('');
+      if (!resetToken) {
+        setError('인증이 완료되지 않았습니다. 다시 시도해주세요.');
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await resetPassword({
         email,
-        code,
+        resetToken, // [API 명세서] verifyPasswordResetCode에서 받은 resetToken 사용
         newPassword,
+        confirmPassword, // [API 명세서] 새 비밀번호 확인 필드 추가
       });
       
       setSuccess(response.message);
