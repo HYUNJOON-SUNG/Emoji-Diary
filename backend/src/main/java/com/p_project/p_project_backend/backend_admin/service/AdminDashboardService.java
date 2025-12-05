@@ -72,15 +72,11 @@ public class AdminDashboardService {
             METRIC_DAU, METRIC_WAU, METRIC_MAU, METRIC_NEW_USERS, METRIC_RETENTION_RATE
     );
 
-    // ActiveUserType 상수
+    // ActiveUserType 상수 (기본값)
     private static final String ACTIVE_USER_TYPE_DAU = "dau";
-    private static final String ACTIVE_USER_TYPE_WAU = "wau";
-    private static final String ACTIVE_USER_TYPE_MAU = "mau";
 
-    // NewUserPeriod 상수
+    // NewUserPeriod 상수 (기본값)
     private static final String NEW_USER_PERIOD_DAILY = "daily";
-    private static final String NEW_USER_PERIOD_WEEKLY = "weekly";
-    private static final String NEW_USER_PERIOD_MONTHLY = "monthly";
 
     private final RiskDetectionSessionRepository riskDetectionSessionRepository;
     private final AdminDiaryRepository adminDiaryRepository;
