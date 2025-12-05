@@ -5,6 +5,7 @@ import com.p_project.p_project_backend.backend_user.dto.ai.AiServerRequest;
 import com.p_project.p_project_backend.backend_user.dto.ai.AiServiceResult;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiaryRequest;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiaryResponse;
+import com.p_project.p_project_backend.backend_user.dto.diary.DiarySummaryResponse;
 import com.p_project.p_project_backend.backend_user.repository.DiaryActivityRepository;
 import com.p_project.p_project_backend.backend_user.repository.DiaryImageRepository;
 import com.p_project.p_project_backend.backend_user.repository.DiaryRepository;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,20 +35,93 @@ public class DiaryService {
 
     @Transactional
     public DiaryResponse createDiary(User user, DiaryRequest request) {
-        // 1. AI 분석 요청
-        AiServerRequest aiRequest = buildAiRequest(user, request);
-        AiServiceResult aiResult = aiService.analyzeDiary(aiRequest);
-
-        // 2. Diary 엔티티 생성 및 저장
+        AiServiceResult aiResult = analyzeDiaryContent(user, request);
         Diary diary = buildDiaryEntity(user, request, aiResult);
         Diary savedDiary = diaryRepository.save(diary);
 
-        // 3. 활동 및 이미지 저장
-        saveActivities(savedDiary, request.getActivities());
-        saveImages(savedDiary, request.getImages());
+        saveDiaryContents(savedDiary, request.getActivities(), request.getImages());
 
-        // 4. 응답 반환
         return buildDiaryResponse(savedDiary, request);
+    }
+
+    @Transactional
+    public DiaryResponse updateDiary(User user, Long diaryId, DiaryRequest request) {
+        Diary diary = getOwnedDiary(user, diaryId);
+
+        AiServiceResult aiResult = analyzeDiaryContent(user, request);
+        updateDiaryEntity(diary, request, aiResult);
+
+        deleteDiaryContents(diary);
+        saveDiaryContents(diary, request.getActivities(), request.getImages());
+
+        return buildDiaryResponse(diary, request);
+    }
+
+    public DiaryResponse getDiary(User user, Long diaryId) {
+        Diary diary = getOwnedDiary(user, diaryId);
+        return buildDiaryResponse(diary, null);
+    }
+
+    public DiaryResponse getDiaryByDate(User user, LocalDate date) {
+        Diary diary = diaryRepository.findByUserAndDate(user, date)
+                .orElseThrow(() -> new IllegalArgumentException("Diary not found for date: " + date));
+        return buildDiaryResponse(diary, null);
+    }
+
+    public List<DiarySummaryResponse> getMonthlyDiaries(User user, int year, int month) {
+        LocalDate startDate = LocalDate.of(year, month, 1);
+        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+
+        return diaryRepository.findByUserAndDateBetween(user, startDate, endDate).stream()
+                .map(this::buildDiarySummaryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteDiary(User user, Long diaryId) {
+        Diary diary = getOwnedDiary(user, diaryId);
+        deleteDiaryContents(diary);
+        diaryRepository.delete(diary);
+    }
+
+    // --- Helper Methods ---
+
+    private Diary getOwnedDiary(User user, Long diaryId) {
+        Diary diary = diaryRepository.findById(diaryId)
+                .orElseThrow(() -> new IllegalArgumentException("Diary not found"));
+
+        if (!diary.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("Unauthorized access");
+        }
+        return diary;
+    }
+
+    private AiServiceResult analyzeDiaryContent(User user, DiaryRequest request) {
+        AiServerRequest aiRequest = buildAiRequest(user, request);
+        return aiService.analyzeDiary(aiRequest);
+    }
+
+    private void updateDiaryEntity(Diary diary, DiaryRequest request, AiServiceResult aiResult) {
+        diary.setDate(request.getDate());
+        diary.setTitle(request.getTitle());
+        diary.setContent(request.getContent());
+        diary.setMood(request.getMood());
+        diary.setWeather(request.getWeather());
+        diary.setEmotion(Diary.Emotion.valueOf(aiResult.getEmotion()));
+        diary.setAiComment(aiResult.getAiComment());
+        diary.setRecommendedFood(convertToJson(aiResult.getRecommendedFood()));
+        diary.setImageUrl(aiResult.getImageUrl());
+        diary.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private void saveDiaryContents(Diary diary, List<String> activities, List<String> images) {
+        saveActivities(diary, activities);
+        saveImages(diary, images);
+    }
+
+    private void deleteDiaryContents(Diary diary) {
+        diaryActivityRepository.deleteAll(diaryActivityRepository.findAllByDiary(diary));
+        diaryImageRepository.deleteAll(diaryImageRepository.findAllByDiary(diary));
     }
 
     private AiServerRequest buildAiRequest(User user, DiaryRequest request) {
@@ -80,6 +155,21 @@ public class DiaryService {
     }
 
     private DiaryResponse buildDiaryResponse(Diary savedDiary, DiaryRequest request) {
+        List<String> activities;
+        List<String> images;
+
+        if (request != null) {
+            activities = request.getActivities() != null ? request.getActivities() : java.util.Collections.emptyList();
+            images = request.getImages() != null ? request.getImages() : java.util.Collections.emptyList();
+        } else {
+            activities = diaryActivityRepository.findAllByDiary(savedDiary).stream()
+                    .map(DiaryActivity::getActivity)
+                    .collect(Collectors.toList());
+            images = diaryImageRepository.findAllByDiary(savedDiary).stream()
+                    .map(DiaryImage::getImageUrl)
+                    .collect(Collectors.toList());
+        }
+
         return DiaryResponse.builder()
                 .id(savedDiary.getId())
                 .date(savedDiary.getDate())
@@ -88,9 +178,8 @@ public class DiaryService {
                 .emotion(savedDiary.getEmotion().name())
                 .mood(savedDiary.getMood())
                 .weather(savedDiary.getWeather() != null ? savedDiary.getWeather().name() : null)
-                .activities(
-                        request.getActivities() != null ? request.getActivities() : java.util.Collections.emptyList())
-                .images(request.getImages() != null ? request.getImages() : java.util.Collections.emptyList())
+                .activities(activities)
+                .images(images)
                 .imageUrl(savedDiary.getImageUrl())
                 .aiComment(savedDiary.getAiComment())
                 .recommendedFood(savedDiary.getRecommendedFood())
@@ -99,41 +188,45 @@ public class DiaryService {
                 .build();
     }
 
+    private DiarySummaryResponse buildDiarySummaryResponse(Diary diary) {
+        return DiarySummaryResponse.builder()
+                .id(diary.getId())
+                .date(diary.getDate())
+                .emotion(diary.getEmotion().name())
+                .build();
+    }
+
     private void saveActivities(Diary diary, List<String> activities) {
         if (activities == null || activities.isEmpty())
             return;
-
-        List<DiaryActivity> activityEntities = activities.stream()
+        List<DiaryActivity> entities = activities.stream()
                 .map(activity -> DiaryActivity.builder()
                         .diary(diary)
                         .activity(activity)
                         .createdAt(LocalDateTime.now())
                         .build())
                 .collect(Collectors.toList());
-
-        diaryActivityRepository.saveAll(activityEntities);
+        diaryActivityRepository.saveAll(entities);
     }
 
     private void saveImages(Diary diary, List<String> images) {
         if (images == null || images.isEmpty())
             return;
-
-        List<DiaryImage> imageEntities = images.stream()
+        List<DiaryImage> entities = images.stream()
                 .map(imageUrl -> DiaryImage.builder()
                         .diary(diary)
                         .imageUrl(imageUrl)
                         .createdAt(LocalDateTime.now())
                         .build())
                 .collect(Collectors.toList());
-
-        diaryImageRepository.saveAll(imageEntities);
+        diaryImageRepository.saveAll(entities);
     }
 
     private String convertToJson(List<String> list) {
         try {
             return objectMapper.writeValueAsString(list);
         } catch (Exception e) {
-            return "[]"; // 에러 시 빈 배열 반환
+            return "[]";
         }
     }
 }
