@@ -1,6 +1,6 @@
 package com.p_project.p_project_backend.backend_user.dto.diary;
 
-import com.p_project.p_project_backend.entity.Diary;
+import com.p_project.p_project_backend.entity.Diary.Weather;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -26,7 +26,7 @@ public class DiaryRequest {
 
     private String mood; // "행복, 평온" (자유 텍스트)
 
-    private Diary.Weather weather; // ENUM
+    private Weather weather; // ENUM
 
     private List<String> activities; // ["운동", "독서"]
 

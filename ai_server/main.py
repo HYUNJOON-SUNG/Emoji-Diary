@@ -35,7 +35,7 @@ def analyze_diary(data: dict):
 
     return {
         "aiComment": "ai가 생성할 코멘트",
-        "emotion": "JOY",
+        "emotion": "행복",
         "recommendedFood": ["ai가 추천할 음식", "추천하는 이유"],
         "image": encoded_string
     }
