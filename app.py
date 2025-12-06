@@ -9,18 +9,21 @@ import base64
 import os
 from pathlib import Path
 import uvicorn
+import json
 
 project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+current_dir = Path(__file__).parent
 
-from server.middleware.anaysis_emotion import (
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(current_dir))
+
+from middleware.anaysis_emotion import (
     load_trained_model,
     predict_emotion,
     initialize_tokenizer_and_vocab
 )
-from server.middleware.nano_banana import nano_banana
-from server.middleware.feedback import generate_feedback
-import json
+from middleware.nano_banana import nano_banana
+from middleware.feedback import generate_feedback
 
 emotion_model = None
 tokenizer = None
@@ -50,9 +53,9 @@ async def lifespan(app: FastAPI):
     if model_path and model_path.exists():
         tokenizer, vocab = initialize_tokenizer_and_vocab()
         emotion_model = load_trained_model(str(model_path))
-        print(f"✓ 감정 분석 모델 로드 완료: {model_path}")
+        print(f"감정 분석 모델 로드 완료: {model_path}")
     else:
-        print(f"⚠ 모델 파일을 찾을 수 없습니다. 다음 경로를 확인했습니다:")
+        print(f"모델 파일을 찾을 수 없습니다. 다음 경로를 확인했습니다:")
         for path in possible_paths:
             print(f"  - {path} (존재: {path.exists()})")
     
@@ -121,7 +124,7 @@ async def ai_analyze(request: AiServerRequest):
         )
         
         ai_comment = ""
-        recommended_food = []
+        recommended_food = {"name": "", "reason": ""}
         
         try:
             persona_str = request.persona.value.replace("_", " ")
@@ -155,19 +158,19 @@ async def ai_analyze(request: AiServerRequest):
                             parts = food_recommendation.split(':', 1)  
                             food_name = parts[0].strip()
                             reason = parts[1].strip() if len(parts) > 1 else ""
-                            recommended_food = [food_name, reason]
+                            recommended_food = {"name": food_name, "reason": reason}
                         elif '.' in food_recommendation:
                             parts = [p.strip() for p in food_recommendation.split('.') if p.strip()]
                             if len(parts) >= 2:
                                 food_name = parts[0].strip()
                                 reason = '. '.join(parts[1:]).strip()
-                                recommended_food = [food_name, reason]
+                                recommended_food = {"name": food_name, "reason": reason}
                             else:
-                                recommended_food = [parts[0].strip(), ""]
+                                recommended_food = {"name": parts[0].strip(), "reason": ""}
                         else:
-                            recommended_food = [food_recommendation.strip(), ""]
+                            recommended_food = {"name": food_recommendation.strip(), "reason": ""}
                     else:
-                        recommended_food = ["", ""]
+                        recommended_food = {"name": "", "reason": ""}
                 except json.JSONDecodeError:
                     ai_comment = feedback_text
         except Exception as fb_e:
@@ -184,8 +187,8 @@ async def ai_analyze(request: AiServerRequest):
             print(f"이미지 생성 중 오류: {str(img_e)}")
         
         response_data = {
-            "aiComment": ai_comment,
             "emotion": emotion,
+            "aiComment": ai_comment,
             "recommendedFood": recommended_food,
             "image": generated_image_base64 if generated_image_base64 else None
         }
