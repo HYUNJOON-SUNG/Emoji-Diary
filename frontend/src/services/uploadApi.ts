@@ -116,7 +116,32 @@ export async function uploadImage(data: UploadImageRequest): Promise<UploadImage
     throw new Error('파일 크기가 너무 큽니다. 10MB 이하의 파일만 업로드 가능합니다.');
   }
   
-  // [백엔드 팀] 실제 구현 시:
+  // [백엔드 팀] 실제 구현 시 (axios 사용):
+  // import { apiClient } from './api';
+  // 
+  // const formData = new FormData();
+  // formData.append('image', data.image);
+  // 
+  // try {
+  //   const response = await apiClient.post('/upload/image', formData, {
+  //     headers: {
+  //       'Content-Type': 'multipart/form-data',
+  //     },
+  //   });
+  //   
+  //   if (response.data.success) {
+  //     return { imageUrl: response.data.data.imageUrl };
+  //   } else {
+  //     throw new Error(response.data.error?.message || '이미지 업로드에 실패했습니다.');
+  //   }
+  // } catch (error: any) {
+  //   if (error.response?.status === 413) {
+  //     throw new Error('파일 크기가 너무 큽니다.');
+  //   }
+  //   throw error;
+  // }
+  
+  // [백엔드 팀] 실제 구현 시 (fetch 사용):
   // const token = TokenStorage.getAccessToken();
   // const formData = new FormData();
   // formData.append('image', data.image);

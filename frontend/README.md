@@ -13,15 +13,23 @@
 
   ### API 명세서 반영 (2025-01-XX)
   - **User 인터페이스**: `persona` 필드 추가 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
-  - **페르소나 설정 API**: `PUT /api/users/me/persona` 함수 구현
-  - **토큰 재발급 API**: `POST /api/auth/refresh` 함수 구현 (엔드포인트 및 요청/응답 형식 수정)
-  - **비밀번호 재설정 API**: `POST /api/auth/password-reset/send-code`, `verify-code`, `reset` 함수 구현
-  - **사용자 정보 API**: `GET /api/users/me`, `PUT /api/users/me/persona`, `PUT /api/users/me/password`, `DELETE /api/users/me` 함수 구현
-  - **이미지 업로드/삭제 API**: `POST/DELETE /api/upload/image` 함수 구현
-  - **통계 API**: `GET /api/statistics/emotions`, `GET /api/statistics/emotion-trend` 함수 구현
-  - **위험 신호 감지 API**: 점수 기반 분석으로 변경, `GET /api/risk-detection/analyze`, `GET /api/risk-detection/session-status`, `POST /api/risk-detection/mark-shown` 함수 구현
-  - **공지사항 API**: `GET /api/notices`, `GET /api/notices/{noticeId}` 함수 구현 (엔드포인트 및 인터페이스 수정)
-  - **상담 기관 리소스 API**: `GET /api/counseling-resources` 함수 구현 (신규 추가)
+  - **인증 API**: 모든 엔드포인트 주석에 API 명세서 Section 번호 추가 및 엔드포인트 경로 명확화
+    - 로그인 (Section 2.1), 이메일 중복 확인 (Section 2.2.1), 이메일 인증 코드 발송/확인 (Section 2.2.2-2.2.3)
+    - 회원가입 (Section 2.2.4), 비밀번호 재설정 (Section 2.3.1-2.3.3), 토큰 재발급 (Section 2.4)
+  - **사용자 API**: 엔드포인트 주석 수정
+    - 프로필 수정: `/api/auth/profile` → `/api/users/me/profile`
+    - 알림 설정: `/api/auth/notification` → `/api/users/me/notification`
+    - 계정 탈퇴: `/api/auth/account` → `/api/users/me` (Section 3.4)
+    - 사용자 정보 조회 (Section 3.1), 페르소나 설정 (Section 3.2), 비밀번호 변경 (Section 3.3)
+  - **일기 API**: 모든 엔드포인트 주석에 API 명세서 Section 번호 추가
+    - 일기 작성 (Section 4.1), 일기 수정 (Section 4.2), 일기 조회 (Section 4.3-4.4)
+    - 캘린더 조회 (Section 4.5), 일기 삭제 (Section 4.6), 일기 검색 (Section 5.1)
+  - **통계 API**: `GET /api/statistics/emotions` (Section 5.2.1), `GET /api/statistics/emotion-trend` (Section 5.2.2)
+  - **위험 신호 감지 API**: 점수 기반 분석으로 변경
+    - 위험 신호 분석 (Section 6.1), 세션 확인 (Section 6.2), 표시 완료 기록 (Section 6.3)
+  - **공지사항 API**: `GET /api/notices` (Section 7.1), `GET /api/notices/{noticeId}` (Section 7.2)
+  - **상담 기관 리소스 API**: `GET /api/counseling-resources` (Section 8.1, 신규 추가)
+  - **파일 업로드 API**: `POST /api/upload/image` (Section 9.1), `DELETE /api/upload/image` (Section 9.2)
   - **일기 검색 API**: `emotions` 파라미터로 변경 (한글 감정명 콤마 구분)
   - **회원가입**: `persona` 필드 추가 (선택, 기본값: "베프")
   - **비밀번호 변경**: `confirmPassword` 필드 추가
@@ -98,6 +106,29 @@
     - `src/services/uploadApi.ts` - 이미지 업로드/삭제 API 함수
     - `images` 필드로 서버에 전송 (API 명세서: `userImageUrls` → `images`)
 
+  ## Axios 설정 (2025-01-XX)
+  
+  ### Axios 인스턴스 구성
+  - **파일**: `src/services/api.ts`
+  - **사용자 API 클라이언트**: `apiClient`
+    - Base URL: `http://localhost:8080/api` (환경 변수로 설정 가능)
+    - JWT 토큰 자동 추가 (Request Interceptor)
+    - 401 에러 시 토큰 재발급 시도 (Response Interceptor)
+    - 타임아웃: 30초
+  - **관리자 API 클라이언트**: `adminApiClient`
+    - Base URL: `http://localhost:8080/api/admin`
+    - 관리자 JWT 토큰 자동 추가
+    - 401 에러 시 관리자 로그인 페이지로 리다이렉트
+  
+  ### 사용 방법
+  - **현재 상태**: Mock 기능 사용 중, axios 인스턴스는 주석 처리됨
+  - **백엔드 연동 시**: 각 서비스 파일에서 `apiClient` 또는 `adminApiClient` import하여 사용
+  - **예시**: `authApi.ts`, `diaryApi.ts`, `uploadApi.ts`에 axios 사용 예시 주석 추가됨
+  
+  ### 환경 변수 설정
+  - `.env` 파일에 `VITE_API_BASE_URL` 설정 가능
+  - 기본값: `http://localhost:8080/api`
+
   ## 코드 구조 개선 (2025-01-XX)
 
   ### 폴더 구조 정리
@@ -164,39 +195,51 @@
   ## 백엔드 연동 필요 사항
 
   ### 인증 API
-  - **로그인**: `POST /api/auth/login`
-  - **회원가입**: `POST /api/auth/register` (persona 필드 포함)
-  - **토큰 재발급**: `POST /api/auth/refresh`
-  - **사용자 정보 조회**: `GET /api/users/me`
-  - **페르소나 설정**: `PUT /api/users/me/persona`
-  - **비밀번호 변경**: `PUT /api/users/me/password` (confirmPassword 포함)
+  - **로그인**: `POST /api/auth/login` (API 명세서 Section 2.1)
+  - **이메일 중복 확인**: `POST /api/auth/check-email` (API 명세서 Section 2.2.1)
+  - **이메일 인증 코드 발송**: `POST /api/auth/send-verification-code` (API 명세서 Section 2.2.2)
+  - **이메일 인증 코드 확인**: `POST /api/auth/verify-code` (API 명세서 Section 2.2.3)
+  - **회원가입**: `POST /api/auth/register` (API 명세서 Section 2.2.4, persona 필드 포함)
+  - **비밀번호 재설정 코드 발송**: `POST /api/auth/password-reset/send-code` (API 명세서 Section 2.3.1)
+  - **비밀번호 재설정 코드 확인**: `POST /api/auth/password-reset/verify-code` (API 명세서 Section 2.3.2)
+  - **비밀번호 재설정**: `POST /api/auth/password-reset/reset` (API 명세서 Section 2.3.3)
+  - **토큰 재발급**: `POST /api/auth/refresh` (API 명세서 Section 2.4)
+  
+  ### 사용자 API
+  - **사용자 정보 조회**: `GET /api/users/me` (API 명세서 Section 3.1)
+  - **프로필 수정**: `PUT /api/users/me/profile` (API 명세서 Section 3.1 참고)
+  - **페르소나 설정**: `PUT /api/users/me/persona` (API 명세서 Section 3.2)
+  - **비밀번호 변경**: `PUT /api/users/me/password` (API 명세서 Section 3.3, confirmPassword 포함)
+  - **계정 탈퇴**: `DELETE /api/users/me` (API 명세서 Section 3.4)
 
   ### 일기 API
-  - **일기 작성**: `POST /api/diaries` (content, images 필드 사용)
-  - **일기 수정**: `PUT /api/diaries/{diaryId}` (emotion 필드 제거, KoBERT 자동 분석)
-  - **일기 조회**: `GET /api/diaries/date/{date}`
-  - **캘린더 조회**: `GET /api/diaries/calendar`
-  - **일기 검색**: `GET /api/diaries/search` (emotions 파라미터: 한글 감정명 콤마 구분, 예: "행복,중립,슬픔")
+  - **일기 작성**: `POST /api/diaries` (API 명세서 Section 4.1, content, images 필드 사용, emotion 필드 제거)
+  - **일기 수정**: `PUT /api/diaries/{diaryId}` (API 명세서 Section 4.2, emotion 필드 제거, KoBERT 자동 분석)
+  - **일기 조회 (단일)**: `GET /api/diaries/{diaryId}` (API 명세서 Section 4.3)
+  - **일기 조회 (날짜 기준)**: `GET /api/diaries/date/{date}` (API 명세서 Section 4.4)
+  - **캘린더 월별 조회**: `GET /api/diaries/calendar` (API 명세서 Section 4.5)
+  - **일기 삭제**: `DELETE /api/diaries/{diaryId}` (API 명세서 Section 4.6)
+  - **일기 검색**: `GET /api/diaries/search` (API 명세서 Section 5.1, emotions 파라미터: 한글 감정명 콤마 구분, 예: "행복,중립,슬픔")
 
   ### 통계 API
-  - **감정 통계**: `GET /api/statistics/emotions` (period, year, month, week)
-  - **감정 변화 추이**: `GET /api/statistics/emotion-trend` (period, year, month)
+  - **감정 통계**: `GET /api/statistics/emotions` (API 명세서 Section 5.2.1, period, year, month, week)
+  - **감정 변화 추이**: `GET /api/statistics/emotion-trend` (API 명세서 Section 5.2.2, period, year, month)
 
   ### 위험 신호 감지 API
-  - **위험 신호 분석**: `GET /api/risk-detection/analyze` (점수 기반 분석: 연속 부정 감정 점수, 모니터링 기간 내 총 점수)
-  - **세션 확인**: `GET /api/risk-detection/session-status`
-  - **표시 완료 기록**: `POST /api/risk-detection/mark-shown`
+  - **위험 신호 분석**: `GET /api/risk-detection/analyze` (API 명세서 Section 6.1, 점수 기반 분석: 연속 부정 감정 점수, 모니터링 기간 내 총 점수)
+  - **세션 확인**: `GET /api/risk-detection/session-status` (API 명세서 Section 6.2)
+  - **표시 완료 기록**: `POST /api/risk-detection/mark-shown` (API 명세서 Section 6.3)
 
   ### 공지사항 API
-  - **공지사항 목록 조회**: `GET /api/notices` (page, limit 파라미터)
-  - **공지사항 상세 조회**: `GET /api/notices/{noticeId}` (조회 시 views 자동 증가)
+  - **공지사항 목록 조회**: `GET /api/notices` (API 명세서 Section 7.1, page, limit 파라미터)
+  - **공지사항 상세 조회**: `GET /api/notices/{noticeId}` (API 명세서 Section 7.2, 조회 시 views 자동 증가)
 
   ### 상담 기관 리소스 API
-  - **상담 기관 목록 조회**: `GET /api/counseling-resources` (category 파라미터: all, 긴급상담, 전문상담, 상담전화, 의료기관)
+  - **상담 기관 목록 조회**: `GET /api/counseling-resources` (API 명세서 Section 8.1, category 파라미터: all, 긴급상담, 전문상담, 상담전화, 의료기관)
 
   ### 파일 업로드 API
-  - **이미지 업로드**: `POST /api/upload/image` (multipart/form-data)
-  - **이미지 삭제**: `DELETE /api/upload/image`
+  - **이미지 업로드**: `POST /api/upload/image` (API 명세서 Section 9.1, multipart/form-data)
+  - **이미지 삭제**: `DELETE /api/upload/image` (API 명세서 Section 9.2)
 
   ### KoBERT 감정 분석 (백엔드 내부 처리)
   - 일기 본문(`content`)만 분석하여 7가지 감정 중 하나로 분류
@@ -432,6 +475,7 @@
   │           ├── metric-card.tsx         # 통계 카드 컴포넌트
   │           └── weekly-diary-chart.tsx  # 일지 작성 추이 차트
   ├── services/
+  │   ├── api.ts                         # Axios 인스턴스 설정 (백엔드 연동 시 사용)
   │   ├── authApi.ts                     # 인증 API (로그인, 회원가입, 페르소나, 토큰 재발급, 비밀번호 재설정)
   │   ├── diaryApi.ts                    # 일기 API 클라이언트
   │   ├── uploadApi.ts                   # 이미지 업로드/삭제 API

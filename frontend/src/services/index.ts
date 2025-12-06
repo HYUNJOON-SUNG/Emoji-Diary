@@ -9,6 +9,9 @@
  * import { login, getDiaries, analyzeEmotions } from '@/services';
  */
 
+// ========== Axios 인스턴스 ==========
+export { apiClient, adminApiClient } from './api';
+
 // ========== 인증 API (Auth API) ==========
 export * from './authApi';
 
