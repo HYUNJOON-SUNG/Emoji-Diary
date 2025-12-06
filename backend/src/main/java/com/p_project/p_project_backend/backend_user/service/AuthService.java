@@ -279,6 +279,7 @@ public class AuthService {
                 .emailVerified(true)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .gender(request.getGender())
                 .build();
     }
 

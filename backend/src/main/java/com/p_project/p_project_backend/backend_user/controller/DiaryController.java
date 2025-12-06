@@ -50,10 +50,10 @@ public class DiaryController {
                 return ResponseEntity.ok(diaryService.getDiary(user, diaryId));
         }
 
-        @GetMapping
+        @GetMapping("/date/{date}")
         public ResponseEntity<DiaryResponse> getDiaryByDate(
                         @AuthenticationPrincipal UserDetails userDetails,
-                        @RequestParam("date") String dateStr) {
+                        @PathVariable("date") String dateStr) {
                 User user = getUser(userDetails);
                 LocalDate date = LocalDate.parse(dateStr);
                 return ResponseEntity.ok(diaryService.getDiaryByDate(user, date));

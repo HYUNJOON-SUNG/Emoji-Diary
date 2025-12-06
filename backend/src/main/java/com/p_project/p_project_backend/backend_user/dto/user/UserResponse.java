@@ -20,12 +20,15 @@ public class UserResponse {
     private User.Persona persona;
     private LocalDateTime createdAt;
 
+    private User.Gender gender;
+
     public static UserResponse from(User user) {
         return UserResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .persona(user.getPersona())
+                .gender(user.getGender())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

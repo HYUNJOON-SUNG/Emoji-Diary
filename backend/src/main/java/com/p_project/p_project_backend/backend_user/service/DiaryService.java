@@ -147,14 +147,10 @@ public class DiaryService {
 
     private AiServerRequest buildAiRequest(User user, DiaryRequest request) {
         return AiServerRequest.builder()
-                .date(request.getDate())
-                .title(request.getTitle())
                 .content(request.getContent())
-                .mood(request.getMood())
                 .weather(request.getWeather())
-                .activities(request.getActivities())
-                .images(request.getImages())
                 .persona(user.getPersona())
+                .gender(user.getGender())
                 .build();
     }
 
@@ -243,11 +239,11 @@ public class DiaryService {
         diaryImageRepository.saveAll(entities);
     }
 
-    private String convertToJson(List<String> list) {
+    private String convertToJson(Object object) {
         try {
-            return objectMapper.writeValueAsString(list);
+            return objectMapper.writeValueAsString(object);
         } catch (Exception e) {
-            return "[]";
+            return "{}";
         }
     }
 

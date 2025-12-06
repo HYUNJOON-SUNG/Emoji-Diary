@@ -16,6 +16,6 @@ import java.util.List;
 public class AiServiceResult {
     private String aiComment;
     private String emotion;
-    private List<String> recommendedFood;
+    private RecommendedFood recommendedFood;
     private String imageUrl; // Saved image URL
 }

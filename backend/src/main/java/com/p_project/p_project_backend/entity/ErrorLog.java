@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "error_logs", indexes = {
         @Index(name = "idx_error_logs_level", columnList = "level"),
-        @Index(name = "idx_error_logs_created_at", columnList = "created_at"),
+        @Index(name = "idx_error_logs_created_at", columnList = "created_at DESC"),
         @Index(name = "idx_error_logs_user_id", columnList = "user_id"),
         @Index(name = "idx_error_logs_admin_id", columnList = "admin_id"),
         @Index(name = "idx_error_logs_endpoint", columnList = "endpoint")
