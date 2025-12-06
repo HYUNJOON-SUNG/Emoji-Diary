@@ -34,6 +34,12 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255) // null 불가
     private String passwordHash;
 
+    // 성별 (gender)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", nullable = false)
+    @Builder.Default
+    private Gender gender = Gender.MALE;
+
     // 페르소나 (persona)
     @Enumerated(EnumType.STRING)
     @Column(name = "persona")
@@ -59,5 +65,9 @@ public class User {
 
     public enum Persona {
         BEST_FRIEND, PARENTS, EXPERT, MENTOR, COUNSELOR, POET
+    }
+
+    public enum Gender {
+        MALE, FEMALE
     }
 }
