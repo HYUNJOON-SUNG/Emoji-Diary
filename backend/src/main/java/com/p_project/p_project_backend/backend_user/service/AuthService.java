@@ -7,11 +7,15 @@ import com.p_project.p_project_backend.entity.*;
 import com.p_project.p_project_backend.repository.*;
 import com.p_project.p_project_backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -27,14 +31,26 @@ public class AuthService {
     private final PasswordResetCodeRepository passwordResetCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
+        // Authenticate using AuthenticationManager
+        // This will call CustomUserDetailsService.loadUserByUsername internally
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+
+        // If authentication is successful, we can get the user details
+        // We still need the User entity for ID and other details to create tokens
+        // mostly
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid password");
+        // No need to check password or deletedAt here,
+        // AuthenticationManager/CustomUserDetailsService did it.
+        // Double check deletedAt just in case (though CDS checks it)
+        if (user.getDeletedAt() != null) {
+            throw new RuntimeException("User account is deleted");
         }
 
         String accessToken = tokenProvider.createAccessToken(user.getEmail());
@@ -59,7 +75,8 @@ public class AuthService {
     @Transactional(readOnly = true)
     public boolean checkEmailAvailability(String email) {
         // User와 Admin 모두 확인하여 중복 방지
-        boolean userExists = userRepository.existsByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        boolean userExists = userOpt.isPresent() && userOpt.get().getDeletedAt() == null;
         boolean adminExists = adminRepository.existsByEmail(email);
         return !userExists && !adminExists;
     }
@@ -108,8 +125,18 @@ public class AuthService {
 
     @Transactional
     public TokenResponse register(SignUpRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already exists");
+        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+
+        if (existingUser.isPresent()) {
+            if (existingUser.get().getDeletedAt() == null) {
+                throw new RuntimeException("Email already exists");
+            } else {
+                // Hard delete existing soft-deleted user (Cascade will delete diaries)
+                emailVerificationCodeRepository.deleteByEmail(request.getEmail());
+                passwordResetCodeRepository.deleteByEmail(request.getEmail());
+                userRepository.delete(existingUser.get());
+                userRepository.flush();
+            }
         }
 
         if (!request.getEmailVerified()) {

@@ -2,6 +2,9 @@ package com.p_project.p_project_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -45,6 +48,7 @@ public class ErrorLog {
     // 사용자 ID (user_id) - FK (NULL 가능)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     // 관리자 ID (admin_id) - FK (NULL 가능)
