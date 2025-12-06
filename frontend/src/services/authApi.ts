@@ -285,9 +285,10 @@ export interface ResetPasswordRequest {
 // ========== API 함수들 ==========
 
 /**
- * POST /auth/login
+ * POST /api/auth/login
  * 로그인
  * 
+ * [API 명세서 Section 2.1]
  * [플로우 1.2: 로그인 플로우]
  * 
  * 동작:
@@ -303,10 +304,38 @@ export interface ResetPasswordRequest {
  * - 계정 없음 → "이메일 또는 비밀번호가 일치하지 않습니다"
  * - 비밀번호 불일치 → "이메일 또는 비밀번호가 일치하지 않습니다"
  * 
- * [백엔드 팀] 실제 구현 시:
+ * [백엔드 팀] 실제 구현 시 (axios 사용):
+ * ```typescript
+ * import { apiClient } from './api';
+ * 
+ * export async function login(data: LoginRequest): Promise<LoginResponse> {
+ *   try {
+ *     const response = await apiClient.post('/auth/login', {
+ *       email: data.email,
+ *       password: data.password,
+ *     });
+ *     
+ *     if (response.data.success) {
+ *       const { accessToken, refreshToken, user } = response.data.data;
+ *       TokenStorage.setTokens(accessToken, refreshToken);
+ *       localStorage.setItem('user', JSON.stringify(user));
+ *       return { accessToken, refreshToken, user };
+ *     } else {
+ *       throw new Error(response.data.error?.message || '로그인에 실패했습니다.');
+ *     }
+ *   } catch (error: any) {
+ *     if (error.response?.status === 401) {
+ *       throw new Error('이메일 또는 비밀번호가 일치하지 않습니다.');
+ *     }
+ *     throw error;
+ *   }
+ * }
+ * ```
+ * 
+ * [백엔드 팀] 실제 구현 시 (fetch 사용):
  * - POST /api/auth/login
  * - Request: { email, password }
- * - Response: { accessToken, refreshToken, user }
+ * - Response: { success: true, data: { accessToken, refreshToken, user } }
  * - 비밀번호는 bcrypt.compare()로 검증
  * - JWT는 jsonwebtoken 라이브러리로 생성
  */
@@ -339,9 +368,10 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
 }
 
 /**
- * POST /auth/signup
+ * POST /api/auth/register
  * 회원가입
  * 
+ * [API 명세서 Section 2.2.4]
  * [플로우 1.3: 회원가입 플로우]
  * 
  * 동작:
@@ -361,9 +391,9 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
  * - 약관 미동의 → "필수 약관에 동의해주세요"
  * 
  * [백엔드 팀] 실제 구현 시:
- * - POST /api/auth/signup
- * - Request: { email, password, name, verificationCode, termsAccepted }
- * - Response: { accessToken, refreshToken, user }
+ * - POST /api/auth/register
+ * - Request: { name, email, password, emailVerified, persona? }
+ * - Response: { success: true, data: { accessToken, refreshToken, user } }
  * - 비밀번호는 bcrypt로 해시화
  * - 사용자 정보는 users 테이블에 저장
  * - 약관 동의 이력은 user_terms 테이블에 저장
@@ -426,9 +456,10 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
 }
 
 /**
- * POST /auth/check-email
+ * POST /api/auth/check-email
  * 이메일 중복 확인
  * 
+ * [API 명세서 Section 2.2.1]
  * [플로우 1.3: 회원가입 플로우]
  * 
  * 동작:
@@ -438,7 +469,8 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
  * [백엔드 팀] 실제 구현 시:
  * - POST /api/auth/check-email
  * - Request: { email }
- * - Response: { available: boolean, message: string }
+ * - Response: { success: true, data: { available: boolean, message: string } }
+ * - 중복 시: { success: false, error: { code: "EMAIL_ALREADY_EXISTS", message: "이미 가입된 이메일입니다" } }
  */
 export async function checkEmailDuplicate(email: string): Promise<{ available: boolean; message: string }> {
   await delay(500);
@@ -719,7 +751,7 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
 }
 
 /**
- * POST /auth/refresh
+ * POST /api/auth/refresh
  * 토큰 재발급
  * 
  * [API 명세서 Section 2.4]
@@ -858,9 +890,10 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
 }
 
 /**
- * PUT /auth/profile
+ * PUT /users/me/profile
  * 프로필 수정 (닉네임)
  * 
+ * [API 명세서 Section 3.1 - 사용자 정보 조회 참고]
  * [플로우 9: 마이페이지 - 프로필 관리]
  * 
  * 동작:
@@ -869,10 +902,10 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
  * 3. localStorage 동기화
  * 
  * [백엔드 팀] 실제 구현 시:
- * - PUT /api/auth/profile
+ * - PUT /api/users/me/profile
  * - Headers: { Authorization: 'Bearer {accessToken}' }
  * - Request: { name }
- * - Response: { success: boolean, user }
+ * - Response: { success: true, data: { message: string, user } }
  */
 export async function updateProfile(data: { name: string }): Promise<{ message: string; user: User }> {
   await delay(800);
@@ -960,9 +993,10 @@ export async function updatePassword(data: {
 }
 
 /**
- * PUT /auth/notification
+ * PUT /users/me/notification
  * 알림 설정 변경
  * 
+ * [API 명세서 - 사용자 API 참고]
  * [플로우 9: 마이페이지 - 알림 설정]
  * 
  * 동작:
@@ -971,10 +1005,10 @@ export async function updatePassword(data: {
  * 3. localStorage 동기화
  * 
  * [백엔드 팀] 실제 구현 시:
- * - PUT /api/auth/notification
+ * - PUT /api/users/me/notification
  * - Headers: { Authorization: 'Bearer {accessToken}' }
  * - Request: { enabled: boolean }
- * - Response: { success: boolean, enabled }
+ * - Response: { success: true, data: { message: string, enabled: boolean } }
  */
 export async function updateNotificationSettings(enabled: boolean): Promise<{ message: string; enabled: boolean }> {
   await delay(500);
@@ -1003,21 +1037,21 @@ export async function updateNotificationSettings(enabled: boolean): Promise<{ me
 }
 
 /**
- * DELETE /auth/account
- * 회원 탈퇴
+ * DELETE /users/me
+ * 계정 탈퇴
  * 
+ * [API 명세서 Section 3.4]
  * [플로우 9: 마이페이지 - 회원 탈퇴]
  * 
  * 동작:
- * 1. 비밀번호 재확인
+ * 1. 비밀번호 재확인 (필요 시)
  * 2. 사용자 데이터 삭제 (또는 비활성화)
  * 3. 로그아웃 처리
  * 
  * [백엔드 팀] 실제 구현 시:
- * - DELETE /api/auth/account
+ * - DELETE /api/users/me
  * - Headers: { Authorization: 'Bearer {accessToken}' }
- * - Request: { password }
- * - Response: { success: boolean, message }
+ * - Response: { success: true, data: { message: string } }
  * - 실제로는 soft delete (deleted_at 컬럼 사용)
  * - 일기 데이터도 함께 삭제/비활성화
  */

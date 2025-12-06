@@ -555,9 +555,10 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
 }
 
 /**
- * POST /diaries
+ * POST /api/diaries
  * 일기 작성 API
  * 
+ * [API 명세서 Section 4.1]
  * [플로우 3.3: 일기 작성 저장 및 처리]
  * 
  * 처리 순서:
@@ -608,7 +609,25 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
  *    - 추천된 음식을 DB에 저장
  */
 export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail> {
-  // [백엔드 팀] 실제 API 호출로 대체
+  // [백엔드 팀] 실제 API 호출로 대체 (axios 사용)
+  // import { apiClient } from './api';
+  // 
+  // try {
+  //   const response = await apiClient.post('/diaries', data);
+  //   if (response.data.success) {
+  //     return response.data.data;
+  //   } else {
+  //     throw new Error(response.data.error?.message || '일기 작성에 실패했습니다.');
+  //   }
+  // } catch (error: any) {
+  //   if (error.response?.status === 401) {
+  //     // 인증 에러 처리 (로그인 페이지로 리다이렉트)
+  //     window.location.href = '/login';
+  //   }
+  //   throw error;
+  // }
+  
+  // [백엔드 팀] 실제 API 호출로 대체 (fetch 사용)
   // const token = localStorage.getItem('accessToken');
   // const response = await fetch('/api/diaries', {
   //   method: 'POST',
@@ -731,7 +750,7 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
  * PUT /api/diaries/{diaryId}
  * 일기 수정 API
  * 
- * [API 명세서 참고]
+ * [API 명세서 Section 4.2]
  * - 엔드포인트: PUT /api/diaries/{diaryId}
  * - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
  * 
@@ -886,10 +905,11 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
 }
 
 /**
- * DELETE /diaries/{id}
+ * DELETE /api/diaries/{diaryId}
  * 일기 삭제
  * 
- * [백엔드 팀] 엔드포인트: DELETE /api/diaries/{id}
+ * [API 명세서 Section 4.6]
+ * [백엔드 팀] 엔드포인트: DELETE /api/diaries/{diaryId}
  * 
  * 동작:
  * 1. 일기 데이터 삭제
