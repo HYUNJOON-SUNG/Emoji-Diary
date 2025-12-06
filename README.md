@@ -1,3 +1,0 @@
-# Emoji-Diary
-
-sibal
