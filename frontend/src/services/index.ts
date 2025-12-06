@@ -41,3 +41,6 @@ export * from './statisticsApi';
 
 // ========== 관리자 API (Admin API) ==========
 export * from './adminApi';
+
+// ========== 장소 추천 API (Place Recommendation API) ==========
+export * from './placeApi';

@@ -193,6 +193,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     activities: ['운동', '독서'],
     aiComment: '긍정적인 에너지가 느껴지는 하루네요! 새로운 도전을 시작하는 모습이 멋져요.',
     imageUrl: 'https://images.unsplash.com/photo-1605702012553-e954fbde66eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdodCUyMGNpdHklMjBsaWdodHN8ZW58MXx8fHwxNzY0MjQ5OTcyfDA&ixlib=rb-4.1.0&q=80&w=1080',
+    recommendedFood: {
+      name: '에너지 충전 파스타',
+      reason: '새로운 시작을 기념하며 기분 좋은 하루를 더욱 특별하게 만들어줄 음식이에요'
+    },
+    createdAt: '2025-11-03T09:00:00Z',
+    updatedAt: '2025-11-03T09:00:00Z',
   },
   '2025-11-05': {
     id: 'd2',
@@ -206,6 +212,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     activities: ['산책'],
     aiComment: '자연과 함께하는 시간은 마음을 편안하게 해주죠. 좋은 하루 보내셨네요!',
     imageUrl: 'https://images.unsplash.com/photo-1506788493784-a85a26871e43?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZWFjZWZ1bCUyMG1vcm5pbmclMjBuYXR1cmV8ZW58MXx8fHwxNzY0Mjk3NzA2fDA&ixlib=rb-4.1.0&q=80&w=1080',
+    recommendedFood: {
+      name: '신선한 샐러드',
+      reason: '평화로운 아침을 보낸 후 몸에 좋은 신선한 음식이 기분을 더욱 상쾌하게 해줄 거예요'
+    },
+    createdAt: '2025-11-05T08:30:00Z',
+    updatedAt: '2025-11-05T08:30:00Z',
   },
   '2025-11-08': {
     id: 'd3',
@@ -219,6 +231,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     activities: ['가족 시간'],
     aiComment: '가족과 함께하는 시간은 정말 소중해요. 따뜻한 하루였겠어요.',
     imageUrl: 'https://images.unsplash.com/photo-1703611987698-595febef3f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjBnYXRoZXJpbmclMjB3YXJtfGVufDF8fHx8MTc2NDI5NzcwN3ww&ixlib=rb-4.1.0&q=80&w=1080',
+    recommendedFood: {
+      name: '따뜻한 가족식탁 요리',
+      reason: '소중한 사람들과 함께 나눌 수 있는 따뜻한 음식이 이 특별한 시간을 더욱 의미있게 만들어줄 거예요'
+    },
+    createdAt: '2025-11-08T18:00:00Z',
+    updatedAt: '2025-11-08T18:00:00Z',
   },
   '2025-11-10': {
     id: 'd4',
@@ -231,6 +249,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '맑음',
     activities: ['공부', '취미'],
     aiComment: '새로운 발견은 항상 설레게 하죠! 호기심을 잃지 않는 모습이 좋아요.',
+    recommendedFood: {
+      name: '특별한 디저트',
+      reason: '놀라운 발견을 기념하며 기분 좋은 하루를 더욱 달콤하게 만들어줄 음식이에요'
+    },
+    createdAt: '2025-11-10T14:00:00Z',
+    updatedAt: '2025-11-10T14:00:00Z',
   },
   '2025-11-12': {
     id: 'd5',
@@ -244,6 +268,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     activities: ['휴식'],
     aiComment: '때로는 아무것도 하지 않는 시간이 가장 필요해요. 잘 쉬셨길 바래요.',
     imageUrl: 'https://images.unsplash.com/photo-1622489937280-af9291e62ccc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdW5zZXQlMjBiZWFjaCUyMHBlYWNlZnVsfGVufDF8fHx8MTc2NDI5NzcwN3ww&ixlib=rb-4.1.0&q=80&w=1080',
+    recommendedFood: {
+      name: '편안한 한식',
+      reason: '조용한 하루를 보낸 후 몸과 마음을 편안하게 해주는 따뜻한 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-12T12:00:00Z',
+    updatedAt: '2025-11-12T12:00:00Z',
   },
   '2025-11-13': {
     id: 'd12',
@@ -256,6 +286,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '흐림',
     activities: ['독서'],
     aiComment: '어려운 날이지만, 긍정적인 마음가짐을 유지하는 것이 중요해요.',
+    recommendedFood: {
+      name: '따뜻한 국밥',
+      reason: '몸을 따뜻하게 해주는 음식이 기분 전환에 도움이 될 수 있어요'
+    },
+    createdAt: '2025-11-13T19:00:00Z',
+    updatedAt: '2025-11-13T19:00:00Z',
   },
   '2025-11-14': {
     id: 'd13',
@@ -268,6 +304,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '흐림',
     activities: ['명상'],
     aiComment: '불안감을 느낄 때는 명상이나 휴식이 도움이 될 수 있어요.',
+    recommendedFood: {
+      name: '진정 효과가 있는 허브차',
+      reason: '불안한 마음을 진정시켜주는 따뜻한 차가 도움이 될 수 있어요'
+    },
+    createdAt: '2025-11-14T20:00:00Z',
+    updatedAt: '2025-11-14T20:00:00Z',
   },
   '2025-11-15': {
     id: 'd6',
@@ -280,6 +322,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '맑음',
     activities: ['공부', '운동'],
     aiComment: '배움은 언제나 즐거워요! 앞으로의 여정이 기대되네요.',
+    recommendedFood: {
+      name: '뇌 활동에 좋은 견과류',
+      reason: '새로운 것을 배우는 날에는 뇌 활동에 도움이 되는 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-15T10:00:00Z',
+    updatedAt: '2025-11-15T10:00:00Z',
   },
   '2025-11-16': {
     id: 'd14',
@@ -292,6 +340,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '흐림',
     activities: ['산책'],
     aiComment: '과거의 슬픔을 기억하면서도 앞으로 나아가는 것이 중요해요.',
+    recommendedFood: {
+      name: '따뜻한 수제비',
+      reason: '슬픈 마음을 위로해주는 따뜻한 음식이 기분 전환에 도움이 될 수 있어요'
+    },
+    createdAt: '2025-11-16T16:00:00Z',
+    updatedAt: '2025-11-16T16:00:00Z',
   },
   '2025-11-17': {
     id: 'd7',
@@ -304,6 +358,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '맑음',
     activities: ['모임'],
     aiComment: '축하해요! 좋은 소식이 있다니 정말 기쁘겠어요.',
+    recommendedFood: {
+      name: '축하 파티 음식',
+      reason: '좋은 소식을 기념하며 기쁨을 나눌 수 있는 특별한 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-17T15:00:00Z',
+    updatedAt: '2025-11-17T15:00:00Z',
   },
   '2025-11-18': {
     id: 'd8',
@@ -316,6 +376,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '맑음',
     activities: ['작업', '친구 만남'],
     aiComment: '목표를 달성하셨네요! 친구들과의 축하는 더욱 의미있었을 거예요.',
+    recommendedFood: {
+      name: '카페 디저트',
+      reason: '프로젝트 완료를 축하하며 친구들과 함께 즐길 수 있는 달콤한 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-18T17:00:00Z',
+    updatedAt: '2025-11-18T17:00:00Z',
   },
   '2025-11-19': {
     id: 'd15',
@@ -328,6 +394,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '흐림',
     activities: ['명상'],
     aiComment: '불안감을 느낄 때는 명상이나 휴식이 도움이 될 수 있어요.',
+    recommendedFood: {
+      name: '진정 효과가 있는 카모마일 차',
+      reason: '불안한 마음을 진정시켜주는 따뜻한 허브차가 도움이 될 수 있어요'
+    },
+    createdAt: '2025-11-19T21:00:00Z',
+    updatedAt: '2025-11-19T21:00:00Z',
   },
   '2025-11-20': {
     id: 'd9',
@@ -340,6 +412,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '맑음',
     activities: ['가족 시간', '외식'],
     aiComment: '감사하는 마음을 가진 하루는 특별해요. 좋은 시간 보내셨네요!',
+    recommendedFood: {
+      name: '가족과 함께하는 특별한 식사',
+      reason: '감사한 하루를 보낸 후 가족과 함께 나눌 수 있는 특별한 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-20T18:30:00Z',
+    updatedAt: '2025-11-20T18:30:00Z',
   },
   '2025-11-22': {
     id: 'd10',
@@ -352,6 +430,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '비',
     activities: ['계획 세우기'],
     aiComment: '미래에 대한 기대감이 느껴져요. 긍정적인 마음가짐이 좋아요!',
+    recommendedFood: {
+      name: '에너지 충전 밀푀유',
+      reason: '희망찬 미래를 향해 나아가는 데 필요한 에너지를 충전해줄 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-22T11:00:00Z',
+    updatedAt: '2025-11-22T11:00:00Z',
   },
   '2025-11-25': {
     id: 'd11',
@@ -364,6 +448,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     weather: '흐림',
     activities: ['작업'],
     aiComment: '오늘 하루도 수고 많으셨어요. 푹 쉬시고 내일을 준비하세요!',
+    recommendedFood: {
+      name: '피로 회복에 좋은 영양식',
+      reason: '긴 하루를 보낸 후 몸의 피로를 회복시켜주는 영양가 있는 음식이 좋을 거예요'
+    },
+    createdAt: '2025-11-25T22:00:00Z',
+    updatedAt: '2025-11-25T22:00:00Z',
   },
   '2025-11-27': {
     id: 'd16',
@@ -377,6 +467,12 @@ let mockDiaryDetails: { [key: string]: DiaryDetail } = {
     activities: ['카페', '독서', '휴식'],
     aiComment: '오늘의 감정은 구름 사이로 비치는 달빛처럼 은은하면서도 깊은 의미를 담고 있어요. 여유로운 시간을 가질 수 있어서 다행이에요!',
     imageUrl: 'https://images.unsplash.com/photo-1524577393498-23c6b0c40468?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwY2FmZSUyMHJhaW55fGVufDF8fHx8MTc2NDI5NzcwNnww&ixlib=rb-4.1.0&q=80&w=1080',
+    recommendedFood: {
+      name: '카페 디저트와 따뜻한 음료',
+      reason: '여유로운 카페 시간을 더욱 특별하게 만들어줄 달콤한 디저트가 좋을 거예요'
+    },
+    createdAt: '2025-11-27T15:00:00Z',
+    updatedAt: '2025-11-27T15:00:00Z',
   },
 };
 

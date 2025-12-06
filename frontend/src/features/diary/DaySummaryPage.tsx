@@ -720,12 +720,13 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         )}
 
         {/* Map Recommendation Modal */}
-        {showMapRecommendation && (
+        {showMapRecommendation && entry && (
           <KakaoMapRecommendation
             isOpen={showMapRecommendation}
             onClose={() => setShowMapRecommendation(false)}
-            emotion={entry.emotion}
-             emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
+            diaryId={entry.id} // 일기 ID 전달 (권장 방식)
+            emotion={entry.emotion} // 하위 호환성 (diaryId가 없을 때 사용)
+            emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)} // 하위 호환성
           />
         )}
       </div>
