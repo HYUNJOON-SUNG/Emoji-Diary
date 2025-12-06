@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "notices", indexes = {
         @Index(name = "idx_notices_is_pinned", columnList = "is_pinned"),
-        @Index(name = "idx_notices_created_at", columnList = "created_at"),
+        @Index(name = "idx_notices_created_at", columnList = "created_at DESC"),
         @Index(name = "idx_notices_is_public", columnList = "is_public"),
         @Index(name = "idx_notices_deleted_at", columnList = "deleted_at")
 }) // 테이블명 설정 - notices, 인덱스 설정

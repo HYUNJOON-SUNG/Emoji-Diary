@@ -11,9 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AiServerResponse {
-    private String emotion;
-    private String aiComment;
-    private RecommendedFood recommendedFood;
-    private String image; // Base64 string from AI Server
+public class RecommendedFood {
+    private String name;
+    private String reason;
 }

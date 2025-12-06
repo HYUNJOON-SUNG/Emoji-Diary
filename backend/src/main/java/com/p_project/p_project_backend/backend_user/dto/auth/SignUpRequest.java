@@ -25,4 +25,7 @@ public class SignUpRequest {
     @AssertTrue(message = "이메일 인증이 완료되어야 합니다")
     private Boolean emailVerified;
 
+    @NotNull(message = "성별은 필수입니다")
+    private com.p_project.p_project_backend.entity.User.Gender gender;
+
 }
