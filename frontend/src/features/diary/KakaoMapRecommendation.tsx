@@ -4,17 +4,28 @@
  * ========================================
  * 
  * 감정 기반 장소 추천 기능
- * - 감정에 맞는 장소를 카카오맵 API로 검색 및 표시
+ * - 일기 저장 시점에 추천된 음식을 기반으로 주변 장소 검색 및 표시
  * - 인라인 모드와 모달 모드 지원
  * 
- * [카카오맵 API 연동]
- * - JavaScript 키: 1a1db627800887a2a4531fa6e4bd07bc
- * - Places API를 사용하여 장소 검색
- * - 사용자 위치 기반 주변 장소 추천
+ * [백엔드 API 연동]
+ * - GET /api/places/recommendations 엔드포인트 사용
+ * - 일기 ID(diaryId)를 받아서 일기의 recommendedFood 기반으로 장소 검색
+ * - 현재는 Mock 데이터 사용, 백엔드 연동 시 실제 API 호출
+ * 
+ * [카카오맵 JavaScript API]
+ * - 지도 표시 및 마커 표시용으로만 사용
+ * - 장소 검색은 백엔드에서 카카오 로컬 API 사용
+ * 
+ * [플로우 8.2: 장소 추천 화면] (사용자 기반 상세기능명세서.md)
+ * - AI 기반 음식 추천: 일기 저장 시점에 추천된 음식 조회 (DB에서 조회)
+ * - 카카오 로컬 API 장소 검색: AI가 추천한 음식을 키워드로 카카오 로컬 API 호출
+ * - 현재 위치 기준 반경 5km 이내 장소 검색
+ * - 검색 결과 최대 15개까지 표시
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, X, ExternalLink, Loader2 } from 'lucide-react';
+import { getPlaceRecommendations, type Place, type PlaceRecommendationResponse } from '@/services/placeApi';
 
 // 카카오맵 타입 선언
 declare global {
@@ -23,143 +34,105 @@ declare global {
   }
 }
 
-interface Place {
-  id: string;
-  name: string;
-  address: string;
-  roadAddress?: string;
-  phone?: string;
-  distance?: string;
-  x: number; // 경도
-  y: number; // 위도
-  category?: string;
-  url?: string;
-}
-
 interface KakaoMapRecommendationProps {
   /** 모달 열림 상태 */
   isOpen: boolean;
   /** 닫기 핸들러 */
   onClose: () => void;
-  /** 감정 타입 */
-  emotion: string;
-  /** 감정 카테고리 */
-  emotionCategory: string;
+  /** 일기 ID (권장: 일기의 recommendedFood를 기반으로 장소 검색) */
+  diaryId?: string;
+  /** 감정 타입 (하위 호환성: diaryId가 없을 때 사용) */
+  emotion?: string;
+  /** 감정 카테고리 (하위 호환성: diaryId가 없을 때 사용) */
+  emotionCategory?: string;
   /** 인라인 모드 (모달이 아닌 페이지 내 표시) */
   isInline?: boolean;
 }
 
+/**
+ * Place 인터페이스는 placeApi.ts에서 import
+ * 여기서는 사용하지 않음 (중복 방지)
+ */
+
 export function KakaoMapRecommendation({
   isOpen,
   onClose,
+  diaryId,
   emotion,
   emotionCategory,
   isInline = false,
 }: KakaoMapRecommendationProps) {
   const [places, setPlaces] = useState<Place[]>([]);
+  const [recommendedFood, setRecommendedFood] = useState<{ name: string; reason: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const currentLocationMarkerRef = useRef<any>(null); // 현재 위치 마커
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // 감정에 따른 장소 추천 키워드 매핑
-  const getRecommendationKeywords = (emotion: string, category: string): string[] => {
-    const keywordMap: { [key: string]: string[] } = {
-      happy: ['카페', '공원', '전시회', '영화관'],
-      sad: ['카페', '서점', '도서관', '공원'],
-      angry: ['운동', '헬스장', '산책로', '공원'],
-      anxious: ['요가', '명상', '카페', '공원'],
-      excited: ['놀이공원', '전시회', '카페', '영화관'],
-      calm: ['카페', '서점', '공원', '도서관'],
-      neutral: ['카페', '공원', '서점', '전시회'],
-    };
+  /**
+   * [백엔드 API 호출] 장소 추천 가져오기
+   * 
+   * diaryId가 있으면 백엔드 API 호출 (권장 방식)
+   * diaryId가 없으면 현재 위치만 가져와서 지도 표시
+   */
+  const fetchPlaceRecommendations = async () => {
+    setLoading(true);
+    setError(null);
 
-    return keywordMap[emotion] || keywordMap[category] || ['카페', '공원'];
-  };
+    try {
+      // 현재 위치 가져오기 (항상 필요)
+      const location = await getCurrentLocation();
+      setCurrentLocation(location);
 
-  // 카카오맵 API로 장소 검색 (현재 위치 기반)
-  const searchPlaces = async (keyword: string): Promise<Place[]> => {
-    return new Promise((resolve, reject) => {
-      if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-        reject(new Error('카카오맵 API가 로드되지 않았습니다.'));
+      if (!diaryId) {
+        // [하위 호환성] diaryId가 없으면 현재 위치만 설정하고 지도만 표시
+        console.warn('[KakaoMapRecommendation] diaryId가 제공되지 않았습니다. 지도만 표시합니다.');
+        setLoading(false);
         return;
       }
 
-      const ps = new window.kakao.maps.services.Places();
-
-      // 현재 위치 가져오기 (기본값: 서울시청)
-      getCurrentLocation().then((location) => {
-        performSearch(keyword, location.lat, location.lng, ps, resolve, reject);
+      // [백엔드 팀] 실제 API 호출
+      // 현재는 Mock 데이터 사용
+      console.log('[KakaoMapRecommendation] 장소 추천 요청:', { diaryId, lat: location.lat, lng: location.lng });
+      
+      const response: PlaceRecommendationResponse = await getPlaceRecommendations({
+        diaryId,
+        lat: location.lat,
+        lng: location.lng,
+        radius: 5000, // 5km 반경
       });
-    });
+
+      console.log('[KakaoMapRecommendation] 장소 추천 응답:', response);
+
+      // 음식 추천 정보 저장
+      setRecommendedFood(response.recommendedFood);
+
+      // 거리를 문자열로 변환 (표시용)
+      const placesWithFormattedDistance: Place[] = response.places.map(place => ({
+        ...place,
+        distance: place.distance < 1000 
+          ? `${Math.round(place.distance)}m` 
+          : `${(place.distance / 1000).toFixed(1)}km`
+      } as Place & { distance: string }));
+
+      console.log('[KakaoMapRecommendation] 변환된 장소 목록:', placesWithFormattedDistance);
+      setPlaces(placesWithFormattedDistance as any);
+    } catch (err: any) {
+      console.error('[KakaoMapRecommendation] 장소 추천 가져오기 실패:', err);
+      setError(err.message || '장소 추천을 가져오는데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const performSearch = (
-    keyword: string,
-    lat: number,
-    lng: number,
-    ps: any,
-    resolve: (places: Place[]) => void,
-    reject: (error: Error) => void
-  ) => {
-    // 키워드로 장소 검색
-    ps.keywordSearch(keyword, (data: any[], status: string) => {
-      if (status === window.kakao.maps.services.Status.OK) {
-        // 거리순으로 정렬
-        const placesWithDistance = data
-          .slice(0, 5) // 최대 5개만
-          .map((place) => {
-            const placeLat = parseFloat(place.y);
-            const placeLng = parseFloat(place.x);
-            const distance = calculateDistance(lat, lng, placeLat, placeLng);
-            
-            return {
-              id: place.id,
-              name: place.place_name,
-              address: place.address_name,
-              roadAddress: place.road_address_name,
-              phone: place.phone,
-              distance: distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`,
-              x: placeLng,
-              y: placeLat,
-              category: place.category_name,
-              url: place.place_url,
-            };
-          })
-          .sort((a, b) => {
-            const distA = parseFloat(a.distance?.replace('km', '') || '0');
-            const distB = parseFloat(b.distance?.replace('km', '') || '0');
-            return distA - distB;
-          });
+  /**
+   * 현재 위치 가져오기
+   * Geolocation API 사용, 실패 시 기본 위치(서울시청) 반환
+   */
 
-        resolve(placesWithDistance);
-      } else {
-        reject(new Error('장소 검색에 실패했습니다.'));
-      }
-    }, {
-      location: new window.kakao.maps.LatLng(lat, lng),
-      radius: 5000, // 5km 반경
-    });
-  };
-
-  // 두 좌표 간 거리 계산 (Haversine formula)
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371e3; // 지구 반지름 (미터)
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lng2 - lng1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  // 현재 위치 가져오기
   const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
     return new Promise((resolve) => {
       const defaultLocation = { lat: 37.5665, lng: 126.9780 }; // 서울시청 기본값
@@ -173,7 +146,7 @@ export function KakaoMapRecommendation({
             });
           },
           (error) => {
-            console.warn('Geolocation error:', error);
+            console.warn('[KakaoMapRecommendation] Geolocation error:', error);
             // 위치 권한 거부 시 기본 위치 사용
             resolve(defaultLocation);
           },
@@ -185,27 +158,28 @@ export function KakaoMapRecommendation({
         );
       } else {
         // Geolocation 미지원 시 기본 위치 사용
-        console.warn('Geolocation is not supported by this browser.');
+        console.warn('[KakaoMapRecommendation] Geolocation is not supported by this browser.');
         resolve(defaultLocation);
       }
     });
   };
 
-  // 카카오맵 지도 초기화 (위치 기반)
-  const initMapWithLocation = (lat: number, lng: number) => {
+  /**
+   * 카카오맵 지도 초기화
+   * 현재 위치 또는 장소들의 중심으로 지도 표시
+   */
+  const initMap = (centerLat?: number, centerLng?: number, placesToShow: Place[] = places) => {
     if (!mapContainerRef.current || !window.kakao || !window.kakao.maps) {
       return false;
     }
 
-    // 지도 컨테이너의 실제 크기 확인
     const container = mapContainerRef.current;
     const containerWidth = container.offsetWidth;
     const containerHeight = container.offsetHeight;
 
-    // 컨테이너 크기가 0이면 지도 초기화 불가
     if (containerWidth === 0 || containerHeight === 0) {
-      console.warn('Map container has no size, retrying...');
-      setTimeout(() => initMapWithLocation(lat, lng), 200);
+      console.warn('[KakaoMapRecommendation] Map container has no size, retrying...');
+      setTimeout(() => initMap(centerLat, centerLng, placesToShow), 200);
       return false;
     }
 
@@ -218,38 +192,119 @@ export function KakaoMapRecommendation({
       mapRef.current = null;
     }
 
-    const mapOption = {
-      center: new window.kakao.maps.LatLng(lat, lng),
-      level: 5, // 확대 레벨
-    };
+    // 중심 좌표 결정: 장소가 있으면 장소들의 중심, 없으면 현재 위치 또는 기본 위치
+    let lat = centerLat || currentLocation?.lat || 37.5665;
+    let lng = centerLng || currentLocation?.lng || 126.9780;
 
-    try {
-      mapRef.current = new window.kakao.maps.Map(container, mapOption);
-
-      // 지도 크기 조정 (반응형 대응)
-      window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
-        mapRef.current.relayout();
+    // 장소가 있으면 모든 장소가 보이도록 bounds 설정
+    if (placesToShow.length > 0) {
+      const bounds = new window.kakao.maps.LatLngBounds();
+      placesToShow.forEach(place => {
+        bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
       });
+      
+      const mapOption = {
+        center: new window.kakao.maps.LatLng(lat, lng),
+        level: 5,
+      };
 
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize map:', error);
-      return false;
+      try {
+        mapRef.current = new window.kakao.maps.Map(container, mapOption);
+        mapRef.current.setBounds(bounds); // 모든 장소가 보이도록 조정
+        
+        window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
+          mapRef.current.relayout();
+        });
+
+        return true;
+      } catch (error) {
+        console.error('[KakaoMapRecommendation] Failed to initialize map:', error);
+        return false;
+      }
+    } else {
+      // 장소가 없으면 현재 위치 중심으로 지도 표시
+      const mapOption = {
+        center: new window.kakao.maps.LatLng(lat, lng),
+        level: 5,
+      };
+
+      try {
+        mapRef.current = new window.kakao.maps.Map(container, mapOption);
+        
+        window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
+          mapRef.current.relayout();
+        });
+
+        return true;
+      } catch (error) {
+        console.error('[KakaoMapRecommendation] Failed to initialize map:', error);
+        return false;
+      }
     }
   };
 
-  // 장소 마커 추가
-  const addPlaceMarkers = (places: Place[]) => {
-    if (!mapRef.current || !window.kakao || !window.kakao.maps || places.length === 0) {
+  /**
+   * 현재 위치 마커 추가 (핑 모양)
+   * 파란색 원형 마커로 현재 위치 표시
+   */
+  const addCurrentLocationMarker = (lat: number, lng: number) => {
+    if (!mapRef.current || !window.kakao || !window.kakao.maps) {
       return;
     }
 
-    // 기존 마커 제거
+    // 기존 현재 위치 마커 제거
+    if (currentLocationMarkerRef.current) {
+      currentLocationMarkerRef.current.setMap(null);
+      currentLocationMarkerRef.current = null;
+    }
+
+    // 현재 위치 마커 생성 (커스텀 이미지 사용)
+    const imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png'; // 빨간색 핑
+    const imageSize = new window.kakao.maps.Size(24, 35);
+    const imageOption = { offset: new window.kakao.maps.Point(12, 35) };
+    const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+
+    const markerPosition = new window.kakao.maps.LatLng(lat, lng);
+    const marker = new window.kakao.maps.Marker({
+      position: markerPosition,
+      image: markerImage,
+      map: mapRef.current,
+      zIndex: 1000, // 다른 마커보다 위에 표시
+    });
+
+    // 인포윈도우 생성
+    const infowindow = new window.kakao.maps.InfoWindow({
+      content: '<div style="padding:5px;font-size:12px;text-align:center;">📍 현재 위치</div>',
+    });
+
+    // 마커 클릭 시 인포윈도우 표시
+    window.kakao.maps.event.addListener(marker, 'click', () => {
+      infowindow.open(mapRef.current, marker);
+    });
+
+    currentLocationMarkerRef.current = marker;
+  };
+
+  /**
+   * 장소 마커 추가
+   * 카카오맵에 장소 위치를 마커로 표시
+   */
+  const addPlaceMarkers = (placesToShow: Place[]) => {
+    if (!mapRef.current || !window.kakao || !window.kakao.maps) {
+      return;
+    }
+
+    // 기존 장소 마커만 제거 (현재 위치 마커는 유지)
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
 
+    // 장소가 없으면 마커 추가하지 않음
+    if (placesToShow.length === 0) {
+      return;
+    }
+
     // 모든 장소에 마커 표시
-    places.forEach((place) => {
+    placesToShow.forEach((place) => {
       const markerPosition = new window.kakao.maps.LatLng(place.y, place.x);
       const marker = new window.kakao.maps.Marker({
         position: markerPosition,
@@ -258,108 +313,109 @@ export function KakaoMapRecommendation({
 
       // 인포윈도우 생성
       const infowindow = new window.kakao.maps.InfoWindow({
-        content: `<div style="padding:5px;font-size:12px;">${place.name}</div>`,
+        content: `<div style="padding:5px;font-size:12px;white-space:nowrap;">${place.name}</div>`,
       });
 
       // 마커 클릭 시 인포윈도우 표시
       window.kakao.maps.event.addListener(marker, 'click', () => {
+        // 다른 인포윈도우 닫기
+        markersRef.current.forEach(m => {
+          if (m.infowindow) {
+            m.infowindow.close();
+          }
+        });
         infowindow.open(mapRef.current, marker);
+        marker.infowindow = infowindow;
       });
 
       markersRef.current.push(marker);
     });
 
-    // 모든 마커가 보이도록 지도 범위 조정
-    if (places.length > 0) {
-      const bounds = new window.kakao.maps.LatLngBounds();
-      places.forEach((place) => {
-        bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
-      });
-      mapRef.current.setBounds(bounds);
+    // 모든 마커가 보이도록 지도 범위 조정 (현재 위치 포함)
+    const bounds = new window.kakao.maps.LatLngBounds();
+    placesToShow.forEach((place) => {
+      bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
+    });
+    // 현재 위치도 bounds에 포함
+    if (currentLocation) {
+      bounds.extend(new window.kakao.maps.LatLng(currentLocation.lat, currentLocation.lng));
     }
+    mapRef.current.setBounds(bounds);
   };
 
+  /**
+   * 모달이 열릴 때 장소 추천 가져오기 및 지도 초기화
+   */
   useEffect(() => {
     if (!isOpen) {
       // 모달이 닫힐 때 지도 및 마커 정리
       if (mapRef.current) {
         markersRef.current.forEach((marker) => marker.setMap(null));
         markersRef.current = [];
+        if (currentLocationMarkerRef.current) {
+          currentLocationMarkerRef.current.setMap(null);
+          currentLocationMarkerRef.current = null;
+        }
         mapRef.current = null;
       }
+      setPlaces([]);
+      setRecommendedFood(null);
+      setCurrentLocation(null);
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setPlaces([]);
+    // [백엔드 API 호출] 장소 추천 가져오기
+    fetchPlaceRecommendations();
+  }, [isOpen, diaryId]);
 
-    // 블로그 글 방식: 지도만 표시 (기본 위치: 서울시청)
-    const initMap = () => {
+  /**
+   * 카카오맵 API 로드 및 지도 초기화
+   * 장소가 없어도 지도는 표시되어야 함 (현재 위치 중심)
+   */
+  useEffect(() => {
+    if (!isOpen || loading) {
+      return;
+    }
+
+    // 카카오맵 API 로드 확인 및 지도 초기화
+    const initializeMap = () => {
       if (!mapContainerRef.current || !window.kakao || !window.kakao.maps) {
-        console.warn('[KakaoMap] Map container or API not ready');
+        console.warn('[KakaoMapRecommendation] Map container or API not ready');
         return;
       }
 
-      const container = mapContainerRef.current;
-      const containerWidth = container.offsetWidth;
-      const containerHeight = container.offsetHeight;
+      // 현재 위치가 있으면 사용, 없으면 기본 위치 사용
+      const centerLat = currentLocation?.lat || 37.5665;
+      const centerLng = currentLocation?.lng || 126.9780;
 
-      if (containerWidth === 0 || containerHeight === 0) {
-        console.warn('[KakaoMap] Container has no size, retrying...');
-        setTimeout(initMap, 200);
-        return;
-      }
-
-      // 기존 지도 제거
-      if (mapRef.current) {
-        mapRef.current = null;
-      }
-
-      // 기본 위치: 서울시청
-      const defaultLat = 37.5665;
-      const defaultLng = 126.9780;
-
-      const options = {
-        center: new window.kakao.maps.LatLng(defaultLat, defaultLng),
-        level: 3,
-      };
-
-      try {
-        mapRef.current = new window.kakao.maps.Map(container, options);
-        console.log('[KakaoMap] Map initialized successfully');
-        setLoading(false);
-
-        // 지도 크기 조정 (반응형 대응)
-        window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
-          mapRef.current.relayout();
-        });
-      } catch (error) {
-        console.error('[KakaoMap] Failed to initialize map:', error);
-        setError('지도를 초기화할 수 없습니다.');
-        setLoading(false);
+      // 지도 초기화 (장소가 없어도 지도는 표시)
+      if (initMap(centerLat, centerLng)) {
+        // 현재 위치 마커 추가 (핑 모양)
+        if (currentLocation) {
+          addCurrentLocationMarker(currentLocation.lat, currentLocation.lng);
+        }
+        
+        // 장소가 있으면 마커 추가
+        if (places.length > 0) {
+          addPlaceMarkers(places);
+        }
       }
     };
 
     // 이미 스크립트가 로드되어 있는지 확인
     if (window.kakao && window.kakao.maps && window.kakao.maps.load) {
-      console.log('[KakaoMap] API already loaded');
       window.kakao.maps.load(() => {
-        setTimeout(initMap, 100);
+        setTimeout(initializeMap, 100);
       });
       return;
     }
 
-    // index.html에 스크립트가 이미 있으므로 로드 완료만 대기
-    console.log('[KakaoMap] Waiting for script to load from index.html...');
-    
+    // 스크립트 로드 대기
     const checkInterval = setInterval(() => {
       if (window.kakao && window.kakao.maps && window.kakao.maps.load) {
         clearInterval(checkInterval);
-        console.log('[KakaoMap] API loaded, initializing maps...');
         window.kakao.maps.load(() => {
-          console.log('[KakaoMap] Maps API ready');
-          setTimeout(initMap, 100);
+          setTimeout(initializeMap, 100);
         });
       }
     }, 100);
@@ -368,18 +424,15 @@ export function KakaoMapRecommendation({
     setTimeout(() => {
       clearInterval(checkInterval);
       if (!window.kakao || !window.kakao.maps) {
-        console.error('[KakaoMap] API load timeout');
-        console.error('[KakaoMap] window.kakao:', window.kakao);
+        console.error('[KakaoMapRecommendation] API load timeout');
         setError('카카오맵 API를 불러올 수 없습니다. 페이지를 새로고침해주세요.');
-        setLoading(false);
       }
     }, 10000);
 
-    // cleanup 함수
     return () => {
-      // 스크립트는 전역적으로 사용되므로 제거하지 않음
+      clearInterval(checkInterval);
     };
-  }, [isOpen, isInline]);
+  }, [isOpen, loading, places, currentLocation]);
 
   // 지도 컨테이너 크기 변경 감지 및 지도 리사이즈
   useEffect(() => {
@@ -418,9 +471,16 @@ export function KakaoMapRecommendation({
     return (
       <div className="w-full h-full bg-stone-50 flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-stone-200">
-          <h3 className="text-lg font-semibold text-stone-800">
-            감정에 맞는 장소 추천
-          </h3>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-stone-800">
+              감정에 맞는 장소 추천
+            </h3>
+            {recommendedFood && (
+              <p className="text-sm text-stone-600 mt-1">
+                추천 음식: <span className="font-medium">{recommendedFood.name}</span>
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-stone-200 rounded-full transition-colors"
@@ -481,9 +541,18 @@ export function KakaoMapRecommendation({
                             <p className="text-xs text-stone-500 mb-2">{place.phone}</p>
                           )}
                           <div className="flex items-center justify-between mt-2">
-                            {place.distance && (
-                              <span className="text-xs text-stone-500">{place.distance}</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {place.distance && (
+                                <span className="text-xs text-stone-500">
+                                  {typeof place.distance === 'string' ? place.distance : `${place.distance}m`}
+                                </span>
+                              )}
+                              {place.rating && (
+                                <span className="text-xs text-stone-500">
+                                  ⭐ {place.rating.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -513,9 +582,16 @@ export function KakaoMapRecommendation({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-stone-200">
-          <h3 className="text-lg font-semibold text-stone-800">
-            감정에 맞는 장소 추천
-          </h3>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-stone-800">
+              감정에 맞는 장소 추천
+            </h3>
+            {recommendedFood && (
+              <p className="text-sm text-stone-600 mt-1">
+                추천 음식: <span className="font-medium">{recommendedFood.name}</span>
+              </p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-stone-100 rounded-full transition-colors"
@@ -576,9 +652,18 @@ export function KakaoMapRecommendation({
                             <p className="text-xs text-stone-500 mb-2">{place.phone}</p>
                           )}
                           <div className="flex items-center justify-between mt-2">
-                            {place.distance && (
-                              <span className="text-xs text-stone-500">{place.distance}</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {place.distance && (
+                                <span className="text-xs text-stone-500">
+                                  {typeof place.distance === 'string' ? place.distance : `${place.distance}m`}
+                                </span>
+                              )}
+                              {place.rating && (
+                                <span className="text-xs text-stone-500">
+                                  ⭐ {place.rating.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
