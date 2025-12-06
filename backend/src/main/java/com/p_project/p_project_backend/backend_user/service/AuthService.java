@@ -7,9 +7,7 @@ import com.p_project.p_project_backend.entity.*;
 import com.p_project.p_project_backend.repository.*;
 import com.p_project.p_project_backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +17,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -31,39 +30,16 @@ public class AuthService {
     private final PasswordResetCodeRepository passwordResetCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final AuthenticationManager authenticationManager;
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
-        // Authenticate using AuthenticationManager
-        // This will call CustomUserDetailsService.loadUserByUsername internally
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
-        // If authentication is successful, we can get the user details
-        // We still need the User entity for ID and other details to create tokens
-        // mostly
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // No need to check password or deletedAt here,
-        // AuthenticationManager/CustomUserDetailsService did it.
-        // Double check deletedAt just in case (though CDS checks it)
-        if (user.getDeletedAt() != null) {
-            throw new RuntimeException("User account is deleted");
-        }
+        User user = findActiveUser(request.getEmail());
+        validatePassword(request.getPassword(), user.getPasswordHash());
 
         String accessToken = tokenProvider.createAccessToken(user.getEmail());
         String refreshToken = tokenProvider.createRefreshToken(user.getEmail());
 
-        // Save Refresh Token
-        RefreshToken rt = RefreshToken.builder()
-                .user(user)
-                .token(refreshToken)
-                .expiresAt(LocalDateTime.now().plusDays(7)) // 7 days validity
-                .createdAt(LocalDateTime.now())
-                .build();
-        refreshTokenRepository.save(rt);
+        saveRefreshToken(user, refreshToken);
 
         return TokenResponse.builder()
                 .accessToken(accessToken)
@@ -74,35 +50,24 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public boolean checkEmailAvailability(String email) {
-        // User와 Admin 모두 확인하여 중복 방지
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        boolean userExists = userOpt.isPresent() && userOpt.get().getDeletedAt() == null;
-        boolean adminExists = adminRepository.existsByEmail(email);
-        return !userExists && !adminExists;
+        return !isUserEmailTaken(email) && !adminRepository.existsByEmail(email);
     }
 
     @Transactional
     public void sendVerificationCode(String email) {
-        if (userRepository.existsByEmail(email)) {
+        if (isUserEmailTaken(email)) {
             throw new RuntimeException("Email already exists");
         }
 
         String code = generateRandomCode();
-        EmailVerificationCode evc = EmailVerificationCode.builder()
-                .email(email)
-                .code(code)
-                .expiresAt(LocalDateTime.now().plusMinutes(5))
-                .createdAt(LocalDateTime.now())
-                .build();
-        emailVerificationCodeRepository.save(evc);
-        System.out.println("=========================================");
-        System.out.println("VERIFICATION CODE: " + code);
-        System.out.println("=========================================");
+        saveVerificationCode(email, code);
+
+        log.info("Sent verification code to {}: {}", email, code);
         try {
             emailService.sendVerificationCode(email, code);
         } catch (Exception e) {
-            System.out.println("Failed to send email: " + e.getMessage());
-            // Transaction will NOT rollback because we caught the exception
+            log.error("Failed to send verification email to {}", email, e);
+            // Non-blocking failure for demo purposes, or rethrow if critical
         }
     }
 
@@ -125,48 +90,13 @@ public class AuthService {
 
     @Transactional
     public TokenResponse register(SignUpRequest request) {
-        Optional<User> existingUser = userRepository.findByEmail(request.getEmail());
+        handleExistingUser(request.getEmail());
+        validateEmailVerified(request.getEmail(), request.getEmailVerified());
 
-        if (existingUser.isPresent()) {
-            if (existingUser.get().getDeletedAt() == null) {
-                throw new RuntimeException("Email already exists");
-            } else {
-                // Hard delete existing soft-deleted user (Cascade will delete diaries)
-                emailVerificationCodeRepository.deleteByEmail(request.getEmail());
-                passwordResetCodeRepository.deleteByEmail(request.getEmail());
-                userRepository.delete(existingUser.get());
-                userRepository.flush();
-            }
-        }
-
-        if (!request.getEmailVerified()) {
-            // In a real scenario, we should double check if the email was actually verified
-            // in the DB recently
-            EmailVerificationCode evc = emailVerificationCodeRepository
-                    .findTopByEmailOrderByCreatedAtDesc(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("Email verification required"));
-            if (evc.getVerifiedAt() == null) {
-                throw new RuntimeException("Email not verified");
-            }
-        }
-
-        User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .emailVerified(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
+        User user = createUser(request);
         userRepository.save(user);
 
-        // Auto login
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail(request.getEmail());
-        loginRequest.setPassword(request.getPassword());
-
-        return login(loginRequest);
+        return login(new LoginRequest(request.getEmail(), request.getPassword()));
     }
 
     @Transactional
@@ -183,10 +113,11 @@ public class AuthService {
                 .createdAt(LocalDateTime.now())
                 .build();
         passwordResetCodeRepository.save(prc);
+
         try {
             emailService.sendPasswordResetCode(email, code);
         } catch (Exception e) {
-            System.out.println("Failed to send email: " + e.getMessage());
+            log.error("Failed to send password reset email to {}", email, e);
         }
     }
 
@@ -203,7 +134,6 @@ public class AuthService {
             throw new RuntimeException("Reset code expired");
         }
 
-        // Generate a temporary reset token
         String resetToken = UUID.randomUUID().toString();
         prc.setResetToken(resetToken);
         passwordResetCodeRepository.save(prc);
@@ -217,17 +147,6 @@ public class AuthService {
             throw new RuntimeException("Passwords do not match");
         }
 
-        // In a real app, we should store the resetToken and verify it here.
-        // For simplicity, we assume the flow is sequential and trusted if the token is
-        // present (or we could store it in Redis/DB).
-        // The spec says verify-code returns a resetToken, and reset uses it.
-        // Since we don't have a table for reset tokens, we'll skip strict token
-        // validation for now or assume the client passes the code again?
-        // The spec says `resetToken` is returned. Let's assume we just trust the email
-        // for now as we verified it in the previous step.
-        // Ideally, `PasswordResetCode` could store the `resetToken` after verification.
-
-        // Verify reset token
         PasswordResetCode prc = passwordResetCodeRepository.findTopByEmailOrderByCreatedAtDesc(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Reset code not found"));
 
@@ -242,7 +161,6 @@ public class AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Mark code as used
         prc.setUsedAt(LocalDateTime.now());
         passwordResetCodeRepository.save(prc);
     }
@@ -280,6 +198,88 @@ public class AuthService {
     public void logout(String refreshToken) {
         refreshTokenRepository.findByToken(refreshToken)
                 .ifPresent(refreshTokenRepository::delete);
+    }
+
+    // --- Private Helper Methods ---
+
+    private User findActiveUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
+
+        if (user.getDeletedAt() != null) {
+            throw new IllegalArgumentException("User account is deleted");
+        }
+        return user;
+    }
+
+    private void validatePassword(String rawPassword, String encodedPassword) {
+        if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
+            throw new IllegalArgumentException("INVALID_CREDENTIALS");
+        }
+    }
+
+    private void saveRefreshToken(User user, String token) {
+        RefreshToken rt = RefreshToken.builder()
+                .user(user)
+                .token(token)
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .createdAt(LocalDateTime.now())
+                .build();
+        refreshTokenRepository.save(rt);
+    }
+
+    private boolean isUserEmailTaken(String email) {
+        return userRepository.findByEmail(email)
+                .map(user -> user.getDeletedAt() == null)
+                .orElse(false);
+    }
+
+    private void handleExistingUser(String email) {
+        Optional<User> existingUser = userRepository.findByEmail(email);
+        if (existingUser.isPresent()) {
+            if (existingUser.get().getDeletedAt() == null) {
+                throw new RuntimeException("Email already exists");
+            } else {
+                // Hard delete existing soft-deleted user (Cascade will delete diaries)
+                emailVerificationCodeRepository.deleteByEmail(email);
+                passwordResetCodeRepository.deleteByEmail(email);
+                userRepository.delete(existingUser.get());
+                userRepository.flush();
+                log.info("Re-registration: Hard deleted existing user {}", email);
+            }
+        }
+    }
+
+    private void saveVerificationCode(String email, String code) {
+        EmailVerificationCode evc = EmailVerificationCode.builder()
+                .email(email)
+                .code(code)
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
+                .build();
+        emailVerificationCodeRepository.save(evc);
+    }
+
+    private void validateEmailVerified(String email, Boolean isVerifiedByClient) {
+        if (Boolean.FALSE.equals(isVerifiedByClient)) { // Null safe check
+            EmailVerificationCode evc = emailVerificationCodeRepository
+                    .findTopByEmailOrderByCreatedAtDesc(email)
+                    .orElseThrow(() -> new RuntimeException("Email verification required"));
+            if (evc.getVerifiedAt() == null) {
+                throw new RuntimeException("Email not verified");
+            }
+        }
+    }
+
+    private User createUser(SignUpRequest request) {
+        return User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .emailVerified(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
     private String generateRandomCode() {

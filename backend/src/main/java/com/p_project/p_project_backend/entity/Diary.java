@@ -107,6 +107,6 @@ public class Diary {
     }
 
     public enum Weather {
-        맑음, 흐림, 비, 눈, 천둥번개, 안개
+        맑음, 흐림, 비, 눈, 천둥, 안개
     }
 }
