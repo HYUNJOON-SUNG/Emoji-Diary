@@ -20,6 +20,9 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 
         List<Diary> findByUserAndDateBetweenAndDeletedAtIsNull(User user, LocalDate startDate, LocalDate endDate);
 
+        List<Diary> findByUserAndDateBetweenAndDeletedAtIsNullOrderByDateDesc(User user, LocalDate startDate,
+                        LocalDate endDate);
+
         @Query("SELECT d FROM Diary d WHERE d.user = :user " +
                         "AND d.deletedAt IS NULL " +
                         "AND (:keyword IS NULL OR d.content LIKE %:keyword% OR d.title LIKE %:keyword%) " +
