@@ -1,2 +1,152 @@
-model/best_model.pt
-./model/best_model.pt
+.vscode/
+.idea/
+.venv/
+*.log
+__pycache__/
+*.pyc
+
+# ========================================
+# 프로젝트 루트 .gitignore
+# ========================================
+# 전체 프로젝트에 공통으로 적용되는 제외 항목
+
+# ========================================
+# ⛔️ 보안 정보 (절대 업로드 금지!)
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+application.yml
+application.properties
+application-*.yml
+application-*.properties
+*.secret
+*.key
+*.pem
+*.cert
+config.json
+secrets.json
+
+# ========================================
+# 의존성 폴더 (절대 업로드 금지!)
+# ========================================
+# Node.js
+node_modules/
+/.pnp
+.pnp.js
+
+# Python
+venv/
+env/
+ENV/
+.venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Java
+target/
+.classpath
+.project
+.settings/
+
+# ========================================
+# ⛔️ 대용량 AI 모델 파일 (절대 업로드 금지!)
+# ========================================
+# PyTorch models
+*.pt
+*.pth
+*.pth.tar
+*.ckpt
+
+# TensorFlow/Keras models
+*.h5
+*.hdf5
+*.pb
+*.tflite
+*.savedmodel
+
+# ONNX models
+*.onnx
+
+# Other model formats
+*.bin
+*.model
+*.weights
+*.pkl
+*.pickle
+*.joblib
+
+# Model directories
+models/
+checkpoints/
+weights/
+saved_models/
+*.pt/
+*.pth/
+*.h5/
+
+# Large data files
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+data/
+datasets/
+*.db
+*.sqlite
+*.sqlite3
+
+# ========================================
+# 빌드 결과물
+# ========================================
+build/
+dist/
+out/
+.next/
+*.war
+*.jar
+*.ear
+
+# ========================================
+# IDE 및 에디터 설정
+# ========================================
+.idea/
+.vscode/
+.cursorrules
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================================
+# 로그 파일
+# ========================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========================================
+# 임시 파일
+# ========================================
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+
+# ========================================
+# 레퍼런스 파일
+# ========================================
+reference/
+
