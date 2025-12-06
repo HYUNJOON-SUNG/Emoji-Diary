@@ -8,4 +8,6 @@ public interface EmailVerificationCodeRepository extends JpaRepository<EmailVeri
     Optional<EmailVerificationCode> findByEmailAndCode(String email, String code);
 
     Optional<EmailVerificationCode> findTopByEmailOrderByCreatedAtDesc(String email);
+
+    void deleteByEmail(String email);
 }

@@ -2,6 +2,9 @@ package com.p_project.p_project_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -36,6 +39,7 @@ public class Diary {
     // 작성자 ID (user_id) - FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     // 일기 작성 날짜 (date)

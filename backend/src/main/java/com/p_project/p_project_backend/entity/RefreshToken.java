@@ -2,6 +2,9 @@ package com.p_project.p_project_backend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -27,6 +30,7 @@ public class RefreshToken {
     // 사용자 ID (user_id) - FK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     // 리프레시 토큰 값 (token)
