@@ -10,6 +10,7 @@ import com.p_project.p_project_backend.backend_user.repository.DiaryActivityRepo
 import com.p_project.p_project_backend.backend_user.repository.DiaryImageRepository;
 import com.p_project.p_project_backend.backend_user.repository.DiaryRepository;
 import com.p_project.p_project_backend.entity.Diary;
+import com.p_project.p_project_backend.entity.Diary.Emotion;
 import com.p_project.p_project_backend.entity.DiaryActivity;
 import com.p_project.p_project_backend.entity.DiaryImage;
 import com.p_project.p_project_backend.entity.User;
@@ -72,9 +73,29 @@ public class DiaryService {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
 
-        return diaryRepository.findByUserAndDateBetween(user, startDate, endDate).stream()
+        return diaryRepository.findByUserAndDateBetweenAndDeletedAtIsNull(user, startDate, endDate).stream()
                 .map(this::buildDiarySummaryResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> searchDiaries(User user, String keyword, LocalDate startDate,
+            LocalDate endDate, List<Emotion> emotions, int page, int limit) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1,
+                limit);
+        org.springframework.data.domain.Page<Diary> diaryPage = diaryRepository.searchDiaries(user, keyword, startDate,
+                endDate, emotions, pageable);
+
+        List<DiarySummaryResponse> diaryResponses = diaryPage.getContent().stream()
+                .map(this::buildDiarySummaryResponse)
+                .collect(Collectors.toList());
+
+        return java.util.Map.of(
+                "total", diaryPage.getTotalElements(),
+                "page", page,
+                "limit", limit,
+                "totalPages", diaryPage.getTotalPages(),
+                "diaries", diaryResponses);
     }
 
     @Transactional
@@ -107,7 +128,7 @@ public class DiaryService {
         diary.setContent(request.getContent());
         diary.setMood(request.getMood());
         diary.setWeather(request.getWeather());
-        diary.setEmotion(Diary.Emotion.valueOf(aiResult.getEmotion()));
+        diary.setEmotion(Emotion.valueOf(aiResult.getEmotion()));
         diary.setAiComment(aiResult.getAiComment());
         diary.setRecommendedFood(convertToJson(aiResult.getRecommendedFood()));
         diary.setImageUrl(aiResult.getImageUrl());
@@ -145,7 +166,7 @@ public class DiaryService {
                 .content(request.getContent())
                 .mood(request.getMood())
                 .weather(request.getWeather())
-                .emotion(Diary.Emotion.valueOf(aiResult.getEmotion()))
+                .emotion(Emotion.valueOf(aiResult.getEmotion()))
                 .aiComment(aiResult.getAiComment())
                 .recommendedFood(convertToJson(aiResult.getRecommendedFood()))
                 .imageUrl(aiResult.getImageUrl())
@@ -229,4 +250,5 @@ public class DiaryService {
             return "[]";
         }
     }
+
 }

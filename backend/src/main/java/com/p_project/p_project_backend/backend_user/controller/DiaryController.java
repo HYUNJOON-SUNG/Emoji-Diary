@@ -4,7 +4,9 @@ import com.p_project.p_project_backend.backend_user.dto.diary.DiaryRequest;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiaryResponse;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiarySummaryResponse;
 import com.p_project.p_project_backend.backend_user.service.DiaryService;
+import com.p_project.p_project_backend.entity.Diary.Emotion;
 import com.p_project.p_project_backend.entity.User;
+import com.p_project.p_project_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/diaries")
@@ -20,7 +23,7 @@ import java.util.List;
 public class DiaryController {
 
         private final DiaryService diaryService;
-        private final com.p_project.p_project_backend.repository.UserRepository userRepository;
+        private final UserRepository userRepository;
 
         @PostMapping
         public ResponseEntity<DiaryResponse> createDiary(
@@ -63,6 +66,20 @@ public class DiaryController {
                         @RequestParam("month") int month) {
                 User user = getUser(userDetails);
                 return ResponseEntity.ok(diaryService.getMonthlyDiaries(user, year, month));
+        }
+
+        @GetMapping("/search")
+        public ResponseEntity<?> searchDiaries(
+                        @AuthenticationPrincipal UserDetails userDetails,
+                        @RequestParam(required = false) String keyword,
+                        @RequestParam(required = false) LocalDate startDate,
+                        @RequestParam(required = false) LocalDate endDate,
+                        @RequestParam(required = false) List<Emotion> emotions,
+                        @RequestParam(defaultValue = "1") int page,
+                        @RequestParam(defaultValue = "10") int limit) {
+                User user = getUser(userDetails);
+                return ResponseEntity.ok(Map.of("success", true, "data",
+                                diaryService.searchDiaries(user, keyword, startDate, endDate, emotions, page, limit)));
         }
 
         @DeleteMapping("/{diaryId}")
