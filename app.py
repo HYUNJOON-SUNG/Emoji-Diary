@@ -151,9 +151,23 @@ async def ai_analyze(request: AiServerRequest):
                     food_recommendation = feedback_json.get("Food_Recommendation", "")
                     
                     if food_recommendation:
-                        recommended_food = [f.strip() for f in food_recommendation.replace("\n", ",").split(",") if f.strip()]
-                        if not recommended_food:
-                            recommended_food = [food_recommendation]
+                        if ':' in food_recommendation:
+                            parts = food_recommendation.split(':', 1)  
+                            food_name = parts[0].strip()
+                            reason = parts[1].strip() if len(parts) > 1 else ""
+                            recommended_food = [food_name, reason]
+                        elif '.' in food_recommendation:
+                            parts = [p.strip() for p in food_recommendation.split('.') if p.strip()]
+                            if len(parts) >= 2:
+                                food_name = parts[0].strip()
+                                reason = '. '.join(parts[1:]).strip()
+                                recommended_food = [food_name, reason]
+                            else:
+                                recommended_food = [parts[0].strip(), ""]
+                        else:
+                            recommended_food = [food_recommendation.strip(), ""]
+                    else:
+                        recommended_food = ["", ""]
                 except json.JSONDecodeError:
                     ai_comment = feedback_text
         except Exception as fb_e:
@@ -163,7 +177,7 @@ async def ai_analyze(request: AiServerRequest):
         generated_image_base64 = None
         
         try:
-            image_data = nano_banana(content, request.sex)
+            image_data = nano_banana(content, request.sex, request.weather)
             if image_data:
                 generated_image_base64 = base64.b64encode(image_data).decode('utf-8')
         except Exception as img_e:
