@@ -33,6 +33,7 @@
  */
 
 import type { User } from '../types';
+import { personaToEnum, enumToPersona } from '../utils/personaConverter';
 
 // ========== Mock 데이터 ==========
 
@@ -56,6 +57,7 @@ interface MockUser {
   email: string;
   password: string; // ⚠️ 실제로는 해시값 저장 필요
   name: string;
+  gender: 'MALE' | 'FEMALE'; // 성별 (ERD: Users.gender, ENUM, API 명세서 필수 필드)
   persona: string; // 페르소나 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
   notificationEnabled: boolean;
   createdAt: string;
@@ -67,6 +69,7 @@ const mockUsers: MockUser[] = [
     email: 'test@example.com',
     password: 'password123',
     name: '홍길동',
+    gender: 'MALE', // API 명세서: 필수 필드
     persona: '베프', // API 명세서: 기본값 "베프"
     notificationEnabled: true,
     createdAt: '2024-01-01T00:00:00Z',
@@ -76,6 +79,7 @@ const mockUsers: MockUser[] = [
     email: 'user@diary.com',
     password: '1234',
     name: '김철수',
+    gender: 'FEMALE', // API 명세서: 필수 필드
     persona: '베프', // API 명세서: 기본값 "베프"
     notificationEnabled: false,
     createdAt: '2024-01-02T00:00:00Z',
@@ -215,13 +219,17 @@ export interface LoginResponse {
  * 
  * [API 명세서 Section 2.2.4]
  * - POST /api/auth/register
- * - Request: { name, email, password, emailVerified, persona? }
+ * - Request: { name, email, password, emailVerified, gender }
+ * 
+ * [ERD 설계서 참고 - Users 테이블]
+ * - gender: ENUM (MALE, FEMALE) - 필수, AI 이미지 생성 시 주인공 성별 결정
  * 
  * [플로우 1.3: 회원가입 플로우]
  * - email: 이메일 (인증 완료된 이메일)
  * - password: 비밀번호 (영문, 숫자, 특수문자 포함 8자 이상)
  * - name: 이름 (2~10자)
  * - emailVerified: 이메일 인증 완료 여부 (필수, true여야 함)
+ * - gender: 성별 (필수, MALE 또는 FEMALE, AI 이미지 생성 시 사용됨)
  * - verificationCode: 이메일 인증 코드 (6자리) - 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증)
  * - termsAccepted: 필수 약관 동의 여부 - 프론트엔드에서만 사용
  * - persona: 페르소나 (선택, 미제공 시 기본값 "베프")
@@ -232,6 +240,7 @@ export interface SignupRequest {
   password: string;
   name: string;
   emailVerified: boolean; // [API 명세서] 필수 필드, true여야 함
+  gender: 'MALE' | 'FEMALE'; // [API 명세서] 필수 필드, AI 이미지 생성 시 사용됨 (ERD: Users.gender, ENUM)
   verificationCode: string; // 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증)
   termsAccepted: boolean; // 프론트엔드에서만 사용
   persona?: string; // [API 명세서] 선택 필드 (기본값: "베프")
@@ -307,6 +316,7 @@ export interface ResetPasswordRequest {
  * [백엔드 팀] 실제 구현 시 (axios 사용):
  * ```typescript
  * import { apiClient } from './api';
+ * import { enumToPersona } from '../utils/personaConverter';
  * 
  * export async function login(data: LoginRequest): Promise<LoginResponse> {
  *   try {
@@ -317,9 +327,14 @@ export interface ResetPasswordRequest {
  *     
  *     if (response.data.success) {
  *       const { accessToken, refreshToken, user } = response.data.data;
+ *       // 백엔드에서 enum으로 반환되므로 한글로 변환
+ *       const userWithPersona = {
+ *         ...user,
+ *         persona: enumToPersona(user.persona), // enum → 한글
+ *       };
  *       TokenStorage.setTokens(accessToken, refreshToken);
- *       localStorage.setItem('user', JSON.stringify(user));
- *       return { accessToken, refreshToken, user };
+ *       localStorage.setItem('user', JSON.stringify(userWithPersona));
+ *       return { accessToken, refreshToken, user: userWithPersona };
  *     } else {
  *       throw new Error(response.data.error?.message || '로그인에 실패했습니다.');
  *     }
@@ -424,11 +439,30 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
     ? data.persona 
     : '베프'; // 기본값 "베프"
   
+  // [백엔드 팀] 실제 API 호출 시:
+  // - persona를 enum으로 변환하여 전송 (한글 → enum)
+  // const personaEnum = personaToEnum(persona);
+  // const requestBody = {
+  //   ...data,
+  //   persona: personaEnum, // 백엔드는 enum을 기대함
+  // };
+  // const response = await apiClient.post('/auth/register', requestBody);
+  // const userResponse = response.data.data.user;
+  // // 백엔드에서 enum으로 반환되므로 한글로 변환
+  // return {
+  //   ...response.data.data,
+  //   user: {
+  //     ...userResponse,
+  //     persona: enumToPersona(userResponse.persona), // enum → 한글
+  //   },
+  // };
+  
   const newUser: MockUser = {
     id: generateId(),
     email: data.email,
     password: data.password,
     name: data.name,
+    gender: data.gender, // [API 명세서] 필수 필드, AI 이미지 생성 시 사용됨
     persona: persona, // API 명세서: 선택 필드, 미제공 시 기본값 "베프"
     notificationEnabled: true,
     createdAt: new Date().toISOString(),
@@ -449,6 +483,7 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
       id: newUser.id,
       email: newUser.email,
       name: newUser.name,
+      gender: newUser.gender, // [API 명세서] 필수 필드
       persona: newUser.persona, // API 명세서: persona 필드 추가
       notificationEnabled: newUser.notificationEnabled,
     },
@@ -824,6 +859,15 @@ export async function refreshToken(refreshToken: string): Promise<{ accessToken:
 export async function getCurrentUser(): Promise<User> {
   await delay(500);
   
+  // [백엔드 팀] 실제 API 호출 시:
+  // const response = await apiClient.get('/users/me');
+  // const userResponse = response.data.data;
+  // // 백엔드에서 enum으로 반환되므로 한글로 변환
+  // return {
+  //   ...userResponse,
+  //   persona: enumToPersona(userResponse.persona), // enum → 한글
+  // };
+  
   // Mock: localStorage에서 사용자 정보 로드
   const userStr = localStorage.getItem('user');
   if (!userStr) {
@@ -865,6 +909,17 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
   if (!validPersonas.includes(data.persona)) {
     throw new Error('유효하지 않은 페르소나입니다.');
   }
+  
+  // [백엔드 팀] 실제 API 호출 시:
+  // - persona를 enum으로 변환하여 전송 (한글 → enum)
+  // const personaEnum = personaToEnum(data.persona);
+  // const response = await apiClient.put('/users/me/persona', { persona: personaEnum });
+  // const userResponse = response.data.data;
+  // // 백엔드에서 enum으로 반환되므로 한글로 변환
+  // return {
+  //   message: userResponse.message,
+  //   persona: enumToPersona(userResponse.persona), // enum → 한글
+  // };
   
   const userStr = localStorage.getItem('user');
   if (!userStr) {

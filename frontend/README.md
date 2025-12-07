@@ -12,18 +12,22 @@
   ## 주요 수정 사항
 
   ### API 명세서 반영 (2025-01-XX)
-  - **User 인터페이스**: `persona` 필드 추가 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
+  - **User 인터페이스**: 
+    - `persona` 필드 추가 (베프, 부모님, 전문가, 멘토, 상담사, 시인)
+    - `gender` 필드 추가 (MALE, FEMALE) - AI 이미지 생성 시 사용
   - **인증 API**: 모든 엔드포인트 주석에 API 명세서 Section 번호 추가 및 엔드포인트 경로 명확화
     - 로그인 (Section 2.1), 이메일 중복 확인 (Section 2.2.1), 이메일 인증 코드 발송/확인 (Section 2.2.2-2.2.3)
-    - 회원가입 (Section 2.2.4), 비밀번호 재설정 (Section 2.3.1-2.3.3), 토큰 재발급 (Section 2.4)
+    - 회원가입 (Section 2.2.4): `gender` 필드 필수 추가 (MALE 또는 FEMALE)
+    - 비밀번호 재설정 (Section 2.3.1-2.3.3), 토큰 재발급 (Section 2.4)
   - **사용자 API**: 엔드포인트 주석 수정
     - 프로필 수정: `/api/auth/profile` → `/api/users/me/profile`
     - 알림 설정: `/api/auth/notification` → `/api/users/me/notification`
     - 계정 탈퇴: `/api/auth/account` → `/api/users/me` (Section 3.4)
-    - 사용자 정보 조회 (Section 3.1), 페르소나 설정 (Section 3.2), 비밀번호 변경 (Section 3.3)
+    - 사용자 정보 조회 (Section 3.1): `gender` 필드 포함
+    - 페르소나 설정 (Section 3.2), 비밀번호 변경 (Section 3.3)
   - **일기 API**: 모든 엔드포인트 주석에 API 명세서 Section 번호 추가
-    - 일기 작성 (Section 4.1), 일기 수정 (Section 4.2), 일기 조회 (Section 4.3-4.4)
-    - 캘린더 조회 (Section 4.5), 일기 삭제 (Section 4.6), 일기 검색 (Section 5.1)
+    - 일기 작성 (Section 4.1), 일기 수정 (Section 4.2): `imageUrl` 필드 제거 (AI가 자동 재생성)
+    - 일기 조회 (Section 4.3-4.4), 캘린더 조회 (Section 4.5), 일기 삭제 (Section 4.6), 일기 검색 (Section 5.1)
   - **통계 API**: `GET /api/statistics/emotions` (Section 5.2.1), `GET /api/statistics/emotion-trend` (Section 5.2.2)
   - **위험 신호 감지 API**: 점수 기반 분석으로 변경
     - 위험 신호 분석 (Section 6.1), 세션 확인 (Section 6.2), 표시 완료 기록 (Section 6.3)
@@ -31,10 +35,19 @@
   - **상담 기관 리소스 API**: `GET /api/counseling-resources` (Section 8.1, 신규 추가)
   - **파일 업로드 API**: `POST /api/upload/image` (Section 9.1), `DELETE /api/upload/image` (Section 9.2)
   - **일기 검색 API**: `emotions` 파라미터로 변경 (한글 감정명 콤마 구분)
-  - **회원가입**: `persona` 필드 추가 (선택, 기본값: "베프")
+  - **회원가입**: 
+    - `persona` 필드 추가 (선택, 기본값: "베프")
+    - `gender` 필드 필수 추가 (MALE 또는 FEMALE, AI 이미지 생성 시 사용)
   - **비밀번호 변경**: `confirmPassword` 필드 추가
   - **일기 API 필드명 수정**: `note` → `content`, `userImageUrls` → `images`
-  - **일기 API**: `emotion` 필드 제거 (KoBERT가 자동 분석)
+  - **일기 API**: 
+    - `emotion` 필드 제거 (KoBERT가 자동 분석)
+    - 일기 수정 시 `imageUrl` 필드 제거 (AI가 수정된 내용을 바탕으로 자동 재생성)
+  - **Persona 변환 유틸리티 추가** (`src/utils/personaConverter.ts`)
+    - 백엔드는 enum 형식 (BEST_FRIEND, PARENTS 등) 사용
+    - 프론트엔드는 한글 문자열 ("베프", "부모님" 등) 사용
+    - `personaToEnum()`: 한글 → enum 변환 (회원가입, 페르소나 업데이트 시 사용)
+    - `enumToPersona()`: enum → 한글 변환 (로그인, 사용자 정보 조회 시 사용)
   
   ### 관리자 API 명세서 반영 (2025-01-XX)
   - **관리자 API 서비스 파일 생성**: `src/services/adminApi.ts`
@@ -73,13 +86,15 @@
     - `src/services/diaryApi.ts` - 인터페이스에 `recommendedFood` 필드 추가
 
  ### 3. 일기 수정 플로우 수정 (플로우 4.3)
-  - **처리 순서**:
+  - **처리 순서** (API 명세서 Section 4.2):
     1. KoBERT 감정 재분석 (수정된 본문 분석)
-    2. AI 이미지 재생성 안 함 (기존 이미지 유지)
-    3. 일기 수정 저장
+    2. AI 이미지 재생성 (NanoVana API) - 수정된 내용을 반영하여 자동 재생성
+    3. 일기 수정 저장 (imageUrl은 Request Body에서 제거, Response에서 재생성된 이미지 URL 받음)
     4. AI 코멘트 재생성 (Gemini API)
     5. 음식 추천 재생성 (Gemini API) - **신규 추가**
-  - **파일**: `src/features/diary/DiaryWritingPage.tsx`
+  - **파일**: 
+    - `src/features/diary/DiaryWritingPage.tsx`
+    - `src/services/diaryApi.ts` - `UpdateDiaryRequest` 인터페이스에서 `imageUrl` 필드 제거
 
   ### 4. 감정 분석 결과 모달 수정 (플로우 3.4)
   - **변경 전**: 사용자가 선택한 감정 이모지 및 레이블 표시
