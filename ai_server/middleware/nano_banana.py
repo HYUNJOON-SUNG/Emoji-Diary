@@ -3,7 +3,7 @@ from io import BytesIO
 from google import genai
 from google.genai import types
 
-from server.template.prompt import Prompt
+from template.prompt import Prompt
 
 prompt = Prompt()
 

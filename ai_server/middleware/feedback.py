@@ -1,6 +1,6 @@
 import google.generativeai as genai
 
-from server.template.prompt import Prompt
+from template.prompt import Prompt
 
 prompt = Prompt()
 

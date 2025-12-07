@@ -11,11 +11,11 @@ from pathlib import Path
 import uvicorn
 import json
 
-project_root = Path(__file__).parent.parent
-current_dir = Path(__file__).parent
 
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(current_dir))
+project_root = Path(__file__).parent
+
+# sys.path hacking is no longer needed if we run from the 'server' folder
+
 
 from middleware.anaysis_emotion import (
     load_trained_model,
@@ -38,9 +38,8 @@ async def lifespan(app: FastAPI):
     print("감정 분석 모델 로드 중...")
     
     possible_paths = [
-        project_root / "server" / "model" / "best_model.pt",  
-        project_root / "model" / "best_model.pt",  
-        project_root / "best_model.pt",  
+        project_root / "best_model.pt",  # Most likely location
+        project_root / "model" / "best_model.pt",
     ]
     
     model_path = None
