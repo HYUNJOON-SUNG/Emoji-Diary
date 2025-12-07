@@ -1,7 +1,7 @@
 package com.p_project.p_project_backend.backend_user.service;
 
 import com.p_project.p_project_backend.backend_user.dto.auth.*;
-import com.p_project.p_project_backend.exception.*;
+import com.p_project.p_project_backend.backend_user.dto.user.UserResponse;
 import com.p_project.p_project_backend.service.EmailService;
 import com.p_project.p_project_backend.entity.*;
 import com.p_project.p_project_backend.repository.*;
@@ -32,7 +32,7 @@ public class AuthService {
     private final EmailService emailService;
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public TokenResponse login(LoginRequest request) {
         User user = findActiveUser(request.getEmail());
         validatePassword(request.getPassword(), user.getPasswordHash());
 
@@ -41,10 +41,10 @@ public class AuthService {
 
         saveRefreshToken(user, refreshToken);
 
-        return LoginResponse.builder()
+        return TokenResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .user(LoginUserResponse.from(user))
+                .user(UserResponse.from(user))
                 .build();
     }
 
@@ -77,11 +77,11 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Verification code not found"));
 
         if (!evc.getCode().equals(code)) {
-            throw new InvalidCodeException("Invalid verification code");
+            throw new RuntimeException("Invalid verification code");
         }
 
         if (evc.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new CodeExpiredException("Verification code expired");
+            throw new RuntimeException("Verification code expired");
         }
 
         evc.setVerifiedAt(LocalDateTime.now());
@@ -89,7 +89,7 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse register(SignUpRequest request) {
+    public TokenResponse register(SignUpRequest request) {
         handleExistingUser(request.getEmail());
         validateEmailVerified(request.getEmail(), request.getEmailVerified());
 
@@ -127,11 +127,11 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Reset code not found"));
 
         if (!prc.getCode().equals(code)) {
-            throw new InvalidCodeException("Invalid reset code");
+            throw new RuntimeException("Invalid reset code");
         }
 
         if (prc.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new CodeExpiredException("Reset code expired");
+            throw new RuntimeException("Reset code expired");
         }
 
         String resetToken = UUID.randomUUID().toString();
@@ -190,6 +190,7 @@ public class AuthService {
         return TokenResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
+                .user(UserResponse.from(user))
                 .build();
     }
 
@@ -203,17 +204,17 @@ public class AuthService {
 
     private User findActiveUser(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new InvalidCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("USER_NOT_FOUND"));
 
         if (user.getDeletedAt() != null) {
-            throw new InvalidCredentialsException("User account is deleted");
+            throw new IllegalArgumentException("User account is deleted");
         }
         return user;
     }
 
     private void validatePassword(String rawPassword, String encodedPassword) {
         if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
-            throw new InvalidCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("INVALID_CREDENTIALS");
         }
     }
 

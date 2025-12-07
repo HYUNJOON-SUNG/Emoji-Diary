@@ -17,8 +17,13 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
-        return ResponseEntity.ok(Map.of("success", true, "data", response));
+        try {
+            TokenResponse response = authService.login(request);
+            return ResponseEntity.ok(Map.of("success", true, "data", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", Map.of("code", "LOGIN_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PostMapping("/check-email")
@@ -47,15 +52,25 @@ public class AuthController {
 
     @PostMapping("/verify-code")
     public ResponseEntity<?> verifyCode(@RequestBody VerificationCodeRequest request) {
-        authService.verifyEmailCode(request.getEmail(), request.getCode());
-        return ResponseEntity
-                .ok(Map.of("success", true, "data", Map.of("verified", true, "message", "이메일 인증이 완료되었습니다")));
+        try {
+            authService.verifyEmailCode(request.getEmail(), request.getCode());
+            return ResponseEntity
+                    .ok(Map.of("success", true, "data", Map.of("verified", true, "message", "이메일 인증이 완료되었습니다")));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error",
+                    Map.of("code", "VERIFICATION_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @jakarta.validation.Valid SignUpRequest request) {
-        LoginResponse response = authService.register(request);
-        return ResponseEntity.status(201).body(Map.of("success", true, "data", response));
+        try {
+            TokenResponse response = authService.register(request);
+            return ResponseEntity.status(201).body(Map.of("success", true, "data", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "error", Map.of("code", "REGISTER_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PostMapping("/password-reset/send-code")
@@ -72,9 +87,14 @@ public class AuthController {
 
     @PostMapping("/password-reset/verify-code")
     public ResponseEntity<?> verifyPasswordResetCode(@RequestBody PasswordResetVerifyRequest request) {
-        String resetToken = authService.verifyPasswordResetCode(request.getEmail(), request.getCode());
-        return ResponseEntity
-                .ok(Map.of("success", true, "data", Map.of("verified", true, "resetToken", resetToken)));
+        try {
+            String resetToken = authService.verifyPasswordResetCode(request.getEmail(), request.getCode());
+            return ResponseEntity
+                    .ok(Map.of("success", true, "data", Map.of("verified", true, "resetToken", resetToken)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error",
+                    Map.of("code", "VERIFICATION_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PostMapping("/password-reset/reset")

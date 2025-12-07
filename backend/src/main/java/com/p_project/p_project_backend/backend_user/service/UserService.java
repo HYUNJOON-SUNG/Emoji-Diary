@@ -3,7 +3,6 @@ package com.p_project.p_project_backend.backend_user.service;
 import com.p_project.p_project_backend.backend_user.dto.user.PasswordChangeRequest;
 import com.p_project.p_project_backend.backend_user.dto.user.PersonaUpdateRequest;
 import com.p_project.p_project_backend.backend_user.dto.user.UserResponse;
-import com.p_project.p_project_backend.exception.IncorrectPasswordException;
 import com.p_project.p_project_backend.entity.User;
 import com.p_project.p_project_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,7 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new IncorrectPasswordException("Incorrect password");
+            throw new RuntimeException("Incorrect password");
         }
 
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {

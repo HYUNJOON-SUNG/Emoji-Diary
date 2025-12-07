@@ -3,11 +3,8 @@ package com.p_project.p_project_backend.backend_user.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.p_project.p_project_backend.backend_user.dto.ai.AiServerRequest;
 import com.p_project.p_project_backend.backend_user.dto.ai.AiServiceResult;
-import com.p_project.p_project_backend.backend_user.dto.diary.DiaryCreateRequest;
-import com.p_project.p_project_backend.backend_user.dto.diary.DiaryUpdateRequest;
-import com.p_project.p_project_backend.backend_user.dto.diary.DiaryMonthlyResponse;
+import com.p_project.p_project_backend.backend_user.dto.diary.DiaryRequest;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiaryResponse;
-import com.p_project.p_project_backend.backend_user.dto.diary.DiarySearchResponse;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiarySummaryResponse;
 import com.p_project.p_project_backend.backend_user.repository.DiaryActivityRepository;
 import com.p_project.p_project_backend.backend_user.repository.DiaryImageRepository;
@@ -38,57 +35,49 @@ public class DiaryService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    public DiaryResponse createDiary(User user, DiaryCreateRequest request) {
+    public DiaryResponse createDiary(User user, DiaryRequest request) {
         validateDuplicateDiary(user, request.getDate());
 
-        AiServiceResult aiResult = analyzeDiaryContent(user, request.getContent(), request.getWeather());
+        AiServiceResult aiResult = analyzeDiaryContent(user, request);
         Diary diary = buildDiaryEntity(user, request, aiResult);
         Diary savedDiary = diaryRepository.save(diary);
 
         saveDiaryContents(savedDiary, request.getActivities(), request.getImages());
 
-        return buildDiaryResponse(savedDiary, request.getActivities(), request.getImages());
+        return buildDiaryResponse(savedDiary, request);
     }
 
     @Transactional
-    public DiaryResponse updateDiary(User user, Long diaryId, DiaryUpdateRequest request) {
+    public DiaryResponse updateDiary(User user, Long diaryId, DiaryRequest request) {
         Diary diary = getOwnedDiary(user, diaryId);
 
-        AiServiceResult aiResult = analyzeDiaryContent(user, request.getContent(), request.getWeather());
+        AiServiceResult aiResult = analyzeDiaryContent(user, request);
         updateDiaryEntity(diary, request, aiResult);
 
         deleteDiaryContents(diary);
         saveDiaryContents(diary, request.getActivities(), request.getImages());
 
-        return buildDiaryResponse(diary, request.getActivities(), request.getImages());
+        return buildDiaryResponse(diary, request);
     }
 
     public DiaryResponse getDiary(User user, Long diaryId) {
         Diary diary = getOwnedDiary(user, diaryId);
-        return buildDiaryResponse(diary, null, null);
+        return buildDiaryResponse(diary, null);
     }
 
     public DiaryResponse getDiaryByDate(User user, LocalDate date) {
         Diary diary = diaryRepository.findByUserAndDate(user, date)
-                .orElseThrow(() -> new com.p_project.p_project_backend.exception.DiaryNotFoundException(
-                        "해당 날짜에 작성된 일기가 없습니다"));
-        return buildDiaryResponse(diary, null, null);
+                .orElseThrow(() -> new IllegalArgumentException("Diary not found for date: " + date));
+        return buildDiaryResponse(diary, null);
     }
 
-    public DiaryMonthlyResponse getMonthlyDiaries(User user, int year, int month) {
+    public List<DiarySummaryResponse> getMonthlyDiaries(User user, int year, int month) {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
 
-        List<DiarySummaryResponse> diaries = diaryRepository
-                .findByUserAndDateBetweenAndDeletedAtIsNull(user, startDate, endDate).stream()
+        return diaryRepository.findByUserAndDateBetweenAndDeletedAtIsNull(user, startDate, endDate).stream()
                 .map(this::buildDiarySummaryResponse)
                 .collect(Collectors.toList());
-
-        return DiaryMonthlyResponse.builder()
-                .year(year)
-                .month(month)
-                .diaries(diaries)
-                .build();
     }
 
     @Transactional(readOnly = true)
@@ -99,8 +88,8 @@ public class DiaryService {
         org.springframework.data.domain.Page<Diary> diaryPage = diaryRepository.searchDiaries(user, keyword, startDate,
                 endDate, emotions, pageable);
 
-        List<DiarySearchResponse> diaryResponses = diaryPage.getContent().stream()
-                .map(this::buildDiarySearchResponse)
+        List<DiarySummaryResponse> diaryResponses = diaryPage.getContent().stream()
+                .map(this::buildDiarySummaryResponse)
                 .collect(Collectors.toList());
 
         return java.util.Map.of(
@@ -136,14 +125,13 @@ public class DiaryService {
         return diary;
     }
 
-    private AiServiceResult analyzeDiaryContent(User user, String content,
-            com.p_project.p_project_backend.entity.Diary.Weather weather) {
-        AiServerRequest aiRequest = buildAiRequest(user, content, weather);
+    private AiServiceResult analyzeDiaryContent(User user, DiaryRequest request) {
+        AiServerRequest aiRequest = buildAiRequest(user, request);
         return aiService.analyzeDiary(aiRequest);
     }
 
-    private void updateDiaryEntity(Diary diary, DiaryUpdateRequest request, AiServiceResult aiResult) {
-        // Update does not change date
+    private void updateDiaryEntity(Diary diary, DiaryRequest request, AiServiceResult aiResult) {
+        diary.setDate(request.getDate());
         diary.setTitle(request.getTitle());
         diary.setContent(request.getContent());
         diary.setMood(request.getMood());
@@ -165,17 +153,16 @@ public class DiaryService {
         diaryImageRepository.deleteAll(diaryImageRepository.findAllByDiary(diary));
     }
 
-    private AiServerRequest buildAiRequest(User user, String content,
-            com.p_project.p_project_backend.entity.Diary.Weather weather) {
+    private AiServerRequest buildAiRequest(User user, DiaryRequest request) {
         return AiServerRequest.builder()
-                .content(content)
-                .weather(weather)
+                .content(request.getContent())
+                .weather(request.getWeather())
                 .persona(user.getPersona())
                 .gender(user.getGender())
                 .build();
     }
 
-    private Diary buildDiaryEntity(User user, DiaryCreateRequest request, AiServiceResult aiResult) {
+    private Diary buildDiaryEntity(User user, DiaryRequest request, AiServiceResult aiResult) {
         return Diary.builder()
                 .user(user)
                 .date(request.getDate())
@@ -192,14 +179,13 @@ public class DiaryService {
                 .build();
     }
 
-    private DiaryResponse buildDiaryResponse(Diary savedDiary, List<String> requestActivities,
-            List<String> requestImages) {
+    private DiaryResponse buildDiaryResponse(Diary savedDiary, DiaryRequest request) {
         List<String> activities;
         List<String> images;
 
-        if (requestActivities != null) {
-            activities = requestActivities;
-            images = requestImages != null ? requestImages : java.util.Collections.emptyList();
+        if (request != null) {
+            activities = request.getActivities() != null ? request.getActivities() : java.util.Collections.emptyList();
+            images = request.getImages() != null ? request.getImages() : java.util.Collections.emptyList();
         } else {
             activities = diaryActivityRepository.findAllByDiary(savedDiary).stream()
                     .map(DiaryActivity::getActivity)
@@ -232,17 +218,6 @@ public class DiaryService {
                 .id(diary.getId())
                 .date(diary.getDate())
                 .emotion(diary.getEmotion().name())
-                .build();
-    }
-
-    private DiarySearchResponse buildDiarySearchResponse(Diary diary) {
-        return DiarySearchResponse.builder()
-                .id(diary.getId())
-                .date(diary.getDate())
-                .title(diary.getTitle())
-                .content(diary.getContent())
-                .emotion(diary.getEmotion().name())
-                .weather(diary.getWeather() != null ? diary.getWeather().name() : null)
                 .build();
     }
 

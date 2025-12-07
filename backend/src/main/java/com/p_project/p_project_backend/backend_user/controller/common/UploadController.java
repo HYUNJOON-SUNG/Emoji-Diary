@@ -31,8 +31,6 @@ public class UploadController {
     public ResponseEntity<Map<String, Object>> deleteImage(@RequestBody Map<String, String> request) {
         String imageUrl = request.get("imageUrl");
         uploadService.deleteImage(imageUrl);
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "data", Map.of("message", "이미지가 삭제되었습니다")));
+        return ResponseEntity.ok(Map.of("success", true, "message", "Image deleted successfully"));
     }
 }

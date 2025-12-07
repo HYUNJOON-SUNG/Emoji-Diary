@@ -21,28 +21,48 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
-        UserResponse response = userService.getCurrentUser(userDetails.getUsername());
-        return ResponseEntity.ok(Map.of("success", true, "data", response));
+        try {
+            UserResponse response = userService.getCurrentUser(userDetails.getUsername());
+            return ResponseEntity.ok(Map.of("success", true, "data", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", Map.of("code", "FETCH_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PutMapping("/me/persona")
     public ResponseEntity<?> updatePersona(@AuthenticationPrincipal UserDetails userDetails,
             @RequestBody @jakarta.validation.Valid PersonaUpdateRequest request) {
-        UserResponse response = userService.updatePersona(userDetails.getUsername(), request);
-        return ResponseEntity.ok(Map.of("success", true, "data",
-                Map.of("message", "페르소나가 설정되었습니다", "persona", response.getPersona())));
+        try {
+            UserResponse response = userService.updatePersona(userDetails.getUsername(), request);
+            return ResponseEntity.ok(Map.of("success", true, "data",
+                    Map.of("message", "페르소나가 변경되었습니다", "persona", response.getPersona())));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "error", Map.of("code", "UPDATE_FAILED", "message", e.getMessage())));
+        }
     }
 
     @PutMapping("/me/password")
     public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
             @RequestBody @jakarta.validation.Valid PasswordChangeRequest request) {
-        userService.changePassword(userDetails.getUsername(), request);
-        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 변경되었습니다")));
+        try {
+            userService.changePassword(userDetails.getUsername(), request);
+            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 변경되었습니다")));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "error", Map.of("code", "UPDATE_FAILED", "message", e.getMessage())));
+        }
     }
 
     @DeleteMapping("/me")
     public ResponseEntity<?> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
-        userService.deleteAccount(userDetails.getUsername());
-        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "계정이 삭제되었습니다")));
+        try {
+            userService.deleteAccount(userDetails.getUsername());
+            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "계정이 삭제되었습니다")));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "error", Map.of("code", "DELETE_FAILED", "message", e.getMessage())));
+        }
     }
 }
