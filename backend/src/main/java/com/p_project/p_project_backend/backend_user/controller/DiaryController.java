@@ -1,8 +1,7 @@
 package com.p_project.p_project_backend.backend_user.controller;
 
-import com.p_project.p_project_backend.backend_user.dto.diary.DiaryRequest;
 import com.p_project.p_project_backend.backend_user.dto.diary.DiaryResponse;
-import com.p_project.p_project_backend.backend_user.dto.diary.DiarySummaryResponse;
+
 import com.p_project.p_project_backend.backend_user.service.DiaryService;
 import com.p_project.p_project_backend.entity.Diary.Emotion;
 import com.p_project.p_project_backend.entity.User;
@@ -28,7 +27,7 @@ public class DiaryController {
         @PostMapping
         public ResponseEntity<DiaryResponse> createDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
-                        @RequestBody DiaryRequest request) {
+                        @RequestBody @jakarta.validation.Valid com.p_project.p_project_backend.backend_user.dto.diary.DiaryCreateRequest request) {
                 User user = getUser(userDetails);
                 return ResponseEntity.ok(diaryService.createDiary(user, request));
         }
@@ -37,7 +36,7 @@ public class DiaryController {
         public ResponseEntity<DiaryResponse> updateDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @PathVariable Long diaryId,
-                        @RequestBody DiaryRequest request) {
+                        @RequestBody @jakarta.validation.Valid com.p_project.p_project_backend.backend_user.dto.diary.DiaryUpdateRequest request) {
                 User user = getUser(userDetails);
                 return ResponseEntity.ok(diaryService.updateDiary(user, diaryId, request));
         }
@@ -60,12 +59,14 @@ public class DiaryController {
         }
 
         @GetMapping("/calendar")
-        public ResponseEntity<List<DiarySummaryResponse>> getMonthlyDiaries(
+        public ResponseEntity<?> getMonthlyDiaries(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @RequestParam("year") int year,
                         @RequestParam("month") int month) {
                 User user = getUser(userDetails);
-                return ResponseEntity.ok(diaryService.getMonthlyDiaries(user, year, month));
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", diaryService.getMonthlyDiaries(user, year, month)));
         }
 
         @GetMapping("/search")
@@ -83,12 +84,14 @@ public class DiaryController {
         }
 
         @DeleteMapping("/{diaryId}")
-        public ResponseEntity<Void> deleteDiary(
+        public ResponseEntity<?> deleteDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @PathVariable Long diaryId) {
                 User user = getUser(userDetails);
                 diaryService.deleteDiary(user, diaryId);
-                return ResponseEntity.noContent().build();
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", Map.of("message", "일기가 삭제되었습니다")));
         }
 
         private User getUser(UserDetails userDetails) {
