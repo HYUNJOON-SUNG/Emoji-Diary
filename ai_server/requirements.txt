@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+torch
+numpy
+transformers
+google-genai
+google-generativeai
+sentencepiece
+git+https://github.com/SKTBrain/KoBERT.git#egg=kobert_tokenizer&subdirectory=kobert_hf
