@@ -11,38 +11,68 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return ResponseEntity.badRequest().body(
-                Map.of("success", false, "error", Map.of("code", "VALIDATION_ERROR", "message", errorMessage)));
-    }
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
+                String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+                return ResponseEntity.badRequest().body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "VALIDATION_ERROR", "message", errorMessage)));
+        }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                Map.of("success", false, "error",
-                        Map.of("code", "INVALID_CREDENTIALS", "message", ex.getMessage())));
-    }
+        @ExceptionHandler(InvalidCredentialsException.class)
+        public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "INVALID_CREDENTIALS", "message",
+                                                                "아이디 또는 비밀번호가 일치하지 않습니다.")));
+        }
 
-    @ExceptionHandler(AdminNotFoundException.class)
-    public ResponseEntity<?> handleAdminNotFoundException(AdminNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                Map.of("success", false, "error",
-                        Map.of("code", "ADMIN_NOT_FOUND", "message", ex.getMessage())));
-    }
+        @ExceptionHandler(InvalidCodeException.class)
+        public ResponseEntity<?> handleInvalidCodeException(InvalidCodeException ex) {
+                return ResponseEntity.badRequest().body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "INVALID_CODE", "message", "인증 코드가 일치하지 않습니다")));
+        }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                Map.of("success", false, "error",
-                        Map.of("code", "INVALID_INPUT", "message", ex.getMessage())));
-    }
+        @ExceptionHandler(CodeExpiredException.class)
+        public ResponseEntity<?> handleCodeExpiredException(CodeExpiredException ex) {
+                return ResponseEntity.badRequest().body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "CODE_EXPIRED", "message", "인증 시간이 만료되었습니다. 재발송해주세요")));
+        }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                Map.of("success", false, "error",
-                        Map.of("code", "INTERNAL_SERVER_ERROR", "message", ex.getMessage())));
-    }
+        @ExceptionHandler(IncorrectPasswordException.class)
+        public ResponseEntity<?> handleIncorrectPasswordException(IncorrectPasswordException ex) {
+                return ResponseEntity.badRequest().body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "INCORRECT_PASSWORD", "message", "현재 비밀번호가 일치하지 않습니다")));
+        }
+
+        @ExceptionHandler(AdminNotFoundException.class)
+        public ResponseEntity<?> handleAdminNotFoundException(AdminNotFoundException ex) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "ADMIN_NOT_FOUND", "message", ex.getMessage())));
+        }
+
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "INVALID_INPUT", "message", ex.getMessage())));
+        }
+
+        @ExceptionHandler(RuntimeException.class)
+        public ResponseEntity<?> handleRuntimeException(RuntimeException ex) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "INTERNAL_SERVER_ERROR", "message", ex.getMessage())));
+        }
+
+        @ExceptionHandler(DiaryNotFoundException.class)
+        public ResponseEntity<?> handleDiaryNotFoundException(DiaryNotFoundException ex) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                                Map.of("success", false, "error",
+                                                Map.of("code", "DIARY_NOT_FOUND", "message", ex.getMessage())));
+        }
 }
