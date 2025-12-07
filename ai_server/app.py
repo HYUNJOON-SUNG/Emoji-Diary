@@ -65,11 +65,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 class Weather(str, Enum):
-    SUNNY = "SUNNY"
-    CLOUDY = "CLOUDY"
-    RAINY = "RAINY"
-    SNOWY = "SNOWY"
-    WINDY = "WINDY"
+    맑음 = "맑음"
+    흐림 = "흐림"
+    비 = "비"
+    눈 = "눈"
+    천둥 = "천둥"
+    안개 = "안개"
 
 class Persona(str, Enum):
     BEST_FRIEND = "BEST_FRIEND"
@@ -87,7 +88,7 @@ class AiServerRequest(BaseModel):
     content: str
     weather: Weather
     persona: Persona
-    sex: Sex
+    gender: Sex  # 'sex' -> 'gender'로 필드명 변경 (백엔드와 통일)
 
 class EmotionAnalysisResult(BaseModel):
     emotion: str
@@ -99,7 +100,7 @@ def read_root():
     return {"test": "Hello, World!"}
 
 
-@app.post("/ai_analyze")
+@app.post("/api/ai/diary")
 async def ai_analyze(request: AiServerRequest):
     global emotion_model, tokenizer, vocab
     
@@ -179,7 +180,7 @@ async def ai_analyze(request: AiServerRequest):
         generated_image_base64 = None
         
         try:
-            image_data = nano_banana(content, request.sex, request.weather)
+            image_data = nano_banana(content, request.gender, request.weather)
             if image_data:
                 generated_image_base64 = base64.b64encode(image_data).decode('utf-8')
         except Exception as img_e:
