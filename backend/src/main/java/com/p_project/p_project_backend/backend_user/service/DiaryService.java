@@ -36,6 +36,8 @@ public class DiaryService {
 
     @Transactional
     public DiaryResponse createDiary(User user, DiaryRequest request) {
+        validateDuplicateDiary(user, request.getDate());
+
         AiServiceResult aiResult = analyzeDiaryContent(user, request);
         Diary diary = buildDiaryEntity(user, request, aiResult);
         Diary savedDiary = diaryRepository.save(diary);
@@ -106,6 +108,12 @@ public class DiaryService {
     }
 
     // --- Helper Methods ---
+
+    private void validateDuplicateDiary(User user, LocalDate date) {
+        if (diaryRepository.findByUserAndDate(user, date).isPresent()) {
+            throw new IllegalArgumentException("이미 해당 날짜에 작성된 일기가 있습니다. 기존 일기를 수정해주세요.");
+        }
+    }
 
     private Diary getOwnedDiary(User user, Long diaryId) {
         Diary diary = diaryRepository.findById(diaryId)
@@ -199,7 +207,7 @@ public class DiaryService {
                 .images(images)
                 .imageUrl(savedDiary.getImageUrl())
                 .aiComment(savedDiary.getAiComment())
-                .recommendedFood(savedDiary.getRecommendedFood())
+                .recommendedFood(convertFromJson(savedDiary.getRecommendedFood()))
                 .createdAt(savedDiary.getCreatedAt())
                 .updatedAt(savedDiary.getUpdatedAt())
                 .build();
@@ -244,6 +252,17 @@ public class DiaryService {
             return objectMapper.writeValueAsString(object);
         } catch (Exception e) {
             return "{}";
+        }
+    }
+
+    private Object convertFromJson(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, Object.class);
+        } catch (Exception e) {
+            return null; // or empty map
         }
     }
 
