@@ -18,7 +18,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiService {
 
-    private static final String IMAGE_UPLOAD_DIR = "src/main/resources/static/images/";
+    // AI 생성 이미지 저장 경로 (프로젝트 루트/images/ai_generates)
+    private static final String IMAGE_UPLOAD_DIR = "images/ai_generates/";
     private final WebClient aiWebClient;
 
     public String sendToAiServer(Map<String, Object> requestData) {
@@ -77,7 +78,7 @@ public class AiService {
                 fos.write(imageBytes);
             }
 
-            return "/images/" + fileName;
+            return "/images/ai_generates/" + fileName;
 
         } catch (IOException e) {
             e.printStackTrace();
