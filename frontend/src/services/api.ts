@@ -65,11 +65,10 @@ export const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // [백엔드 팀] 실제 구현 시 주석 해제
-    // const token = TokenStorage.getAccessToken();
-    // if (token && config.headers) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = TokenStorage.getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     
     return config;
   },
@@ -98,45 +97,47 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // 401 에러 (인증 실패) 처리
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // [백엔드 팀] 실제 구현 시 주석 해제
-        // const refreshToken = TokenStorage.getRefreshToken();
-        // if (!refreshToken) {
-        //   throw new Error('Refresh token이 없습니다.');
-        // }
+        const refreshToken = TokenStorage.getRefreshToken();
+        if (!refreshToken) {
+          throw new Error('Refresh token이 없습니다.');
+        }
 
         // 토큰 재발급 시도
-        // const refreshResponse = await axios.post(`${BASE_URL}/auth/refresh`, {
-        //   refreshToken,
-        // });
+        const refreshResponse = await axios.post(`${BASE_URL}/auth/refresh`, {
+          refreshToken,
+        });
 
-        // const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
-        // TokenStorage.setTokens(accessToken, newRefreshToken);
+        if (refreshResponse.data.success) {
+          const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+          TokenStorage.setTokens(accessToken, newRefreshToken);
 
-        // 원래 요청 재시도
-        // if (originalRequest.headers) {
-        //   originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        // }
-        // return apiClient(originalRequest);
+          // 원래 요청 재시도
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          return apiClient(originalRequest);
+        } else {
+          throw new Error('토큰 재발급에 실패했습니다.');
+        }
       } catch (refreshError) {
         // 토큰 재발급 실패 시 로그인 페이지로 리다이렉트
-        // TokenStorage.clearTokens();
-        // localStorage.removeItem('user');
-        // window.location.href = '/login';
+        TokenStorage.clearTokens();
+        localStorage.removeItem('user');
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
 
     // 기타 에러 처리
-    // [백엔드 팀] 실제 구현 시 에러 메시지 처리
-    // if (error.response) {
-    //   const errorData = error.response.data as { error?: { message?: string; code?: string } };
-    //   const errorMessage = errorData?.error?.message || '요청 처리 중 오류가 발생했습니다.';
-    //   throw new Error(errorMessage);
-    // }
+    if (error.response) {
+      const errorData = error.response.data as { error?: { message?: string; code?: string } };
+      const errorMessage = errorData?.error?.message || '요청 처리 중 오류가 발생했습니다.';
+      throw new Error(errorMessage);
+    }
 
     return Promise.reject(error);
   }
@@ -163,11 +164,10 @@ export const adminApiClient: AxiosInstance = axios.create({
  */
 adminApiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // [백엔드 팀] 실제 구현 시 주석 해제
-    // const adminToken = localStorage.getItem('admin_jwt_token');
-    // if (adminToken && config.headers) {
-    //   config.headers.Authorization = `Bearer ${adminToken}`;
-    // }
+    const adminToken = localStorage.getItem('admin_jwt_token');
+    if (adminToken && config.headers) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+    }
     
     return config;
   },
@@ -187,9 +187,8 @@ adminApiClient.interceptors.response.use(
   async (error: AxiosError) => {
     // 401 에러 시 관리자 로그인 페이지로 리다이렉트
     if (error.response?.status === 401) {
-      // [백엔드 팀] 실제 구현 시 주석 해제
-      // localStorage.removeItem('admin_jwt_token');
-      // window.location.href = '/admin/login';
+      localStorage.removeItem('admin_jwt_token');
+      window.location.href = '/admin/login';
     }
 
     return Promise.reject(error);

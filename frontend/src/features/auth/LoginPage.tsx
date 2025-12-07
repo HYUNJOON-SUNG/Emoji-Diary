@@ -234,15 +234,6 @@ export function LoginPage({ onLoginSuccess, onBack, onSignup, onForgotPassword }
                 </div>
               )}
 
-              {/* Demo Info */}
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-800">
-                  <strong>테스트 계정:</strong><br />
-                  이메일: test@example.com<br />
-                  비밀번호: password123
-                </p>
-              </div>
-
               {/* 
                 로그인 버튼 (플로우 14.3)
                 
