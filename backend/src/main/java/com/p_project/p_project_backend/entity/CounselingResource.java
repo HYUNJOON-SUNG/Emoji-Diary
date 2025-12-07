@@ -71,6 +71,28 @@ public class CounselingResource {
     private LocalDateTime deletedAt;
 
     public enum Category {
-        EMERGENCY, PROFESSIONAL, HOTLINE, MEDICAL
+        EMERGENCY("긴급상담"),
+        PROFESSIONAL("전문상담"),
+        HOTLINE("상담전화"),
+        MEDICAL("의료기관");
+
+        private final String description;
+
+        Category(String description) {
+            this.description = description;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public static Category fromDescription(String description) {
+            for (Category category : values()) {
+                if (category.description.equals(description) || category.name().equalsIgnoreCase(description)) {
+                    return category;
+                }
+            }
+            throw new IllegalArgumentException("Unknown category: " + description);
+        }
     }
 }
