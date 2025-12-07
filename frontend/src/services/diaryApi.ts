@@ -118,7 +118,7 @@ export interface CreateDiaryRequest {
  * [API 명세서 참고]
  * - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
  * - KoBERT는 수정된 일기 본문(content)만 분석
- * - AI 생성 이미지는 재생성하지 않고 기존 이미지(imageUrl) 유지
+ * - imageUrl 필드는 제거됨 (AI가 수정된 일기 내용을 바탕으로 자동 재생성)
  * 
  * [ERD 설계서 참고]
  * - title: Diaries.title (VARCHAR(255), 필수)
@@ -126,12 +126,13 @@ export interface CreateDiaryRequest {
  * - mood: Diaries.mood (VARCHAR(255), 선택)
  * - weather: Diaries.weather (ENUM, 선택)
  * - activities: Diary_Activities 테이블 업데이트 (별도 테이블, API 요청에서는 배열로 전송)
- * - imageUrl: Diaries.image_url (VARCHAR(500), 기존 이미지 유지, 재생성하지 않음)
  * - images: Diary_Images 테이블 업데이트 (별도 테이블, API 요청에서는 배열로 전송)
+ * - imageUrl: Response에서만 받음 (AI가 자동 재생성한 이미지 URL)
  * 
  * [플로우 4.3: 일기 수정 저장 및 처리]
  * - 사용자 업로드 이미지는 수정된 내용(삭제/추가된 이미지) 반영
  * - 백엔드에서 activities와 images 배열을 각각 Diary_Activities, Diary_Images 테이블에 업데이트
+ * - AI 생성 이미지(imageUrl)는 백엔드에서 자동 재생성되어 Response에 포함됨
  */
 export interface UpdateDiaryRequest {
   title: string; // 일기 제목 (필수, ERD: Diaries.title, VARCHAR(255))
@@ -139,8 +140,8 @@ export interface UpdateDiaryRequest {
   mood?: string; // 기분 (선택사항, 쉼표로 구분된 여러 값 가능, ERD: Diaries.mood, VARCHAR(255))
   weather?: string; // 날씨 (선택사항: 맑음, 흐림, 비, 천둥, 눈, 안개, ERD: Diaries.weather, ENUM)
   activities?: string[]; // 활동 목록 (선택사항, 문자열 배열, ERD: Diary_Activities 테이블 업데이트)
-  imageUrl?: string; // AI 생성 그림일기 이미지 URL (선택사항, 기존 이미지 유지, 재생성하지 않음, ERD: Diaries.image_url, VARCHAR(500))
   images?: string[]; // 사용자가 업로드한 이미지 URL 목록 (선택사항, 문자열 배열, 수정된 내용 반영, ERD: Diary_Images 테이블 업데이트, API 명세서: images)
+  // imageUrl은 Request Body에서 제거됨 (API 명세서: AI가 수정된 일기 내용을 바탕으로 자동 재생성)
 }
 
 /**
@@ -852,23 +853,22 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
  * 
  * [플로우 4.3: 일기 수정 저장 및 처리]
  * 
- * 처리 순서:
+ * 처리 순서 (API 명세서 Section 4.2):
  * 1. KoBERT 감정 분석 실행 (수정된 본문 분석) → 새로운 감정 추출
  *    - 수정된 본문을 분석하여 7가지 감정 중 하나로 재분류
  *    - 주요 감정을 추출하여 `emotion` 컬럼에 업데이트
- *    - 참고: 일기 수정 시에는 이미지를 재생성하지 않으므로 KoBERT 결과는 코멘트 및 추천에만 사용
- * 2. 일기 데이터 저장 (수정된 일기 데이터 전송: 제목, 본문, 기분, 날씨, 활동, AI 생성 이미지 URL, 사용자 업로드 이미지 URL 목록)
- *    - 새로운 `emotion` 값과 업데이트된 `kobert_analysis` JSON을 포함하여 수정된 일기 데이터 저장
- *    - 이미지는 재생성하지 않음
- * 3. AI 코멘트 재생성 (Gemini API) - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과, 페르소나 스타일 활용
- * 4. 음식 추천 재생성 (Gemini API) - 수정된 일기 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 반영하여 추천 음식 1개 재생성
- *    - 재생성된 음식을 DB에 업데이트
+ * 2. AI 이미지 재생성 (NanoVana API) - 수정된 일기 본문, 날씨, KoBERT 감정 분석 결과를 활용하여 그림일기 형태의 이미지 재생성
+ *    - 기존 이미지는 삭제되고 새로운 이미지로 대체됨
+ * 3. 일기 데이터 저장 (수정된 일기 데이터 전송: 제목, 본문, 기분, 날씨, 활동, 사용자 업로드 이미지 URL 목록)
+ *    - 새로운 `emotion` 값, 재생성된 `imageUrl`, 업데이트된 `kobert_analysis` JSON 저장
+ * 4. AI 코멘트 재생성 (Gemini API) - 수정된 일기 본문, 날씨, KoBERT 감정 분석 결과, 페르소나 스타일을 반영하여 새로운 AI 코멘트 생성
+ * 5. 음식 추천 재생성 (Gemini API) - 수정된 일기 본문, 날씨, KoBERT 감정 분석 결과를 반영하여 음식 추천 재생성 (DB에 업데이트)
  * 
  * [ERD 설계서 참고 - 데이터 업데이트 구조]
  * - Diaries 테이블: 일기 기본 정보 업데이트 (title, content, emotion, mood, weather, image_url, ai_comment, recommended_food, kobert_analysis, updated_at)
  * - Diary_Activities 테이블: 기존 활동 삭제 후 새로 저장 (CASCADE 관계로 기존 레코드 삭제 후 재생성)
  * - Diary_Images 테이블: 기존 이미지 삭제 후 새로 저장 (CASCADE 관계로 기존 레코드 삭제 후 재생성)
- * - image_url: 재생성하지 않고 기존 값 유지 (ERD: Diaries.image_url)
+ * - image_url: AI가 수정된 내용을 반영하여 자동 재생성됨 (ERD: Diaries.image_url)
  * 
  * [백엔드 팀 작업 필요]
  * - 엔드포인트: PUT /api/diaries/{diaryId}
@@ -907,8 +907,8 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     throw new Error('Diary not found');
   }
   
-  // [백엔드 팀] 실제 API 응답에서 emotion, aiComment, recommendedFood를 받아옴
-  // 백엔드에서 KoBERT 감정 재분석, AI 코멘트 재생성, 음식 추천 재생성이 모두 처리됨
+  // [백엔드 팀] 실제 API 응답에서 emotion, imageUrl, aiComment, recommendedFood를 받아옴
+  // 백엔드에서 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성이 모두 처리됨
   
   // [AI 팀] generateAIComment를 실제 제미나이 API 호출로 대체
   const aiComment = generateAIComment(data.mood || '', data.content);
@@ -957,6 +957,10 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     reason: '몸을 따뜻하게 해주는 음식이 기분 전환에 도움이 될 수 있어요'
   };
   
+  // [백엔드 팀] 실제 API 응답에서 imageUrl을 받아옴 (AI가 재생성한 이미지)
+  // API 명세서: AI가 수정된 일기 내용을 바탕으로 자동 재생성
+  const imageUrl = existing.imageUrl; // Mock: 기존 이미지 유지 (실제로는 백엔드에서 재생성된 이미지 URL 반환)
+  
   const updatedDiary: DiaryDetail = {
     ...existing,
     title: data.title,
@@ -966,7 +970,7 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     mood: data.mood || '',
     weather: data.weather,
     activities: data.activities,
-    imageUrl: data.imageUrl, // 기존 AI 이미지 유지 (재생성 안 함)
+    imageUrl, // 백엔드에서 AI가 재생성한 이미지 URL (API 명세서: 자동 재생성)
     images: data.images, // API 명세서: images (사용자 업로드 이미지, 수정된 내용 반영)
     aiComment, // 백엔드에서 재생성된 AI 코멘트
     recommendedFood, // 백엔드에서 재생성된 음식 추천
