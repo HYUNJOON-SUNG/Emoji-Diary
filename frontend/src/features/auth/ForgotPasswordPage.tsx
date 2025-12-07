@@ -493,15 +493,6 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
             {/* Step 2: Verify Code */}
             {step === 'verify' && (
               <form onSubmit={handleVerifyCode} className="space-y-4">
-                {/* ⚠️ [UI 테스트용 안내] - 배포 전 삭제 필수 ⚠️ */}
-                <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                  <p className="text-xs text-amber-700">
-                    <strong>💡 테스트용 인증 코드:</strong> <code className="bg-amber-100 px-2 py-0.5 rounded">123456</code> 입력 시 자동 통과됩니다.
-                    <br />
-                    (이메일 발송 없이 비밀번호 찾기 플로우 테스트 가능)
-                  </p>
-                </div>
-                {/* ⚠️ [여기까지 삭제] ⚠️ */}
                 
                 {/* Timer */}
                 <div className="text-center">
