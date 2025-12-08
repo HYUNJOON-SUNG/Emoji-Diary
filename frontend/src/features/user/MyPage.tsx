@@ -66,11 +66,36 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
 
   const loadUserInfo = async () => {
     setIsLoading(true);
+    setError('');
+    
+    // 먼저 localStorage에서 사용자 정보를 가져와서 임시로 표시
+    const savedUserStr = localStorage.getItem('user');
+    if (savedUserStr) {
+      try {
+        const savedUser = JSON.parse(savedUserStr);
+        setUser(savedUser as UserType);
+      } catch (e) {
+        console.error('Failed to parse saved user data:', e);
+      }
+    }
+    
     try {
       const userData = await getCurrentUser();
       setUser(userData);
-    } catch (err) {
-      setError('사용자 정보를 불러오지 못했습니다.');
+      setError(''); // 성공 시 에러 메시지 초기화
+    } catch (err: any) {
+      // CORS 오류인 경우 특별한 메시지 표시
+      if (err?.isCorsError || err?.message?.includes('CORS')) {
+        setError('CORS 오류: 백엔드 서버의 CORS 설정을 확인해주세요. 백엔드에서 http://localhost:3000을 허용하도록 설정해야 합니다.');
+      } else if (err?.isNetworkError || err?.code === 'ERR_NETWORK' || err?.code === 'ERR_FAILED' || err?.response === undefined) {
+        setError('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
+      } else if (err?.response?.status === 401) {
+        setError('로그인이 필요합니다. 다시 로그인해주세요.');
+        // localStorage의 사용자 정보는 유지 (임시 표시용)
+      } else {
+        setError('사용자 정보를 불러오지 못했습니다. ' + (err?.message || ''));
+      }
+      // localStorage에 사용자 정보가 있으면 계속 표시 (오프라인 모드)
     } finally {
       setIsLoading(false);
     }
@@ -134,10 +159,31 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
   };
 
   if (isLoading && !user) {
-    return <div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
   }
 
-  if (!user) return null;
+  // localStorage에 사용자 정보가 없고 API 호출도 실패한 경우
+  if (!user) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-4 space-y-4">
+        <AlertTriangle className="w-12 h-12 text-rose-500" />
+        <div className="text-center space-y-2">
+          <p className="text-sm font-medium text-stone-700">사용자 정보를 불러올 수 없습니다</p>
+          <p className="text-xs text-stone-500">{error || '로그인이 필요합니다.'}</p>
+        </div>
+        <button
+          onClick={loadUserInfo}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col space-y-4 pb-6">

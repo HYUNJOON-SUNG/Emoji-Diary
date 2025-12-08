@@ -132,14 +132,24 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // 기타 에러 처리
-    if (error.response) {
-      const errorData = error.response.data as { error?: { message?: string; code?: string } };
-      const errorMessage = errorData?.error?.message || '요청 처리 중 오류가 발생했습니다.';
-      throw new Error(errorMessage);
+    // CORS 오류 또는 네트워크 오류 처리
+    if (!error.response) {
+      // CORS 오류 감지
+      if (error.message?.includes('CORS') || error.code === 'ERR_NETWORK' || error.code === 'ERR_FAILED') {
+        const corsError = new Error('CORS 오류: 백엔드 서버의 CORS 설정을 확인해주세요. 백엔드에서 http://localhost:3000을 허용하도록 설정해야 합니다.');
+        (corsError as any).isCorsError = true;
+        return Promise.reject(corsError);
+      }
+      // 일반 네트워크 오류
+      const networkError = new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
+      (networkError as any).isNetworkError = true;
+      return Promise.reject(networkError);
     }
 
-    return Promise.reject(error);
+    // 기타 에러 처리
+    const errorData = error.response.data as { error?: { message?: string; code?: string } };
+    const errorMessage = errorData?.error?.message || '요청 처리 중 오류가 발생했습니다.';
+    throw new Error(errorMessage);
   }
 );
 
