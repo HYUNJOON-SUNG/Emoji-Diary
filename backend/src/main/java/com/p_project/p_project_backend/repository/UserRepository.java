@@ -58,12 +58,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     );
 
     /**
-     * 기간별 사용자 수 조회
-     * 이전 기간 대비 증감 계산용
+     * 기간별 신규 가입자 수 조회
+     * 해당 기간에 가입한 사용자 수
      * 
      * @param startDateTime 기간 시작일시
      * @param endDateTime 기간 종료일시
-     * @return 사용자 수
+     * @return 신규 가입자 수
      */
     @Query("SELECT COUNT(u.id) " +
            "FROM User u " +
@@ -72,5 +72,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Long countUsersInPeriod(
             @Param("startDateTime") LocalDateTime startDateTime,
             @Param("endDateTime") LocalDateTime endDateTime
+    );
+
+    /**
+     * 특정 시점까지 가입한 전체 사용자 수 조회
+     * 전체 사용자 수 증감 계산용
+     * 
+     * @param beforeDateTime 조회 시점
+     * @return 해당 시점까지 가입한 전체 사용자 수
+     */
+    @Query("SELECT COUNT(u.id) " +
+           "FROM User u " +
+           "WHERE u.deletedAt IS NULL " +
+           "AND u.createdAt < :beforeDateTime")
+    Long countByDeletedAtIsNullAndCreatedAtBefore(
+            @Param("beforeDateTime") LocalDateTime beforeDateTime
     );
 }

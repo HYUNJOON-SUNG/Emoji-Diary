@@ -1,7 +1,5 @@
 package com.p_project.p_project_backend.backend_user.controller;
 
-import com.p_project.p_project_backend.backend_user.dto.diary.DiaryResponse;
-
 import com.p_project.p_project_backend.backend_user.service.DiaryService;
 import com.p_project.p_project_backend.entity.Diary.Emotion;
 import com.p_project.p_project_backend.entity.User;
