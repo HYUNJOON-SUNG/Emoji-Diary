@@ -1,7 +1,6 @@
 package com.p_project.p_project_backend.backend_admin.dto.auth;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -9,11 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class AdminLoginResponse {
-    private String accessToken;
+public class AdminRefreshRequest {
+    @NotBlank(message = "리프레시 토큰을 입력해주세요")
     private String refreshToken;
-    private AdminInfo admin;
 }
-

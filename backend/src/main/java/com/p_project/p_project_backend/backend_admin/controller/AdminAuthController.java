@@ -2,6 +2,8 @@ package com.p_project.p_project_backend.backend_admin.controller;
 
 import com.p_project.p_project_backend.backend_admin.dto.auth.AdminLoginRequest;
 import com.p_project.p_project_backend.backend_admin.dto.auth.AdminLoginResponse;
+import com.p_project.p_project_backend.backend_admin.dto.auth.AdminRefreshRequest;
+import com.p_project.p_project_backend.backend_admin.dto.auth.AdminRefreshResponse;
 import com.p_project.p_project_backend.backend_admin.service.AdminAuthService;
 import com.p_project.p_project_backend.exception.AdminNotFoundException;
 import com.p_project.p_project_backend.exception.InvalidCredentialsException;
@@ -30,6 +32,22 @@ public class AdminAuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "error",
                             Map.of("code", "INVALID_CREDENTIALS", "message", "아이디 또는 비밀번호가 일치하지 않습니다.")));
+        }
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody @Valid AdminRefreshRequest request) {
+        try {
+            AdminRefreshResponse response = adminAuthService.refresh(request.getRefreshToken());
+            return ResponseEntity.ok(Map.of("success", true, "data", response));
+        } catch (AdminNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "error",
+                            Map.of("code", "INVALID_REFRESH_TOKEN", "message", "유효하지 않은 리프레시 토큰입니다.")));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error",
+                            Map.of("code", "REFRESH_FAILED", "message", "토큰 갱신 중 오류가 발생했습니다.")));
         }
     }
 
