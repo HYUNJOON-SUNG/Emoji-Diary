@@ -59,10 +59,10 @@ public class UploadService {
                 // Generate URL (Served via /images/user_uploads/**)
                 String fileUrl = "/images/user_uploads/" + filename;
                 imageUrls.add(fileUrl);
-
             } catch (IOException e) {
-                log.error("Could not upload file: " + file.getOriginalFilename(), e);
-                throw new RuntimeException("Could not upload file: " + file.getOriginalFilename(), e);
+                // Wrap and throw to be handled by GlobalExceptionHandler (500 Internal Server
+                // Error)
+                throw new RuntimeException("Failed to upload image: " + file.getOriginalFilename(), e);
             }
         }
         return imageUrls;
@@ -86,8 +86,7 @@ public class UploadService {
                 log.warn("Image file not found for deletion: {}", filename);
             }
         } catch (IOException e) {
-            log.error("Could not delete file", e);
-            // Don't throw exception on delete failure to avoid breaking flows, just log
+            throw new RuntimeException("Failed to delete image: " + imageUrl, e);
         }
     }
 }

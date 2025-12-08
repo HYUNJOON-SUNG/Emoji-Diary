@@ -32,12 +32,7 @@ public class CounselingResourceService {
             return counselingResourceRepository.findAllNotDeleted();
         }
 
-        try {
-            CounselingResource.Category cat = CounselingResource.Category.fromDescription(category);
-            return counselingResourceRepository.findAllByCategoryAndDeletedAtIsNull(cat);
-        } catch (IllegalArgumentException e) {
-            // Strict filtering: return empty list if category nickname is invalid
-            return Collections.emptyList();
-        }
+        CounselingResource.Category cat = CounselingResource.Category.fromDescription(category);
+        return counselingResourceRepository.findAllByCategoryAndDeletedAtIsNull(cat);
     }
 }

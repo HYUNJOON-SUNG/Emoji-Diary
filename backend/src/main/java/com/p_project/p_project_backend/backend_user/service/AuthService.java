@@ -56,25 +56,20 @@ public class AuthService {
     @Transactional
     public void sendVerificationCode(String email) {
         if (isUserEmailTaken(email)) {
-            throw new RuntimeException("Email already exists");
+            throw new IllegalArgumentException("Email already exists");
         }
 
         String code = generateRandomCode();
         saveVerificationCode(email, code);
 
         log.info("Sent verification code to {}: {}", email, code);
-        try {
-            emailService.sendVerificationCode(email, code);
-        } catch (Exception e) {
-            log.error("Failed to send verification email to {}", email, e);
-            // Non-blocking failure for demo purposes, or rethrow if critical
-        }
+        emailService.sendVerificationCode(email, code);
     }
 
     @Transactional
     public void verifyEmailCode(String email, String code) {
         EmailVerificationCode evc = emailVerificationCodeRepository.findTopByEmailOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new RuntimeException("Verification code not found"));
+                .orElseThrow(() -> new InvalidCodeException("Verification code not found"));
 
         if (!evc.getCode().equals(code)) {
             throw new InvalidCodeException("Invalid verification code");
@@ -102,7 +97,7 @@ public class AuthService {
     @Transactional
     public void sendPasswordResetCode(String email) {
         if (!userRepository.existsByEmail(email)) {
-            throw new RuntimeException("User not found");
+            throw new IllegalArgumentException("User not found");
         }
 
         String code = generateRandomCode();
@@ -114,17 +109,13 @@ public class AuthService {
                 .build();
         passwordResetCodeRepository.save(prc);
 
-        try {
-            emailService.sendPasswordResetCode(email, code);
-        } catch (Exception e) {
-            log.error("Failed to send password reset email to {}", email, e);
-        }
+        emailService.sendPasswordResetCode(email, code);
     }
 
     @Transactional
     public String verifyPasswordResetCode(String email, String code) {
         PasswordResetCode prc = passwordResetCodeRepository.findTopByEmailOrderByCreatedAtDesc(email)
-                .orElseThrow(() -> new RuntimeException("Reset code not found"));
+                .orElseThrow(() -> new InvalidCodeException("Reset code not found"));
 
         if (!prc.getCode().equals(code)) {
             throw new InvalidCodeException("Invalid reset code");
@@ -144,18 +135,18 @@ public class AuthService {
     @Transactional
     public void resetPassword(PasswordResetConfirmRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new RuntimeException("Passwords do not match");
+            throw new IllegalArgumentException("Passwords do not match");
         }
 
         PasswordResetCode prc = passwordResetCodeRepository.findTopByEmailOrderByCreatedAtDesc(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Reset code not found"));
+                .orElseThrow(() -> new InvalidCodeException("Reset code not found"));
 
         if (prc.getResetToken() == null || !prc.getResetToken().equals(request.getResetToken())) {
-            throw new RuntimeException("Invalid reset token");
+            throw new IllegalArgumentException("Invalid reset token");
         }
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setUpdatedAt(LocalDateTime.now());
@@ -168,15 +159,15 @@ public class AuthService {
     @Transactional
     public TokenResponse refreshToken(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new IllegalArgumentException("Invalid refresh token");
         }
 
         RefreshToken rt = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Refresh token not found"));
 
         if (rt.getExpiresAt().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.delete(rt);
-            throw new RuntimeException("Refresh token expired");
+            throw new IllegalArgumentException("Refresh token expired");
         }
 
         User user = rt.getUser();
@@ -237,7 +228,7 @@ public class AuthService {
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
             if (existingUser.get().getDeletedAt() == null) {
-                throw new RuntimeException("Email already exists");
+                throw new IllegalArgumentException("Email already exists");
             } else {
                 // Hard delete existing soft-deleted user (Cascade will delete diaries)
                 emailVerificationCodeRepository.deleteByEmail(email);
@@ -263,9 +254,9 @@ public class AuthService {
         if (Boolean.FALSE.equals(isVerifiedByClient)) { // Null safe check
             EmailVerificationCode evc = emailVerificationCodeRepository
                     .findTopByEmailOrderByCreatedAtDesc(email)
-                    .orElseThrow(() -> new RuntimeException("Email verification required"));
+                    .orElseThrow(() -> new IllegalArgumentException("Email verification required"));
             if (evc.getVerifiedAt() == null) {
-                throw new RuntimeException("Email not verified");
+                throw new IllegalArgumentException("Email not verified");
             }
         }
     }
