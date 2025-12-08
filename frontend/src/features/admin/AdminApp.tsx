@@ -8,6 +8,7 @@ import { ErrorLogs } from './components/error-logs';
 import { LoginPage } from './components/login-page';
 import { login, logout, type AdminInfo } from './utils/session-manager';
 import { useAuth } from './hooks/useAuth';
+import { adminLogin } from '../../services/adminApi';
 // Import admin-specific CSS
 import './index.css';
 import './styles/admin-globals.css';
@@ -52,36 +53,39 @@ export default function AdminApp() {
    * @param password - 관리자 비밀번호
    * @returns 로그인 결과
    */
-  const handleLogin = (email: string, password: string) => {
-    // Mock authentication - In real app, this would call backend API
-    // Valid credentials: admin@example.com / admin123
-    if (email === 'admin@example.com' && password === 'admin123') {
-      // Generate mock JWT token
-      const mockToken = btoa(JSON.stringify({
-        email,
-        role: 'admin',
-        exp: Date.now() + 3600000 // 1 hour
-      }));
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      // POST /api/admin/auth/login
+      const response = await adminLogin(email, password);
       
-      // Mock admin info (9.1)
-      const adminInfo: AdminInfo = {
-        id: 'admin-001',
-        name: '관리자',
-        email: email,
-        role: 'super_admin',
-        department: 'IT 운영팀'
-      };
-      
-      // Save session (9.1)
-      login(mockToken, adminInfo);
-      setIsAuthenticated(true);
-      navigate('/admin/dashboard');
-      
-      return { success: true };
-    } else {
+      if (response.success && response.data) {
+        // Admin info from response
+        const adminInfo: AdminInfo = {
+          id: response.data.admin.id.toString(),
+          name: response.data.admin.name || '관리자',
+          email: response.data.admin.email,
+          role: 'super_admin',
+          department: 'IT 운영팀'
+        };
+        
+        // Save session (9.1)
+        // adminLogin 함수에서 이미 admin_jwt_token을 localStorage에 저장함
+        login(response.data.accessToken, adminInfo);
+        setIsAuthenticated(true);
+        navigate('/admin/dashboard');
+        
+        return { success: true };
+      } else {
+        return { 
+          success: false, 
+          message: response.error?.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.' 
+        };
+      }
+    } catch (error: any) {
+      console.error('관리자 로그인 실패:', error);
       return { 
         success: false, 
-        message: 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.' 
+        message: error.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.' 
       };
     }
   };

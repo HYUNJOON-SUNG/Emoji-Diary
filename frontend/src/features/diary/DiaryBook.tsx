@@ -138,32 +138,19 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   };
 
   // AI 이미지 생성 핸들러
+  // [중요] 이 함수는 더 이상 사용되지 않습니다.
+  // AI 이미지 생성은 백엔드에서 자동으로 처리됩니다.
+  // 일기 저장 API(POST /api/diaries) 호출 시 백엔드가 AI 서버와 통신하여 이미지를 생성하고
+  // 응답에 imageUrl이 포함되어 반환됩니다.
+  // 
+  // [API 명세서 Section 4.1, 4.2]
+  // - 일기 작성/수정 시 백엔드가 자동으로 AI 이미지 생성
+  // - 응답에 imageUrl이 포함되어 반환됨
   const handleGenerateImage = async (content: string, emotion: string, weather?: string): Promise<string> => {
-    // Mock 구현
-    const moodImages: { [key: string]: string } = {
-      'happy': 'https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1080',
-      'calm': 'https://images.unsplash.com/photo-1622489937280-af9291e62ccc?w=1080',
-      'love': 'https://images.unsplash.com/photo-1703611987698-595febef3f9a?w=1080',
-      'excited': 'https://images.unsplash.com/photo-1506788493784-a85a26871e43?w=1080',
-      'default': 'https://images.unsplash.com/photo-1524577393498-23c6b0c40468?w=1080',
-    };
-
-    const lowerContent = content.toLowerCase();
-    let selectedImage = moodImages.default;
-    
-    if (lowerContent.includes('카페') || lowerContent.includes('커피') || lowerContent.includes('비')) {
-      selectedImage = 'https://images.unsplash.com/photo-1524577393498-23c6b0c40468?w=1080';
-    } else if (lowerContent.includes('산책') || lowerContent.includes('자연') || lowerContent.includes('공원')) {
-      selectedImage = 'https://images.unsplash.com/photo-1506788493784-a85a26871e43?w=1080';
-    } else if (lowerContent.includes('가족') || lowerContent.includes('친구') || lowerContent.includes('사랑')) {
-      selectedImage = 'https://images.unsplash.com/photo-1703611987698-595febef3f9a?w=1080';
-    } else if (lowerContent.includes('바다') || lowerContent.includes('해변') || lowerContent.includes('평온')) {
-      selectedImage = 'https://images.unsplash.com/photo-1622489937280-af9291e62ccc?w=1080';
-    } else if (lowerContent.includes('밤') || lowerContent.includes('도시') || lowerContent.includes('불빛')) {
-      selectedImage = 'https://images.unsplash.com/photo-1605702012553-e954fbde66eb?w=1080';
-    }
-    
-    return selectedImage;
+    // [Deprecated] 이 함수는 더 이상 사용되지 않습니다.
+    // 백엔드가 일기 저장 시 자동으로 AI 이미지를 생성합니다.
+    console.warn('[Deprecated] handleGenerateImage는 더 이상 사용되지 않습니다. 백엔드가 자동으로 처리합니다.');
+    return '';
   };
 
   // 일기 작성 완료 핸들러
@@ -180,23 +167,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     
     const mappedEmotionCategory = emotionCategoryMapping[emotionData.emotionCategory] || 'neutral';
     
-    const mockComments = {
-      positive: [
-        "오늘 하루도 행복한 순간들로 가득했네요! 이런 긍정적인 에너지를 계속 이어가세요 ✨",
-        "정말 좋은 하루를 보내셨군요! 이 감정을 오래 간직하시길 바라요 😊",
-        "행복한 마음이 글에 가득 담겨있어요. 계속 이런 좋은 날들이 이어지길! 🌟"
-      ],
-      negative: [
-        "힘든 하루였네요. 하지만 이렇게 일기를 쓰면서 정리하는 것만으로도 큰 의미가 있어요 💙",
-        "지금 느끼는 감정을 있는 그대로 받아들이는 것도 괜찮아요. 내일은 더 나은 하루가 될 거예요 🌈",
-        "힘들 때는 충분히 쉬어가는 것도 필요해요. 지금의 이 감정도 소중한 경험이에요 🫂"
-      ]
-    };
-    
-    const comments = emotionData.emotionCategory === 'positive' 
-      ? mockComments.positive 
-      : mockComments.negative;
-    const randomComment = comments[Math.floor(Math.random() * comments.length)];
+    // [API 명세서 Section 4.1]
+    // AI 코멘트는 백엔드에서 자동 생성되어 일기 저장 응답에 포함됩니다.
+    // 프론트엔드는 일기 상세 조회 시 aiComment를 받아 표시합니다.
     
     setAnalysisEmotion(emotionData.emotion);
     setAnalysisEmotionName(emotionData.emotionName);

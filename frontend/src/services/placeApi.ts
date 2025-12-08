@@ -1,11 +1,13 @@
 /**
  * ========================================
- * 장소 추천 API 서비스 (Mock 구현)
+ * 장소 추천 API 서비스
  * ========================================
  * 
- * [백엔드 팀 작업 필요]
- * - 현재는 Mock 데이터로 동작하며, 실제 백엔드 API와 연결이 필요합니다.
- * - GET /api/places/recommendations 엔드포인트를 구현해주세요.
+ * [참고] API 명세서에 장소 추천 API가 명시되어 있지 않습니다.
+ * 백엔드 팀에서 구현 완료 후 사용 가능합니다.
+ * 
+ * [백엔드 팀 구현 필요]
+ * - GET /api/places/recommendations 엔드포인트 구현 필요
  * - JWT 토큰은 apiClient의 interceptor에서 자동으로 추가됩니다.
  * 
  * [백엔드 팀 구현 가이드]
@@ -131,12 +133,6 @@ export interface PlaceRecommendationParams {
   radius?: number; // 검색 반경 미터 단위 (기본: 5000)
 }
 
-/**
- * Mock 지연 함수
- */
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 /**
  * GET /api/places/recommendations
@@ -179,91 +175,21 @@ function delay(ms: number): Promise<void> {
 export async function getPlaceRecommendations(
   params: PlaceRecommendationParams
 ): Promise<PlaceRecommendationResponse> {
-  // [백엔드 팀] 실제 구현 시 위 주석의 코드로 대체
+  // [참고] API 명세서에 장소 추천 API가 명시되어 있지 않습니다.
+  // 백엔드 팀에서 구현 완료 후 아래 코드를 활성화하세요.
   
-  // Mock 지연 (실제 API 호출 시뮬레이션)
-  await delay(1500);
+  const queryParams = new URLSearchParams();
+  queryParams.append('diaryId', params.diaryId);
+  if (params.lat) queryParams.append('lat', params.lat.toString());
+  if (params.lng) queryParams.append('lng', params.lng.toString());
+  if (params.radius) queryParams.append('radius', params.radius.toString());
+
+  const response = await apiClient.get(`/places/recommendations?${queryParams.toString()}`);
   
-  // Mock 데이터: 일기에서 추천된 음식 정보
-  const mockRecommendedFood: RecommendedFood = {
-    name: '따뜻한 국밥',
-    reason: '몸을 따뜻하게 해주는 음식이 기분 전환에 도움이 될 수 있어요'
-  };
-  
-  // Mock 데이터: 검색 키워드 (실제로는 AI가 생성)
-  const mockSearchKeywords = ['국밥', '순대국밥', '설렁탕'];
-  
-  // Mock 데이터: 장소 목록 (실제로는 카카오 로컬 API에서 가져옴)
-  const mockPlaces: Place[] = [
-    {
-      id: '1234567890',
-      name: '할매국밥 강남점',
-      address: '서울시 강남구 역삼동 123-45',
-      roadAddress: '서울시 강남구 테헤란로 123',
-      phone: '02-1234-5678',
-      category: '한식 > 국밥',
-      distance: 450,
-      rating: 4.5,
-      x: 127.027610,
-      y: 37.497942,
-      url: 'https://place.map.kakao.com/1234567890'
-    },
-    {
-      id: '2345678901',
-      name: '옛날국밥',
-      address: '서울시 강남구 역삼동 234-56',
-      roadAddress: '서울시 강남구 테헤란로 234',
-      phone: '02-2345-6789',
-      category: '한식 > 국밥',
-      distance: 680,
-      rating: 4.3,
-      x: 127.028720,
-      y: 37.498153,
-      url: 'https://place.map.kakao.com/2345678901'
-    },
-    {
-      id: '3456789012',
-      name: '순대국밥 전문점',
-      address: '서울시 강남구 역삼동 345-67',
-      roadAddress: '서울시 강남구 테헤란로 345',
-      category: '한식 > 국밥',
-      distance: 920,
-      rating: 4.7,
-      x: 127.029830,
-      y: 37.499264,
-      url: 'https://place.map.kakao.com/3456789012'
-    },
-    {
-      id: '4567890123',
-      name: '설렁탕집',
-      address: '서울시 강남구 역삼동 456-78',
-      roadAddress: '서울시 강남구 테헤란로 456',
-      phone: '02-4567-8901',
-      category: '한식 > 설렁탕',
-      distance: 1200,
-      rating: 4.2,
-      x: 127.030940,
-      y: 37.500375,
-      url: 'https://place.map.kakao.com/4567890123'
-    },
-    {
-      id: '5678901234',
-      name: '뼈해장국',
-      address: '서울시 강남구 역삼동 567-89',
-      roadAddress: '서울시 강남구 테헤란로 567',
-      category: '한식 > 해장국',
-      distance: 1500,
-      rating: 4.6,
-      x: 127.032050,
-      y: 37.501486,
-      url: 'https://place.map.kakao.com/5678901234'
-    }
-  ];
-  
-  return {
-    recommendedFood: mockRecommendedFood,
-    places: mockPlaces,
-    searchKeywords: mockSearchKeywords
-  };
+  if (response.data.success) {
+    return response.data.data;
+  } else {
+    throw new Error(response.data.error?.message || '장소 추천에 실패했습니다.');
+  }
 }
 

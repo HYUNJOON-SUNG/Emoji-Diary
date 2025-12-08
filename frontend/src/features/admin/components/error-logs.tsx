@@ -62,6 +62,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertCircle, AlertTriangle, Info, FileText, Clock, Activity, Search, Filter, X, Calendar, User, Code } from 'lucide-react';
+import { getErrorLogList, getErrorLogDetail } from '../../../services/adminApi';
 import type { ErrorLog, LogStats } from '../types';
 
 export function ErrorLogs() {
@@ -110,128 +111,37 @@ export function ErrorLogs() {
     setIsLoading(true);
 
     try {
-      // Mock API call to fetch error logs from Database (MariaDB)
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // GET /api/admin/error-logs
+      const params: any = {};
+      if (levelFilter !== 'ALL') params.level = levelFilter;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (searchQuery) params.search = searchQuery;
+      
+      const response = await getErrorLogList(params);
+      
+      if (response.success && response.data) {
+        const logsData = response.data.logs;
+        
+        // Calculate statistics
+        const statistics: LogStats = {
+          total: response.data.total,
+          error: response.data.summary.error,
+          warn: response.data.summary.warn,
+          info: response.data.summary.info
+        };
 
-      // Get from localStorage (simulating DB)
-      const storedLogs = localStorage.getItem('error_logs');
-      
-      let logsData: ErrorLog[] = [];
-      
-      if (storedLogs) {
-        logsData = JSON.parse(storedLogs);
-      } else {
-        // Default mock logs (6.1)
-        logsData = generateMockLogs();
-        localStorage.setItem('error_logs', JSON.stringify(logsData));
+        setAllLogs(logsData);
+        setStats(statistics);
       }
-
-      // Sort by timestamp (최신순)
-      logsData.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-      // Calculate statistics
-      const statistics: LogStats = {
-        total: logsData.length,
-        error: logsData.filter(log => log.level === 'ERROR').length,
-        warn: logsData.filter(log => log.level === 'WARN').length,
-        info: logsData.filter(log => log.level === 'INFO').length
-      };
-
-      setAllLogs(logsData);
-      setStats(statistics);
-    } catch (error) {
-      console.error('Failed to load error logs:', error);
-      alert('에러 로그를 불러오는데 실패했습니다.');
+    } catch (error: any) {
+      console.error('에러 로그 조회 실패:', error);
+      alert(error.message || '에러 로그를 불러오는데 실패했습니다.');
+      setAllLogs([]);
+      setStats({ total: 0, error: 0, warn: 0, info: 0 });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  /**
-   * Mock 에러 로그 생성 (개발/테스트용)
-   */
-  /**
-   * Mock 에러 로그 생성 (개발/테스트용)
-   * [백엔드 연동 전까지 유지]
-   */
-  const generateMockLogs = (): ErrorLog[] => {
-    return [
-      {
-        id: 1,
-        timestamp: new Date('2025-11-30T14:35:22').toISOString(),
-        level: 'ERROR',
-        message: 'Database connection timeout: Failed to connect to MariaDB server',
-        endpoint: '/api/users/profile',
-        stackTrace: 'Error: Connection timeout\n  at Database.connect (db.ts:45)\n  at UserService.getProfile (user.service.ts:23)\n  at ProfileController.getProfile (profile.controller.ts:67)',
-        userId: 123,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-        errorCode: 'DB_CONNECTION_TIMEOUT'
-      },
-      {
-        id: 2,
-        timestamp: new Date('2025-11-30T13:22:10').toISOString(),
-        level: 'WARN',
-        message: 'Slow query detected: SELECT statement took 3.5 seconds',
-        endpoint: '/api/analytics/dashboard',
-        stackTrace: 'Warning: Query performance issue\n  at QueryBuilder.execute (query.ts:78)\n  at AnalyticsService.getDashboardData (analytics.service.ts:45)',
-        userId: 45,
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/17.0',
-        errorCode: 'SLOW_QUERY'
-      },
-      {
-        id: 3,
-        timestamp: new Date('2025-11-30T12:15:45').toISOString(),
-        level: 'INFO',
-        message: 'User authentication successful',
-        endpoint: '/api/auth/login',
-        userId: 78
-      },
-      {
-        id: 4,
-        timestamp: new Date('2025-11-30T11:48:33').toISOString(),
-        level: 'ERROR',
-        message: 'Failed to send email notification: SMTP server unreachable',
-        endpoint: '/api/notifications/send',
-        stackTrace: 'Error: SMTP connection failed\n  at EmailService.send (email.service.ts:56)\n  at NotificationController.sendAlert (notification.controller.ts:89)\n  at async Promise.all (index 0)',
-        userId: 234,
-        errorCode: 'SMTP_CONNECTION_FAILED'
-      },
-      {
-        id: 5,
-        timestamp: new Date('2025-11-30T10:30:12').toISOString(),
-        level: 'WARN',
-        message: 'API rate limit approaching for user: 95% of quota used',
-        endpoint: '/api/diary/create',
-        userId: 456,
-        errorCode: 'RATE_LIMIT_WARNING'
-      },
-      {
-        id: 6,
-        timestamp: new Date('2025-11-30T09:18:55').toISOString(),
-        level: 'ERROR',
-        message: 'Validation error: Invalid emotion category provided in diary entry',
-        endpoint: '/api/diary/create',
-        stackTrace: 'ValidationError: Invalid emotion category\n  at DiaryValidator.validate (validator.ts:34)\n  at DiaryController.create (diary.controller.ts:56)',
-        userId: 789,
-        errorCode: 'VALIDATION_ERROR'
-      },
-      {
-        id: 7,
-        timestamp: new Date('2025-11-30T08:05:21').toISOString(),
-        level: 'INFO',
-        message: 'System health check completed successfully',
-        endpoint: '/api/system/health'
-      },
-      {
-        id: 8,
-        timestamp: new Date('2025-11-29T23:45:10').toISOString(),
-        level: 'WARN',
-        message: 'Deprecated API endpoint accessed: /api/v1/users (use /api/v2/users instead)',
-        endpoint: '/api/v1/users',
-        userId: 123,
-        errorCode: 'DEPRECATED_ENDPOINT'
-      }
-    ];
   };
 
   /**
@@ -292,8 +202,19 @@ export function ErrorLogs() {
   /**
    * 상세보기 버튼 클릭 (6.3)
    */
-  const handleViewDetails = (log: ErrorLog) => {
-    setSelectedLog(log);
+  const handleViewDetails = async (log: ErrorLog) => {
+    try {
+      // GET /api/admin/error-logs/{logId}
+      const response = await getErrorLogDetail(log.id);
+      if (response.success && response.data) {
+        setSelectedLog(response.data);
+      } else {
+        setSelectedLog(log); // 실패 시 기존 로그 사용
+      }
+    } catch (error: any) {
+      console.error('에러 로그 상세 조회 실패:', error);
+      setSelectedLog(log); // 실패 시 기존 로그 사용
+    }
   };
 
   /**

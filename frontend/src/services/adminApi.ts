@@ -18,9 +18,12 @@
  * @backend_requirements
  * - 모든 API는 관리자 JWT 토큰 필요 (Authorization: Bearer {adminAccessToken})
  * - Base URL: /api/admin
+ * - JWT 토큰은 adminApiClient의 interceptor에서 자동으로 추가됩니다.
  * 
  * ====================================================================================================
  */
+
+import { adminApiClient } from './api';
 
 // ========================================
 // 관리자 인증 API
@@ -55,36 +58,16 @@ export interface AdminLoginResponse {
  * @returns 로그인 결과
  */
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const response = await fetch('/api/admin/auth/login', {
-   *   method: 'POST',
-   *   headers: { 'Content-Type': 'application/json' },
-   *   body: JSON.stringify({ email, password })
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.post('/auth/login', { email, password });
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  if (email === 'admin@example.com' && password === 'admin123') {
-    return {
-      success: true,
-      data: {
-        accessToken: btoa(JSON.stringify({ email, role: 'admin', exp: Date.now() + 3600000 })),
-        admin: {
-          id: 1,
-          email: email,
-          name: '관리자'
-        }
-      }
-    };
+  if (response.data.success) {
+    // 관리자 토큰을 localStorage에 저장 (adminApiClient interceptor에서 사용)
+    if (response.data.data.accessToken) {
+      localStorage.setItem('admin_jwt_token', response.data.data.accessToken);
+    }
+    return response.data;
   } else {
-    throw new Error('ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
+    throw new Error(response.data.error?.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
   }
 }
 
@@ -93,30 +76,15 @@ export async function adminLogin(email: string, password: string): Promise<Admin
  * POST /api/admin/auth/logout
  */
 export async function adminLogout(): Promise<{ success: true; data: { message: string } }> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/auth/logout', {
-   *   method: 'POST',
-   *   headers: { 
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.post('/auth/logout');
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return {
-    success: true,
-    data: {
-      message: '로그아웃되었습니다'
-    }
-  };
+  if (response.data.success) {
+    // 관리자 토큰 제거
+    localStorage.removeItem('admin_jwt_token');
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '로그아웃에 실패했습니다.');
+  }
 }
 
 // ========================================
@@ -177,63 +145,18 @@ export interface DashboardStatsResponse {
  * @returns 통계 카드 데이터
  */
 export async function getDashboardStats(params?: DashboardStatsRequest): Promise<DashboardStatsResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * if (params?.period) queryParams.append('period', params.period);
-   * if (params?.activeUserType) queryParams.append('activeUserType', params.activeUserType);
-   * if (params?.newUserPeriod) queryParams.append('newUserPeriod', params.newUserPeriod);
-   * 
-   * const response = await fetch(`/api/admin/dashboard/stats?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, string> = {};
+  if (params?.period) queryParams.period = params.period;
+  if (params?.activeUserType) queryParams.activeUserType = params.activeUserType;
+  if (params?.newUserPeriod) queryParams.newUserPeriod = params.newUserPeriod;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const response = await adminApiClient.get('/dashboard/stats', { params: queryParams });
   
-  return {
-    success: true,
-    data: {
-      totalUsers: {
-        count: 12345,
-        change: 5,
-        period: params?.period || 'monthly'
-      },
-      activeUsers: {
-        dau: 3456,
-        wau: 8923,
-        mau: 11234,
-        type: params?.activeUserType || 'dau'
-      },
-      newUsers: {
-        daily: 12,
-        weekly: 89,
-        monthly: 345,
-        period: params?.newUserPeriod || 'daily'
-      },
-      totalDiaries: {
-        count: 125678,
-        change: 200
-      },
-      averageDailyDiaries: {
-        count: 250,
-        period: params?.period || 'monthly'
-      },
-      riskLevelUsers: {
-        high: 23,
-        medium: 156,
-        low: 892,
-        none: 11274
-      }
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '서비스 통계 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -264,66 +187,17 @@ export interface DiaryTrendResponse {
  * @returns 일지 작성 추이 데이터
  */
 export async function getDiaryTrend(params: DiaryTrendRequest): Promise<DiaryTrendResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * queryParams.append('period', params.period);
-   * if (params.year) queryParams.append('year', params.year.toString());
-   * if (params.month) queryParams.append('month', params.month.toString());
-   * 
-   * const response = await fetch(`/api/admin/dashboard/diary-trend?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, string | number> = { period: params.period };
+  if (params.year !== undefined) queryParams.year = params.year;
+  if (params.month !== undefined) queryParams.month = params.month;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const response = await adminApiClient.get('/dashboard/diary-trend', { params: queryParams });
   
-  const mockTrend = params.period === 'weekly' 
-    ? [
-        { date: '2024-01-01', count: 245 },
-        { date: '2024-01-02', count: 268 },
-        { date: '2024-01-03', count: 289 },
-        { date: '2024-01-04', count: 256 },
-        { date: '2024-01-05', count: 312 },
-        { date: '2024-01-06', count: 278 },
-        { date: '2024-01-07', count: 194 }
-      ]
-    : params.period === 'monthly'
-    ? [
-        { date: '2024-01-01', count: 1845 },
-        { date: '2024-01-08', count: 1923 },
-        { date: '2024-01-15', count: 1912 },
-        { date: '2024-01-22', count: 1843 }
-      ]
-    : [
-        { date: '2024-01', count: 6234 },
-        { date: '2024-02', count: 6412 },
-        { date: '2024-03', count: 6589 },
-        { date: '2024-04', count: 6723 },
-        { date: '2024-05', count: 6856 },
-        { date: '2024-06', count: 6945 },
-        { date: '2024-07', count: 7123 },
-        { date: '2024-08', count: 7234 },
-        { date: '2024-09', count: 7156 },
-        { date: '2024-10', count: 7289 },
-        { date: '2024-11', count: 7387 },
-        { date: '2024-12', count: 7328 }
-      ];
-  
-  return {
-    success: true,
-    data: {
-      period: params.period,
-      trend: mockTrend
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '일지 작성 추이 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -362,73 +236,18 @@ export interface UserActivityStatsResponse {
  * @returns 사용자 활동 통계 데이터
  */
 export async function getUserActivityStats(params: UserActivityStatsRequest): Promise<UserActivityStatsResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * queryParams.append('period', params.period);
-   * if (params.year) queryParams.append('year', params.year.toString());
-   * if (params.month) queryParams.append('month', params.month.toString());
-   * if (params.metrics) queryParams.append('metrics', params.metrics);
-   * 
-   * const response = await fetch(`/api/admin/dashboard/user-activity-stats?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, string | number | string> = { period: params.period };
+  if (params.year !== undefined) queryParams.year = params.year;
+  if (params.month !== undefined) queryParams.month = params.month;
+  if (params.metrics) queryParams.metrics = params.metrics;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const response = await adminApiClient.get('/dashboard/user-activity-stats', { params: queryParams });
   
-  const selectedMetrics = params.metrics ? params.metrics.split(',') : ['dau', 'newUsers'];
-  
-  const mockTrend = params.period === 'weekly'
-    ? Array.from({ length: 7 }, (_, i) => ({
-        date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-        dau: 3200 + Math.floor(Math.random() * 300),
-        wau: 8500 + Math.floor(Math.random() * 500),
-        mau: 11000 + Math.floor(Math.random() * 300),
-        newUsers: 8 + Math.floor(Math.random() * 8),
-        retentionRate: 72 + Math.random() * 3
-      }))
-    : params.period === 'monthly'
-    ? Array.from({ length: 30 }, (_, i) => ({
-        date: `2024-01-${String(i + 1).padStart(2, '0')}`,
-        dau: 3000 + Math.floor(Math.random() * 600),
-        wau: 8000 + Math.floor(Math.random() * 1000),
-        mau: 11000 + Math.floor(Math.random() * 500),
-        newUsers: 8 + Math.floor(Math.random() * 8),
-        retentionRate: 72 + Math.random() * 3
-      }))
-    : [
-        { date: '2024-01', dau: 2800, wau: 7500, mau: 9800, newUsers: 280, retentionRate: 68.5 },
-        { date: '2024-02', dau: 2900, wau: 7800, mau: 10000, newUsers: 290, retentionRate: 69.2 },
-        { date: '2024-03', dau: 3000, wau: 8000, mau: 10200, newUsers: 300, retentionRate: 70.1 },
-        { date: '2024-04', dau: 3100, wau: 8200, mau: 10400, newUsers: 310, retentionRate: 70.8 },
-        { date: '2024-05', dau: 3200, wau: 8400, mau: 10600, newUsers: 320, retentionRate: 71.5 },
-        { date: '2024-06', dau: 3300, wau: 8600, mau: 10800, newUsers: 330, retentionRate: 72.0 },
-        { date: '2024-07', dau: 3400, wau: 8800, mau: 11000, newUsers: 340, retentionRate: 72.5 },
-        { date: '2024-08', dau: 3450, wau: 8900, mau: 11100, newUsers: 345, retentionRate: 73.0 },
-        { date: '2024-09', dau: 3456, wau: 8920, mau: 11200, newUsers: 345, retentionRate: 73.5 },
-        { date: '2024-10', dau: 3456, wau: 8923, mau: 11220, newUsers: 345, retentionRate: 74.0 },
-        { date: '2024-11', dau: 3456, wau: 8923, mau: 11234, newUsers: 345, retentionRate: 74.5 },
-        { date: '2024-12', dau: 3456, wau: 8923, mau: 11234, newUsers: 345, retentionRate: 75.0 }
-      ];
-  
-  return {
-    success: true,
-    data: {
-      period: params.period,
-      year: params.year,
-      month: params.month,
-      metrics: selectedMetrics,
-      trend: mockTrend
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '사용자 활동 통계 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -476,54 +295,17 @@ export interface RiskLevelDistributionResponse {
  * @returns 위험 레벨 분포 데이터
  */
 export async function getRiskLevelDistribution(params: RiskLevelDistributionRequest): Promise<RiskLevelDistributionResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * queryParams.append('period', params.period);
-   * if (params.year) queryParams.append('year', params.year.toString());
-   * if (params.month) queryParams.append('month', params.month.toString());
-   * 
-   * const response = await fetch(`/api/admin/dashboard/risk-level-distribution?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, string | number> = { period: params.period };
+  if (params.year !== undefined) queryParams.year = params.year;
+  if (params.month !== undefined) queryParams.month = params.month;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const response = await adminApiClient.get('/dashboard/risk-level-distribution', { params: queryParams });
   
-  return {
-    success: true,
-    data: {
-      period: params.period,
-      year: params.year,
-      month: params.month,
-      distribution: {
-        high: {
-          count: 23,
-          percentage: 0.19
-        },
-        medium: {
-          count: 156,
-          percentage: 1.26
-        },
-        low: {
-          count: 892,
-          percentage: 7.22
-        },
-        none: {
-          count: 11274,
-          percentage: 91.33
-        }
-      },
-      total: 12345
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '위험 레벨 분포 통계 조회에 실패했습니다.');
+  }
 }
 
 // ========================================
@@ -589,38 +371,17 @@ export interface NoticeListResponse {
  * @returns 공지사항 목록
  */
 export async function getNoticeList(params?: NoticeListRequest): Promise<NoticeListResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * if (params?.page) queryParams.append('page', params.page.toString());
-   * if (params?.limit) queryParams.append('limit', params.limit.toString());
-   * 
-   * const response = await fetch(`/api/admin/notices?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, number> = {};
+  if (params?.page) queryParams.page = params.page;
+  if (params?.limit) queryParams.limit = params.limit;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 800));
+  const response = await adminApiClient.get('/notices', { params: queryParams });
   
-  const stored = localStorage.getItem('notices');
-  const notices: Notice[] = stored ? JSON.parse(stored) : [];
-  
-  return {
-    success: true,
-    data: {
-      total: notices.length,
-      page: params?.page || 1,
-      limit: params?.limit || 20,
-      notices: notices
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 목록 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -646,44 +407,13 @@ export interface CreateNoticeResponse {
  * @returns 생성된 공지사항
  */
 export async function createNotice(notice: CreateNoticeRequest): Promise<CreateNoticeResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/notices', {
-   *   method: 'POST',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify(notice)
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.post('/notices', notice);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const adminInfo = JSON.parse(localStorage.getItem('admin_info') || '{}');
-  const newNotice: Notice = {
-    id: Date.now(),
-    ...notice,
-    author: adminInfo.name || '관리자',
-    createdAt: new Date().toISOString(),
-    views: 0
-  };
-  
-  const stored = localStorage.getItem('notices');
-  const notices: Notice[] = stored ? JSON.parse(stored) : [];
-  notices.push(newNotice);
-  localStorage.setItem('notices', JSON.stringify(notices));
-  
-  return {
-    success: true,
-    data: newNotice
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 작성에 실패했습니다.');
+  }
 }
 
 /**
@@ -710,46 +440,13 @@ export interface UpdateNoticeResponse {
  * @returns 수정된 공지사항
  */
 export async function updateNotice(noticeId: number, notice: UpdateNoticeRequest): Promise<UpdateNoticeResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/notices/${noticeId}`, {
-   *   method: 'PUT',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify(notice)
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.put(`/notices/${noticeId}`, notice);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('notices');
-  const notices: Notice[] = stored ? JSON.parse(stored) : [];
-  const index = notices.findIndex(n => n.id === noticeId);
-  
-  if (index === -1) {
-    throw new Error('공지사항을 찾을 수 없습니다.');
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 수정에 실패했습니다.');
   }
-  
-  notices[index] = {
-    ...notices[index],
-    ...notice,
-    updatedAt: new Date().toISOString()
-  };
-  
-  localStorage.setItem('notices', JSON.stringify(notices));
-  
-  return {
-    success: true,
-    data: notices[index]
-  };
 }
 
 /**
@@ -770,33 +467,13 @@ export interface DeleteNoticeResponse {
  * @returns 삭제 결과
  */
 export async function deleteNotice(noticeId: number): Promise<DeleteNoticeResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/notices/${noticeId}`, {
-   *   method: 'DELETE',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.delete(`/notices/${noticeId}`);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('notices');
-  const notices: Notice[] = stored ? JSON.parse(stored) : [];
-  const filtered = notices.filter(n => n.id !== noticeId);
-  localStorage.setItem('notices', JSON.stringify(filtered));
-  
-  return {
-    success: true,
-    data: {
-      message: '공지사항이 삭제되었습니다'
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 삭제에 실패했습니다.');
+  }
 }
 
 /**
@@ -823,44 +500,13 @@ export interface PinNoticeResponse {
  * @returns 고정 상태
  */
 export async function pinNotice(noticeId: number, isPinned: boolean): Promise<PinNoticeResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/notices/${noticeId}/pin`, {
-   *   method: 'PUT',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify({ isPinned })
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.put(`/notices/${noticeId}/pin`, { isPinned });
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const stored = localStorage.getItem('notices');
-  const notices: Notice[] = stored ? JSON.parse(stored) : [];
-  const index = notices.findIndex(n => n.id === noticeId);
-  
-  if (index === -1) {
-    throw new Error('공지사항을 찾을 수 없습니다.');
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 고정/해제에 실패했습니다.');
   }
-  
-  notices[index].isPinned = isPinned;
-  localStorage.setItem('notices', JSON.stringify(notices));
-  
-  return {
-    success: true,
-    data: {
-      id: noticeId,
-      isPinned: isPinned
-    }
-  };
 }
 
 // ========================================
@@ -926,43 +572,13 @@ export interface RiskDetectionSettingsResponse {
  * @returns 위험 신호 감지 기준 설정
  */
 export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/settings/risk-detection', {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.get('/settings/risk-detection');
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('risk_threshold_settings');
-  const defaultSettings: RiskDetectionSettings = {
-    monitoringPeriod: 14,
-    high: {
-      consecutiveScore: 8,
-      scoreInPeriod: 12
-    },
-    medium: {
-      consecutiveScore: 5,
-      scoreInPeriod: 8
-    },
-    low: {
-      consecutiveScore: 2,
-      scoreInPeriod: 4
-    }
-  };
-  
-  return {
-    success: true,
-    data: stored ? JSON.parse(stored) : defaultSettings
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '위험 신호 감지 기준 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -972,35 +588,13 @@ export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsR
  * @returns 저장 결과
  */
 export async function updateRiskDetectionSettings(settings: RiskDetectionSettings): Promise<{ success: true; data: { message: string; updatedAt: string } }> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/settings/risk-detection', {
-   *   method: 'PUT',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify(settings)
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.put('/settings/risk-detection', settings);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  localStorage.setItem('risk_threshold_settings', JSON.stringify(settings));
-  
-  return {
-    success: true,
-    data: {
-      message: '위험 신호 감지 기준이 저장되었습니다',
-      updatedAt: new Date().toISOString()
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '위험 신호 감지 기준 저장에 실패했습니다.');
+  }
 }
 
 /**
@@ -1052,72 +646,13 @@ export interface CounselingResourcesResponse {
  * @returns 상담 기관 리소스 목록
  */
 export async function getCounselingResources(): Promise<CounselingResourcesResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/settings/counseling-resources', {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.get('/settings/counseling-resources');
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('counseling_resources');
-  const defaultResources: CounselingResource[] = [
-    {
-      id: 1,
-      name: '자살예방 상담전화',
-      category: '긴급상담',
-      phone: '1393',
-      website: 'https://www.suicide.or.kr',
-      description: '24시간 위기상담 및 자살예방 전문 상담',
-      operatingHours: '24시간',
-      isUrgent: true
-    },
-    {
-      id: 2,
-      name: '정신건강 위기상담 전화',
-      category: '긴급상담',
-      phone: '1577-0199',
-      website: 'https://www.mentalhealth.go.kr',
-      description: '정신건강 위기 상황에 대한 전문 상담',
-      operatingHours: '24시간',
-      isUrgent: true
-    },
-    {
-      id: 3,
-      name: '청소년 상담전화',
-      category: '상담전화',
-      phone: '1388',
-      website: 'https://www.cyber1388.kr',
-      description: '청소년 대상 심리 상담 및 위기 지원',
-      operatingHours: '평일 09:00-22:00',
-      isUrgent: false
-    },
-    {
-      id: 4,
-      name: '한국심리상담협회',
-      category: '전문상담',
-      phone: '02-3452-0091',
-      website: 'https://www.krcpa.or.kr',
-      description: '전문 심리상담사와의 1:1 상담',
-      operatingHours: '평일 09:00-18:00',
-      isUrgent: false
-    }
-  ];
-  
-  return {
-    success: true,
-    data: {
-      resources: stored ? JSON.parse(stored) : defaultResources
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '상담 기관 리소스 목록 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -1146,39 +681,13 @@ export interface CreateCounselingResourceResponse {
  * @returns 생성된 상담 기관 리소스
  */
 export async function createCounselingResource(resource: CreateCounselingResourceRequest): Promise<CreateCounselingResourceResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch('/api/admin/settings/counseling-resources', {
-   *   method: 'POST',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify(resource)
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.post('/settings/counseling-resources', resource);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('counseling_resources');
-  const resources: CounselingResource[] = stored ? JSON.parse(stored) : [];
-  const newResource: CounselingResource = {
-    id: Date.now(),
-    ...resource
-  };
-  resources.push(newResource);
-  localStorage.setItem('counseling_resources', JSON.stringify(resources));
-  
-  return {
-    success: true,
-    data: newResource
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '상담 기관 리소스 추가에 실패했습니다.');
+  }
 }
 
 /**
@@ -1208,45 +717,13 @@ export interface UpdateCounselingResourceResponse {
  * @returns 수정된 상담 기관 리소스
  */
 export async function updateCounselingResource(resourceId: number, resource: UpdateCounselingResourceRequest): Promise<UpdateCounselingResourceResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/settings/counseling-resources/${resourceId}`, {
-   *   method: 'PUT',
-   *   headers: {
-   *     'Content-Type': 'application/json',
-   *     'Authorization': `Bearer ${token}`
-   *   },
-   *   body: JSON.stringify(resource)
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.put(`/settings/counseling-resources/${resourceId}`, resource);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('counseling_resources');
-  const resources: CounselingResource[] = stored ? JSON.parse(stored) : [];
-  const index = resources.findIndex(r => r.id === resourceId);
-  
-  if (index === -1) {
-    throw new Error('상담 기관을 찾을 수 없습니다.');
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '상담 기관 리소스 수정에 실패했습니다.');
   }
-  
-  resources[index] = {
-    ...resources[index],
-    ...resource
-  };
-  
-  localStorage.setItem('counseling_resources', JSON.stringify(resources));
-  
-  return {
-    success: true,
-    data: resources[index]
-  };
 }
 
 /**
@@ -1267,33 +744,13 @@ export interface DeleteCounselingResourceResponse {
  * @returns 삭제 결과
  */
 export async function deleteCounselingResource(resourceId: number): Promise<DeleteCounselingResourceResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/settings/counseling-resources/${resourceId}`, {
-   *   method: 'DELETE',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.delete(`/settings/counseling-resources/${resourceId}`);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('counseling_resources');
-  const resources: CounselingResource[] = stored ? JSON.parse(stored) : [];
-  const filtered = resources.filter(r => r.id !== resourceId);
-  localStorage.setItem('counseling_resources', JSON.stringify(filtered));
-  
-  return {
-    success: true,
-    data: {
-      message: '상담 기관이 삭제되었습니다'
-    }
-  };
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '상담 기관 리소스 삭제에 실패했습니다.');
+  }
 }
 
 // ========================================
@@ -1364,72 +821,21 @@ export interface ErrorLogListResponse {
  * @returns 에러 로그 목록
  */
 export async function getErrorLogList(params?: ErrorLogListRequest): Promise<ErrorLogListResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const queryParams = new URLSearchParams();
-   * if (params?.level) queryParams.append('level', params.level);
-   * if (params?.startDate) queryParams.append('startDate', params.startDate);
-   * if (params?.endDate) queryParams.append('endDate', params.endDate);
-   * if (params?.search) queryParams.append('search', params.search);
-   * if (params?.page) queryParams.append('page', params.page.toString());
-   * if (params?.limit) queryParams.append('limit', params.limit.toString());
-   * 
-   * const response = await fetch(`/api/admin/error-logs?${queryParams}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const queryParams: Record<string, string | number> = {};
+  if (params?.level) queryParams.level = params.level;
+  if (params?.startDate) queryParams.startDate = params.startDate;
+  if (params?.endDate) queryParams.endDate = params.endDate;
+  if (params?.search) queryParams.search = params.search;
+  if (params?.page) queryParams.page = params.page;
+  if (params?.limit) queryParams.limit = params.limit;
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 800));
+  const response = await adminApiClient.get('/error-logs', { params: queryParams });
   
-  const stored = localStorage.getItem('error_logs');
-  let logs: ErrorLog[] = stored ? JSON.parse(stored) : [];
-  
-  // 필터 적용
-  if (params?.level && params.level !== 'ALL') {
-    logs = logs.filter(log => log.level === params.level);
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '에러 로그 목록 조회에 실패했습니다.');
   }
-  
-  if (params?.startDate && params?.endDate) {
-    const start = new Date(params.startDate);
-    const end = new Date(params.endDate);
-    end.setHours(23, 59, 59, 999);
-    logs = logs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      return logDate >= start && logDate <= end;
-    });
-  }
-  
-  if (params?.search) {
-    const searchLower = params.search.toLowerCase();
-    logs = logs.filter(log =>
-      log.message.toLowerCase().includes(searchLower) ||
-      log.endpoint?.toLowerCase().includes(searchLower) ||
-      log.errorCode?.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  // 통계 계산
-  const summary = {
-    error: logs.filter(log => log.level === 'ERROR').length,
-    warn: logs.filter(log => log.level === 'WARN').length,
-    info: logs.filter(log => log.level === 'INFO').length
-  };
-  
-  return {
-    success: true,
-    data: {
-      total: logs.length,
-      summary: summary,
-      logs: logs
-    }
-  };
 }
 
 /**
@@ -1448,33 +854,12 @@ export interface ErrorLogDetailResponse {
  * @returns 에러 로그 상세 정보
  */
 export async function getErrorLogDetail(logId: number): Promise<ErrorLogDetailResponse> {
-  // [백엔드 작업] 실제 API 호출
-  /**
-   * TODO: 백엔드 팀 작업 필요
-   * 
-   * const token = localStorage.getItem('admin_jwt_token');
-   * const response = await fetch(`/api/admin/error-logs/${logId}`, {
-   *   method: 'GET',
-   *   headers: { 'Authorization': `Bearer ${token}` }
-   * });
-   * const result = await response.json();
-   * return result;
-   */
+  const response = await adminApiClient.get(`/error-logs/${logId}`);
   
-  // Mock 구현
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const stored = localStorage.getItem('error_logs');
-  const logs: ErrorLog[] = stored ? JSON.parse(stored) : [];
-  const log = logs.find(l => l.id === logId);
-  
-  if (!log) {
-    throw new Error('에러 로그를 찾을 수 없습니다.');
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '에러 로그 상세 조회에 실패했습니다.');
   }
-  
-  return {
-    success: true,
-    data: log
-  };
 }
 

@@ -51,9 +51,9 @@ import { sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '.
  * - POST /api/auth/password-reset/verify-code - 인증 코드 검증 (resetToken 반환)
  * - POST /api/auth/password-reset/reset - 비밀번호 재설정
  * 
- * [UI 테스트용 Mock 기능]
- * - 테스트 계정: test@example.com, user@diary.com
- * - 테스트 인증 코드: 123456 (자동 통과)
+ * [참고]
+ * - 실제 백엔드 API 연동 완료
+ * - 테스트 시 실제 이메일 인증 코드를 사용해야 합니다
  */
 
 interface ForgotPasswordPageProps {

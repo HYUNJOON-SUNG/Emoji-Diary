@@ -1,22 +1,22 @@
 /**
  * ========================================
- * AI 그림일기 이미지 생성 서비스 (Mock 구현)
+ * AI 그림일기 이미지 생성 서비스
  * ========================================
  * 
- * [AI 팀 작업 필요 - 최우선 작업]
- * 현재는 Unsplash API를 사용한 Mock 구현입니다.
- * 나노바나나 API(Stable Diffusion)로 교체해주세요.
+ * [API 명세서 Section 4.1, 4.2 참고]
  * 
- * 요구사항:
- * 1. 일기 본문(content)을 분석하여 핵심 키워드 추출
- * 2. 감정(emotion), 날씨(weather) 정보를 반영
- * 3. 나노바나나 API로 그림일기 스타일의 이미지 생성
- * 4. 생성된 이미지 URL 반환
+ * 중요: AI 이미지 생성은 백엔드에서 자동으로 처리됩니다.
+ * - 일기 작성 시: POST /api/diaries 호출 시 백엔드가 AI 서버와 통신하여 이미지 생성
+ * - 일기 수정 시: PUT /api/diaries/{id} 호출 시 백엔드가 AI 서버와 통신하여 이미지 재생성
+ * - 프론트엔드는 일기 저장 후 응답에서 imageUrl을 받아 표시합니다.
  * 
- * 처리 흐름:
- * 1. extractImageKeywords로 키워드 추출 (이 로직은 참고용으로 사용 가능)
- * 2. 나노바나나 API 호출 (프롬프트 생성)
- * 3. 이미지 URL 반환
+ * [백엔드-AI 통신 규격 (Internal)]
+ * - 백엔드가 AI 서버의 POST /api/ai/diary 엔드포인트를 호출
+ * - AI 서버가 KoBERT 감정 분석, NanoVana 이미지 생성, Gemini 코멘트/음식 추천을 통합 수행
+ * - 백엔드가 생성된 이미지를 저장하고 URL을 반환
+ * 
+ * 이 파일의 함수들은 참고용 유틸리티 함수입니다.
+ * 실제 이미지 생성은 백엔드에서 처리되므로 프론트엔드에서 직접 호출하지 않습니다.
  */
 
 /**
@@ -140,71 +140,37 @@ export function extractImageKeywords(
 /**
  * 일기 내용 기반 AI 이미지 생성
  * 
- * [AI 팀 작업 필요 - 최우선 작업]
- * 이 함수를 나노바나나 API 호출로 대체해주세요.
+ * [중요] 이 함수는 더 이상 사용되지 않습니다.
  * 
- * 요구사항:
- * 1. 일기 본문을 분석하여 이미지 생성 프롬프트 작성
- * 2. 나노바나나 API(Stable Diffusion) 호출
- * 3. 그림일기 스타일의 이미지 생성
- * 4. 생성된 이미지 URL 반환
+ * AI 이미지 생성은 백엔드에서 자동으로 처리됩니다:
+ * - 일기 작성 시: POST /api/diaries 호출 시 백엔드가 AI 서버와 통신하여 이미지 생성
+ * - 일기 수정 시: PUT /api/diaries/{id} 호출 시 백엔드가 AI 서버와 통신하여 이미지 재생성
+ * - 프론트엔드는 일기 저장 후 응답에서 imageUrl을 받아 표시합니다.
  * 
- * 프롬프트 예시:
- * - "watercolor painting of cozy cafe on rainy day, warm and peaceful atmosphere, artistic illustration"
- * - "oil painting of nature walk, joyful and bright mood, artistic diary illustration"
+ * [API 명세서 Section 4.1, 4.2]
+ * - 일기 작성/수정 시 백엔드가 자동으로 AI 이미지 생성
+ * - 응답에 imageUrl이 포함되어 반환됨
  * 
+ * @deprecated 이 함수는 더 이상 사용되지 않습니다. 백엔드가 자동으로 처리합니다.
  * @param content - 일기 본문
  * @param emotion - 사용자 감정 (기분 텍스트)
  * @param weather - 날씨 정보
- * @returns 생성된 이미지 URL (나노바나나 API 응답)
+ * @returns 생성된 이미지 URL (백엔드 API 응답에서 받음)
  */
 export async function generateDiaryImage(
   content: string,
   emotion: string,
   weather?: string
 ): Promise<string> {
-  // [AI 팀] 아래 로직을 나노바나나 API 호출로 대체
+  // [중요] 이 함수는 더 이상 사용되지 않습니다.
+  // AI 이미지 생성은 백엔드에서 자동으로 처리됩니다.
+  // 일기 저장 API(POST /api/diaries) 호출 시 백엔드가 AI 서버와 통신하여 이미지를 생성하고
+  // 응답에 imageUrl이 포함되어 반환됩니다.
   
-  // 1. 키워드 추출 (참고용 - 더 정교한 방법 사용 가능)
-  const keywords = extractImageKeywords(content, emotion, weather);
+  console.warn('[Deprecated] generateDiaryImage는 더 이상 사용되지 않습니다. 백엔드가 자동으로 처리합니다.');
   
-  // 2. 프롬프트 생성
-  const searchQuery = `${keywords.primary} ${keywords.mood} ${keywords.secondary} watercolor painting artistic`;
-  
-  // 3. [AI 팀] 나노바나나 API 호출
-  // const response = await fetch('나노바나나_API_URL', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({
-  //     prompt: searchQuery,
-  //     style: 'watercolor diary illustration',
-  //     width: 1080,
-  //     height: 1080
-  //   })
-  // });
-  // const data = await response.json();
-  // return data.imageUrl;
-  
-  // Mock 구현: Unsplash API 사용 (실제 환경에서는 제거)
-  try {
-    const imageUrl = await fetchUnsplashImage(searchQuery);
-    return imageUrl;
-  } catch (error) {
-    console.error('Failed to generate diary image:', error);
-    // 기본 이미지 반환
-    return 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=1080';
-  }
-}
-
-/**
- * Unsplash 이미지 가져오기 (Mock - 실제 환경에서는 나노바나나 API로 대체)
- * 
- * [AI 팀] 이 함수는 제거하고 나노바나나 API로 대체해주세요.
- */
-async function fetchUnsplashImage(query: string): Promise<string> {
-  // Mock: Unsplash Source API 사용
-  // [AI 팀] 실제 환경에서는 이 함수를 제거하고 generateDiaryImage에서 직접 나노바나나 API 호출
-  return `https://source.unsplash.com/1080x1080/?${encodeURIComponent(query)}`;
+  // 기본 이미지 반환 (임시)
+  return '';
 }
 
 /**

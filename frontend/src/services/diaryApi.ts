@@ -672,15 +672,11 @@ export interface DiarySearchResult {
  * 4. 정렬: 최신순 (날짜 내림차순)
  * 5. 페이지네이션: 페이지당 10개 항목
  * 
- * [백엔드 팀] 실제 구현 시:
+ * [API 명세서 Section 5.1]
  * - GET /api/diaries/search
- * - Headers: { Authorization: Bearer {accessToken} }
+ * - Headers: { Authorization: Bearer {accessToken} } (apiClient interceptor에서 자동 추가)
  * - Query Parameters: { keyword?, startDate?, endDate?, emotions?, page?, limit? }
  * - Response: { success: true, data: { total, page, limit, totalPages, diaries } }
- * 
- * Mock 구현:
- * - 실제 백엔드 API로 교체 필요
- * - 현재는 mockDiaryDetails에서 필터링
  */
 export async function searchDiaries(params: DiarySearchParams): Promise<DiarySearchResult> {
   try {

@@ -10,7 +10,7 @@
  * [백엔드 API 연동]
  * - GET /api/places/recommendations 엔드포인트 사용
  * - 일기 ID(diaryId)를 받아서 일기의 recommendedFood 기반으로 장소 검색
- * - 현재는 Mock 데이터 사용, 백엔드 연동 시 실제 API 호출
+ * - [참고] API 명세서에 장소 추천 API가 명시되어 있지 않습니다. 백엔드 팀에서 구현 완료 후 사용 가능합니다.
  * 
  * [카카오맵 JavaScript API]
  * - 지도 표시 및 마커 표시용으로만 사용
@@ -94,8 +94,9 @@ export function KakaoMapRecommendation({
         return;
       }
 
-      // [백엔드 팀] 실제 API 호출
-      // 현재는 Mock 데이터 사용
+      // GET /api/places/recommendations
+      // [참고] API 명세서에 장소 추천 API가 명시되어 있지 않습니다.
+      // 백엔드 팀에서 구현 완료 후 사용 가능합니다.
       console.log('[KakaoMapRecommendation] 장소 추천 요청:', { diaryId, lat: location.lat, lng: location.lng });
       
       const response: PlaceRecommendationResponse = await getPlaceRecommendations({
