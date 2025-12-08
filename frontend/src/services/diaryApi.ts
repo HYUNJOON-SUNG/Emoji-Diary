@@ -140,7 +140,22 @@ export interface UpdateDiaryRequest {
   // imageUrl은 Request Body에서 제거됨 (API 명세서: AI가 수정된 일기 내용을 바탕으로 자동 재생성)
 }
 
-import { apiClient } from './api';
+import { apiClient, BASE_URL } from './api';
+
+/**
+ * 이미지 URL 처리 헬퍼 함수
+ * - API에서 이미지 경로가 상대 경로(/images/...)로 오는 경우 백엔드 Base URL을 붙여준다.
+ * - 이미 절대 경로(http...)인 경우 그대로 사용한다.
+ */
+function getImageUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // BASE_URL은 http://localhost:8080/api 형태이므로 /api를 제거하고 결합
+  const baseUrlOrigin = BASE_URL.endsWith('/api') ? BASE_URL.slice(0, -4) : BASE_URL;
+  return `${baseUrlOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 /**
  * 감정 이모지 매핑 (캘린더 표시용)
@@ -216,7 +231,7 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
       // API 응답을 EmotionData 형식으로 변환
       return diaries.map((diary: { date: string; emotion: string }) => ({
         date: diary.date,
-        emotion: diary.emotion, // 한글 감정 (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+        emotion: emotionEmojiMap[diary.emotion] || diary.emotion, // 한글 감정을 이모지로 변환 ("행복" -> "😊")
         emotionCategory: getEmotionCategory(diary.emotion),
       }));
     } else {
@@ -256,6 +271,14 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
       const diary = response.data.data;
       return {
         ...diary,
+        // 백엔드에서 snake_case로 올 수 있는 필드들을 camelCase로 변환
+        // 이미지 경로가 상대 경로인 경우 백엔드 URL 추가
+        imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
+        aiComment: diary.aiComment || diary.ai_comment,
+        recommendedFood: diary.recommendedFood || diary.recommended_food,
+        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
+        createdAt: diary.createdAt || diary.created_at,
+        updatedAt: diary.updatedAt || diary.updated_at,
         emotionCategory: getEmotionCategory(diary.emotion),
       };
     } else {

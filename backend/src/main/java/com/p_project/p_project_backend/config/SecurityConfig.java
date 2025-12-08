@@ -26,11 +26,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(org.springframework.security.config.Customizer.withDefaults()) // Enable CORS
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // Allow all auth endpoints
                         .requestMatchers("/api/admin/auth/login").permitAll() // Allow admin login
-                        .requestMatchers("/api/admin/auth/logout").permitAll() // Allow admin logout (Controller에서 토큰 검증)
+                        .requestMatchers("/api/admin/auth/logout").permitAll() // Allow admin logout (Controller에서 토큰
+                                                                               // 검증)
+                        .requestMatchers("/images/**").permitAll() // Allow access to uploaded images
                         .requestMatchers("/", "/index.html", "/static/**", "/*.html", "/*.css", "/*.js").permitAll() // Allow
                                                                                                                      // static
                                                                                                                      // resources
