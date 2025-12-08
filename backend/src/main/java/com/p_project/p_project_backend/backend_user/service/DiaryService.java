@@ -276,7 +276,7 @@ public class DiaryService {
         try {
             return objectMapper.writeValueAsString(object);
         } catch (Exception e) {
-            return "{}";
+            throw new RuntimeException("JSON conversion failed", e);
         }
     }
 
@@ -287,7 +287,7 @@ public class DiaryService {
         try {
             return objectMapper.readValue(json, Object.class);
         } catch (Exception e) {
-            return null; // or empty map
+            throw new RuntimeException("JSON parsing failed", e);
         }
     }
 

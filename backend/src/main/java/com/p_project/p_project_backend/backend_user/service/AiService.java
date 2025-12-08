@@ -81,8 +81,7 @@ public class AiService {
             return "/images/ai_generates/" + fileName;
 
         } catch (IOException e) {
-            e.printStackTrace();
-            return "";
+            throw new RuntimeException("Failed to save AI image", e);
         }
     }
 }

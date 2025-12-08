@@ -4,6 +4,7 @@ import com.p_project.p_project_backend.backend_user.dto.notice.NoticeDetailRespo
 import com.p_project.p_project_backend.backend_user.dto.notice.NoticeListResponse;
 import com.p_project.p_project_backend.backend_user.dto.notice.NoticeResponse;
 import com.p_project.p_project_backend.entity.Notice;
+import com.p_project.p_project_backend.exception.NoticeNotFoundException;
 import com.p_project.p_project_backend.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -48,10 +49,7 @@ public class NoticeService {
     @Transactional
     public NoticeDetailResponse getNoticeDetail(Long id) {
         Notice notice = noticeRepository.findByIdAndPublic(id)
-                .orElseThrow(() -> new IllegalArgumentException("NOTICE_NOT_FOUND")); // Custom Exception needed per
-                                                                                      // project convention? Using
-                                                                                      // standard for now or string
-                                                                                      // error code.
+                .orElseThrow(() -> new NoticeNotFoundException("공지사항을 찾을 수 없습니다"));
 
         // 조회수 증가
         notice.setViews(notice.getViews() + 1);

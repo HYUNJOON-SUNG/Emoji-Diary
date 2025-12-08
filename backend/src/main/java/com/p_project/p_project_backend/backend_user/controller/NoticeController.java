@@ -40,29 +40,12 @@ public class NoticeController {
      */
     @GetMapping("/{noticeId}")
     public ResponseEntity<Map<String, Object>> getNoticeDetail(@PathVariable Long noticeId) {
-        try {
-            NoticeDetailResponse response = noticeService.getNoticeDetail(noticeId);
+        NoticeDetailResponse response = noticeService.getNoticeDetail(noticeId);
 
-            Map<String, Object> body = new HashMap<>();
-            body.put("success", true);
-            body.put("data", response);
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", true);
+        body.put("data", response);
 
-            return ResponseEntity.ok(body);
-        } catch (IllegalArgumentException e) {
-            // "NOTICE_NOT_FOUND" case
-            // Assuming GlobalExceptionHandler handles standard exceptions or customized
-            // ones.
-            // But for now, returning manual error response as per API spec 13.
-
-            Map<String, Object> error = new HashMap<>();
-            error.put("code", "NOTICE_NOT_FOUND");
-            error.put("message", "공지사항을 찾을 수 없습니다");
-
-            Map<String, Object> body = new HashMap<>();
-            body.put("success", false);
-            body.put("error", error);
-
-            return ResponseEntity.status(404).body(body);
-        }
+        return ResponseEntity.ok(body);
     }
 }

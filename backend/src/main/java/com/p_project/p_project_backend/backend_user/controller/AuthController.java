@@ -35,14 +35,9 @@ public class AuthController {
 
     @PostMapping("/send-verification-code")
     public ResponseEntity<?> sendVerificationCode(@RequestBody EmailCheckRequest request) {
-        try {
-            authService.sendVerificationCode(request.getEmail());
-            return ResponseEntity
-                    .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "error", Map.of("code", "SEND_FAILED", "message", e.getMessage())));
-        }
+        authService.sendVerificationCode(request.getEmail());
+        return ResponseEntity
+                .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
     }
 
     @PostMapping("/verify-code")
@@ -60,14 +55,9 @@ public class AuthController {
 
     @PostMapping("/password-reset/send-code")
     public ResponseEntity<?> sendPasswordResetCode(@RequestBody PasswordResetRequest request) {
-        try {
-            authService.sendPasswordResetCode(request.getEmail());
-            return ResponseEntity
-                    .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "error", Map.of("code", "SEND_FAILED", "message", e.getMessage())));
-        }
+        authService.sendPasswordResetCode(request.getEmail());
+        return ResponseEntity
+                .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
     }
 
     @PostMapping("/password-reset/verify-code")
@@ -79,34 +69,19 @@ public class AuthController {
 
     @PostMapping("/password-reset/reset")
     public ResponseEntity<?> resetPassword(@RequestBody @jakarta.validation.Valid PasswordResetConfirmRequest request) {
-        try {
-            authService.resetPassword(request);
-            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 재설정되었습니다")));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "error", Map.of("code", "RESET_FAILED", "message", e.getMessage())));
-        }
+        authService.resetPassword(request);
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 재설정되었습니다")));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
-        try {
-            TokenResponse response = authService.refreshToken(request.getRefreshToken());
-            return ResponseEntity.ok(Map.of("success", true, "data", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("success", false, "error", Map.of("code", "REFRESH_FAILED", "message", e.getMessage())));
-        }
+        TokenResponse response = authService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody RefreshTokenRequest request) {
-        try {
-            authService.logout(request.getRefreshToken());
-            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "로그아웃되었습니다")));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("success", false, "error", Map.of("code", "LOGOUT_FAILED", "message", e.getMessage())));
-        }
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "로그아웃되었습니다")));
     }
 }
