@@ -158,6 +158,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     emotion: string;
     emotionName: string;
     emotionCategory: string;
+    aiComment?: string;
     date: Date;
   }) => {
     const emotionCategoryMapping: { [key: string]: string } = {
@@ -174,7 +175,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setAnalysisEmotion(emotionData.emotion);
     setAnalysisEmotionName(emotionData.emotionName);
     setAnalysisEmotionCategory(mappedEmotionCategory);
-    setAnalysisComment(randomComment);
+    setAnalysisComment(emotionData.aiComment || '오늘 하루도 수고 많았어요!');
     setAnalysisDate(emotionData.date);
     
     setShowEmotionAnalysis(true);

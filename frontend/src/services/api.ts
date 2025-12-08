@@ -37,7 +37,7 @@ import { TokenStorage } from './authApi';
  * - 개발: http://localhost:8080/api
  * - 운영: https://api.emoji-diary.com/api
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 /**
  * 사용자 API용 Axios 인스턴스

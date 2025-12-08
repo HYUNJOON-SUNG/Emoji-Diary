@@ -25,37 +25,45 @@ public class DiaryController {
         private final UserRepository userRepository;
 
         @PostMapping
-        public ResponseEntity<DiaryResponse> createDiary(
+        public ResponseEntity<?> createDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @RequestBody @jakarta.validation.Valid com.p_project.p_project_backend.backend_user.dto.diary.DiaryCreateRequest request) {
                 User user = getUser(userDetails);
-                return ResponseEntity.ok(diaryService.createDiary(user, request));
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", diaryService.createDiary(user, request)));
         }
 
         @PutMapping("/{diaryId}")
-        public ResponseEntity<DiaryResponse> updateDiary(
+        public ResponseEntity<?> updateDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @PathVariable Long diaryId,
                         @RequestBody @jakarta.validation.Valid com.p_project.p_project_backend.backend_user.dto.diary.DiaryUpdateRequest request) {
                 User user = getUser(userDetails);
-                return ResponseEntity.ok(diaryService.updateDiary(user, diaryId, request));
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", diaryService.updateDiary(user, diaryId, request)));
         }
 
         @GetMapping("/{diaryId}")
-        public ResponseEntity<DiaryResponse> getDiary(
+        public ResponseEntity<?> getDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @PathVariable Long diaryId) {
                 User user = getUser(userDetails);
-                return ResponseEntity.ok(diaryService.getDiary(user, diaryId));
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", diaryService.getDiary(user, diaryId)));
         }
 
         @GetMapping("/date/{date}")
-        public ResponseEntity<DiaryResponse> getDiaryByDate(
+        public ResponseEntity<?> getDiaryByDate(
                         @AuthenticationPrincipal UserDetails userDetails,
                         @PathVariable("date") String dateStr) {
                 User user = getUser(userDetails);
                 LocalDate date = LocalDate.parse(dateStr);
-                return ResponseEntity.ok(diaryService.getDiaryByDate(user, date));
+                return ResponseEntity.ok(Map.of(
+                                "success", true,
+                                "data", diaryService.getDiaryByDate(user, date)));
         }
 
         @GetMapping("/calendar")

@@ -113,7 +113,12 @@ export async function uploadImage(data: UploadImageRequest): Promise<UploadImage
     });
     
     if (response.data.success) {
-      return { imageUrl: response.data.data.imageUrl };
+      // 백엔드가 imageUrls 배열을 반환하는 경우 처리
+      const responseData = response.data.data;
+      if (responseData.imageUrls && Array.isArray(responseData.imageUrls) && responseData.imageUrls.length > 0) {
+        return { imageUrl: responseData.imageUrls[0] };
+      }
+      return { imageUrl: responseData.imageUrl };
     } else {
       throw new Error(response.data.error?.message || '이미지 업로드에 실패했습니다.');
     }

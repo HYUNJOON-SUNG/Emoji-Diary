@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X } from 'lucide-react';
 import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, DiaryDetail } from '../../services/diaryApi';
 import { uploadImage, deleteImage } from '../../services/uploadApi';
+import { BASE_URL } from '../../services/api';
 import { theme } from '../../styles/theme';
 
 /**
@@ -32,13 +33,20 @@ const KOBERT_EMOTIONS = {
 /**
  * 날씨 선택 옵션 (플로우 3.2)
  */
+/**
+ * 날씨 선택 옵션 (플로우 3.2)
+ * 
+ * [백엔드 팀] Diary.java Enum Weather 일치 필요:
+ * - 맑음, 흐림, 비, 눈, 천둥, 안개
+ * - value 값은 백엔드로 전송되는 Enum String 값과 일치해야 함
+ */
 const WEATHER_OPTIONS = [
-  { value: 'sunny', label: '맑음', emoji: '☀️' },
-  { value: 'cloudy', label: '흐림', emoji: '☁️' },
-  { value: 'rainy', label: '비', emoji: '🌧️' },
-  { value: 'snowy', label: '눈', emoji: '❄️' },
-  { value: 'windy', label: '바람', emoji: '💨' },
-  { value: 'foggy', label: '안개', emoji: '🌫️' },
+  { value: '맑음', label: '맑음', emoji: '☀️' },
+  { value: '흐림', label: '흐림', emoji: '☁️' },
+  { value: '비', label: '비', emoji: '🌧️' },
+  { value: '눈', label: '눈', emoji: '❄️' },
+  { value: '천둥', label: '천둥', emoji: '⚡' },
+  { value: '안개', label: '안개', emoji: '🌫️' },
 ];
 
 /**
@@ -52,6 +60,7 @@ interface DiaryWritingPageProps {
     emotion: string;
     emotionName: string;
     emotionCategory: string;
+    aiComment?: string;
     date: Date;
   }) => void;
   /** 취소 버튼 클릭 시 콜백 (캘린더로 돌아가기 또는 상세보기로) */
@@ -308,28 +317,64 @@ export function DiaryWritingPage({
    * Request: FormData { image: File }
    * Response: { url: string }
    */
+  /**
+   * 이미지 업로드 핸들러 (플로우 3.2)
+   * 
+   * 동작:
+   * 1. 파일 선택 다이얼로그에서 이미지 선택 (다중 선택 가능)
+   * 2. FormData 생성 및 서버에 업로드 (각 파일별로 순차 처리)
+   * 3. 업로드 성공 시 이미지 URL 획득
+   * 4. 이미지 목록에 추가
+   * 
+   * [백엔드 팀] POST /api/upload/image
+   * Request: FormData { image: File }
+   * Response: { url: string }
+   */
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    const file = files[0];
-    
-    // 이미지 파일 검증
-    if (!file.type.startsWith('image/')) {
-      setError('이미지 파일만 업로드 가능합니다.');
+    // 최대 이미지 개수 제한 (예: 5장)
+    if (images.length + files.length > 5) {
+      setError('이미지는 최대 5장까지 업로드할 수 있습니다.');
       return;
     }
+
+    // 각 파일을 순차적으로 업로드
+    const newImages: { url: string; file: File }[] = [];
+    
+    // 로딩 상태 표시는 개별적으로 하기 어려우므로 전체 에러만 관리하거나
+    // 각 이미지별 로딩 상태를 관리해야 함. 여기서는 간단히 처리.
     
     try {
-      // POST /api/upload/image
-      const response = await uploadImage({ image: file });
-      const url = response.imageUrl;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // 이미지 파일 검증
+        if (!file.type.startsWith('image/')) {
+          setError('이미지 파일만 업로드 가능합니다.');
+          continue;
+        }
+
+        // POST /api/upload/image
+        const response = await uploadImage({ image: file });
+        // 백엔드가 반환한 URL (상대 경로일 수 있음)
+        const url = response.imageUrl;
+        newImages.push({ url, file });
+      }
       
-      setImages([...images, { url, file }]);
-      setError('');
+      if (newImages.length > 0) {
+        setImages(prev => [...prev, ...newImages]);
+        setError('');
+      }
     } catch (err: any) {
       console.error('이미지 업로드 실패:', err);
       setError(err.message || '이미지 업로드에 실패했습니다.');
+    } finally {
+      // input 초기화 (동일 파일 다시 선택 가능하도록)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
   
@@ -496,6 +541,7 @@ export function DiaryWritingPage({
           emotion: emotionData?.emoji || '😐', // 백엔드 응답의 KoBERT 분석 결과 이모지
           emotionName: emotionData?.name || savedDiary.emotion || '중립', // 백엔드 응답의 KoBERT 분석 결과 이름
           emotionCategory: savedDiary.emotionCategory || 'neutral', // 백엔드 응답의 감정 카테고리
+          aiComment: savedDiary.aiComment || '', // AI 코멘트 전달
           date: selectedDate,
         });
       }
@@ -695,6 +741,7 @@ export function DiaryWritingPage({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 className="hidden"
               />
@@ -714,7 +761,14 @@ export function DiaryWritingPage({
                   {images.map((image, index) => (
                     <div key={index} className="relative group">
                       <img
-                        src={image.url}
+                        src={(() => {
+                          if (!image.url) return '';
+                          if (image.url.startsWith('blob:') || image.url.startsWith('http')) return image.url;
+                          // 로컬 헬퍼 대신 직접 BASE_URL 조합
+                          // BASE_URL 예: http://localhost:8080/api
+                          const baseUrlOrigin = BASE_URL.endsWith('/api') ? BASE_URL.slice(0, -4) : BASE_URL;
+                          return `${baseUrlOrigin}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+                        })()}
                         alt={`업로드 이미지 ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg border border-blue-200"
                       />
