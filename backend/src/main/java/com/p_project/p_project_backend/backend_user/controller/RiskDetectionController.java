@@ -1,6 +1,5 @@
 package com.p_project.p_project_backend.backend_user.controller;
 
-import com.p_project.p_project_backend.backend_user.dto.risk.MarkShownResponse;
 import com.p_project.p_project_backend.backend_user.dto.risk.RiskAnalysisResponse;
 import com.p_project.p_project_backend.backend_user.dto.risk.SessionStatusResponse;
 import com.p_project.p_project_backend.backend_user.service.RiskDetectionService;

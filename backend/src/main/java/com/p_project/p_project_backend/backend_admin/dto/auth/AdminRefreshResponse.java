@@ -11,9 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AdminLoginResponse {
+public class AdminRefreshResponse {
     private String accessToken;
     private String refreshToken;
-    private AdminInfo admin;
 }
-

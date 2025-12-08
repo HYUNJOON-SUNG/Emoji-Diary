@@ -2,7 +2,6 @@ package com.p_project.p_project_backend;
 
 import com.p_project.p_project_backend.backend_user.dto.auth.SignUpRequest;
 import com.p_project.p_project_backend.backend_user.service.AuthService;
-import com.p_project.p_project_backend.entity.EmailVerificationCode;
 import com.p_project.p_project_backend.entity.User;
 import com.p_project.p_project_backend.repository.*;
 import com.p_project.p_project_backend.security.CustomUserDetailsService;

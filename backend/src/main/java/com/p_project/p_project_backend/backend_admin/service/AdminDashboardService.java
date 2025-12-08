@@ -200,6 +200,7 @@ public class AdminDashboardService {
 
     /**
      * 전체 사용자 수 정보 계산
+     * change는 현재 기간 종료 시점의 전체 사용자 수 - 이전 기간 종료 시점의 전체 사용자 수
      */
     private DashboardStatsResponse.TotalUsersInfo calculateTotalUsersInfo(
             String period,
@@ -208,10 +209,16 @@ public class AdminDashboardService {
             LocalDateTime previousStart,
             LocalDateTime previousEnd
     ) {
+        // 현재 시점의 전체 사용자 수
         long totalUsersCount = userRepository.countByDeletedAtIsNull();
-        long currentUsersCount = getLongValueOrZero(userRepository.countUsersInPeriod(currentStart, currentEnd));
-        long previousUsersCount = getLongValueOrZero(userRepository.countUsersInPeriod(previousStart, previousEnd));
-        long usersChange = currentUsersCount - previousUsersCount;
+        
+        // 이전 기간 종료 시점까지의 전체 사용자 수
+        long previousTotalUsersCount = getLongValueOrZero(
+            userRepository.countByDeletedAtIsNullAndCreatedAtBefore(previousEnd)
+        );
+        
+        // 전체 사용자 수 증감 = 현재 전체 사용자 수 - 이전 기간 종료 시점 전체 사용자 수
+        long usersChange = totalUsersCount - previousTotalUsersCount;
 
         return DashboardStatsResponse.TotalUsersInfo.builder()
                 .count(totalUsersCount)

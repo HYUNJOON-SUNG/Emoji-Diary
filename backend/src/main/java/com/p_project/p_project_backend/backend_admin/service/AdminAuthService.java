@@ -2,6 +2,7 @@ package com.p_project.p_project_backend.backend_admin.service;
 
 import com.p_project.p_project_backend.backend_admin.dto.auth.AdminInfo;
 import com.p_project.p_project_backend.backend_admin.dto.auth.AdminLoginResponse;
+import com.p_project.p_project_backend.backend_admin.dto.auth.AdminRefreshResponse;
 import com.p_project.p_project_backend.entity.Admin;
 import com.p_project.p_project_backend.entity.AdminRefreshToken;
 import com.p_project.p_project_backend.entity.ErrorLog;
@@ -72,9 +73,10 @@ public class AdminAuthService {
             logLoginAttempt(email, true, "Login successful", admin);
             log.info("Admin login successful: email={}, adminId={}", email, admin.getId());
 
-            // API 명세서에 따르면 accessToken만 반환 (refreshToken은 내부적으로만 사용)
+            // accessToken과 refreshToken 모두 반환
             return AdminLoginResponse.builder()
                     .accessToken(accessToken)
+                    .refreshToken(refreshToken)
                     .admin(AdminInfo.from(admin))
                     .build();
 
@@ -145,6 +147,54 @@ public class AdminAuthService {
         } catch (Exception e) {
             // 에러 로그 기록 실패해도 로그인 프로세스는 계속 진행
             log.error("Failed to save login attempt log", e);
+        }
+    }
+
+    @Transactional
+    public AdminRefreshResponse refresh(String refreshToken) {
+        try {
+            // Refresh Token으로 Admin 조회
+            AdminRefreshToken adminRefreshToken = adminRefreshTokenRepository.findByToken(refreshToken)
+                    .orElseThrow(() -> new AdminNotFoundException("유효하지 않은 리프레시 토큰입니다."));
+
+            // 만료 확인
+            if (adminRefreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+                adminRefreshTokenRepository.delete(adminRefreshToken);
+                throw new AdminNotFoundException("만료된 리프레시 토큰입니다.");
+            }
+
+            Admin admin = adminRefreshToken.getAdmin();
+            String email = admin.getEmail();
+
+            // 새로운 토큰 생성
+            String newAccessToken = tokenProvider.createAccessToken(email);
+            String newRefreshToken = tokenProvider.createRefreshToken(email);
+
+            // 기존 Refresh Token 삭제
+            adminRefreshTokenRepository.delete(adminRefreshToken);
+
+            // 새로운 Refresh Token 저장
+            long refreshTokenValidityDays = refreshTokenValidityInMilliseconds / (1000 * 60 * 60 * 24);
+            AdminRefreshToken newAdminRefreshToken = AdminRefreshToken.builder()
+                    .admin(admin)
+                    .token(newRefreshToken)
+                    .expiresAt(LocalDateTime.now().plusDays(refreshTokenValidityDays))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            adminRefreshTokenRepository.save(newAdminRefreshToken);
+
+            log.info("Admin token refresh successful: email={}, adminId={}", email, admin.getId());
+
+            return AdminRefreshResponse.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(newRefreshToken)
+                    .build();
+
+        } catch (AdminNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error during admin token refresh", e);
+            throw new AdminNotFoundException("토큰 갱신 중 오류가 발생했습니다.");
         }
     }
 
