@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X } from 'lucide-react';
-import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest } from '../../services/diaryApi';
+import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, DiaryDetail } from '../../services/diaryApi';
+import { uploadImage, deleteImage } from '../../services/uploadApi';
 import { theme } from '../../styles/theme';
 
 /**
@@ -131,10 +132,7 @@ export function DiaryWritingPage({
   /** 저장 중 로딩 상태 */
   const [isSaving, setIsSaving] = useState(false);
   
-  /** AI 이미지 생성 중 */
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  
-  /** KoBERT 감정 분석 중 */
+  /** KoBERT 감정 분석 중 (백엔드 AI 처리 중) */
   const [isAnalyzingEmotion, setIsAnalyzingEmotion] = useState(false);
   
   /** 에러 메시지 */
@@ -323,22 +321,15 @@ export function DiaryWritingPage({
     }
     
     try {
-      // [TODO: 백엔드 팀] 실제 이미지 업로드 API 연동
-      // const formData = new FormData();
-      // formData.append('image', file);
-      // const response = await fetch('/api/upload/image', {
-      //   method: 'POST',
-      //   body: formData,
-      // });
-      // const { url } = await response.json();
-      
-      // Mock: 로컬 URL 생성
-      const url = URL.createObjectURL(file);
+      // POST /api/upload/image
+      const response = await uploadImage({ image: file });
+      const url = response.imageUrl;
       
       setImages([...images, { url, file }]);
       setError('');
-    } catch (err) {
-      setError('이미지 업로드에 실패했습니다.');
+    } catch (err: any) {
+      console.error('이미지 업로드 실패:', err);
+      setError(err.message || '이미지 업로드에 실패했습니다.');
     }
   };
   
@@ -359,16 +350,18 @@ export function DiaryWritingPage({
     const imageToRemove = images[index];
     
     try {
-      // [TODO: 백엔드 팀] 서버에서 이미지 삭제
-      // await fetch('/api/upload/image', {
-      //   method: 'DELETE',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ url: imageToRemove.url }),
-      // });
+      // DELETE /api/upload/image
+      // 이미 서버에 업로드된 이미지인 경우에만 삭제 API 호출
+      if (imageToRemove.url && !imageToRemove.url.startsWith('blob:')) {
+        await deleteImage({ imageUrl: imageToRemove.url });
+      }
       
       setImages(images.filter((_, i) => i !== index));
-    } catch (err) {
-      setError('이미지 삭제에 실패했습니다.');
+    } catch (err: any) {
+      console.error('이미지 삭제 실패:', err);
+      // 삭제 실패해도 목록에서 제거 (로컬 상태 정리)
+      setImages(images.filter((_, i) => i !== index));
+      setError(err.message || '이미지 삭제에 실패했습니다.');
     }
   };
   
@@ -427,116 +420,29 @@ export function DiaryWritingPage({
     setError('');
     
     try {
-      // 1. KoBERT 감정 분석 (플로우 3.3, 4.3)
-      // [백엔드 팀] KoBERT 모델 연동 필요
-      // POST /api/ai/kobert-analyze
-      // Request: { content: string } (일기 본문)
-      // Response: { emotion: string, confidence: number }
-      //   - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
+      // [API 명세서 Section 4.1, 4.2]
+      // KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천은 모두 백엔드에서 자동으로 처리됩니다.
+      // 프론트엔드는 일기 저장 API 호출 시 백엔드가 AI 서버와 통신하여 처리하고,
+      // 응답에 emotion, imageUrl, aiComment, recommendedFood가 포함되어 반환됩니다.
       
-      let kobertEmotionResult: string = '중립'; // 기본값
-      let kobertConfidence: number = 0;
-      
-      try {
-        // [TODO: 백엔드 팀] 실제 KoBERT API 호출로 대체
-        // const response = await fetch('/api/ai/kobert-analyze', {
-        //   method: 'POST',
-        //   headers: { 
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        //   },
-        //   body: JSON.stringify({ content: content.trim() })
-        // });
-        // const data = await response.json();
-        // kobertEmotionResult = data.emotion; // "행복", "슬픔" 등
-        // kobertConfidence = data.confidence;
-        
-        // Mock: 간단한 텍스트 분석 (실제로는 KoBERT API 사용)
-        const lowerContent = content.toLowerCase();
-        if (lowerContent.includes('행복') || lowerContent.includes('기쁘') || lowerContent.includes('좋아')) {
-          kobertEmotionResult = '행복';
-        } else if (lowerContent.includes('슬프') || lowerContent.includes('우울') || lowerContent.includes('힘들')) {
-          kobertEmotionResult = '슬픔';
-        } else if (lowerContent.includes('화') || lowerContent.includes('짜증') || lowerContent.includes('분노')) {
-          kobertEmotionResult = '분노';
-        } else if (lowerContent.includes('불안') || lowerContent.includes('걱정') || lowerContent.includes('두려')) {
-          kobertEmotionResult = '불안';
-        } else if (lowerContent.includes('혐오') || lowerContent.includes('싫어')) {
-          kobertEmotionResult = '혐오';
-        } else if (lowerContent.includes('당황') || lowerContent.includes('놀라')) {
-          kobertEmotionResult = '당황';
-        } else {
-          kobertEmotionResult = '중립';
-        }
-        kobertConfidence = 0.85;
-        
-        // KoBERT 분석 결과를 이모지로 변환
-        const emotionData = KOBERT_EMOTIONS[kobertEmotionResult as keyof typeof KOBERT_EMOTIONS];
-        if (emotionData) {
-          setKobertEmotion(emotionData.emoji);
-        }
-      } catch (err) {
-        console.error('KoBERT 감정 분석 실패:', err);
-        // 기본값 사용
-        kobertEmotionResult = '중립';
-        setKobertEmotion('😐');
-      } finally {
-        setIsAnalyzingEmotion(false);
-      }
-      
-      // KoBERT 분석 결과를 이모지로 변환
-      const emotionData = KOBERT_EMOTIONS[kobertEmotionResult as keyof typeof KOBERT_EMOTIONS];
-      const emotionEmoji = emotionData?.emoji || '😐';
-      const emotionCategory = emotionData?.category || 'neutral';
-      
-      // 2. AI 이미지 생성 (나노바나나 API) - 새 작성만 (플로우 3.3)
-      let aiImageUrl = existingDiary?.aiImage || ''; // 수정 모드는 기존 AI 이미지 유지 (플로우 4.3)
-      
-      if (!isEditMode && onGenerateImage) {
-        // 새 작성 모드만 AI 이미지 생성
-        setIsGeneratingImage(true);
-        try {
-          // [AI 팀] 나노바나나 API 호출
-          // 일기 작성 내용(제목, 본문, 기분, 날씨, 활동)과 KoBERT 감정 분석 결과 활용
-          aiImageUrl = await onGenerateImage(
-            `${title}\n${content}`, 
-            emotionEmoji, 
-            weather
-          );
-        } catch (err) {
-          console.error('AI 이미지 생성 실패:', err);
-        } finally {
-          setIsGeneratingImage(false);
-        }
-      }
+      // 로딩 상태 표시 (백엔드에서 AI 처리 중)
+      setIsAnalyzingEmotion(true);
       
       // 3. 사용자 업로드 이미지 URL 목록 준비
-      // [백엔드 팀] 실제 이미지 업로드 API 연동 필요
-      // 현재는 로컬 URL이지만, 실제로는 서버에 업로드 후 URL 받아야 함
-      const imageUrls: string[] = [];
-      for (const image of images) {
-        if (image.url && !image.url.startsWith('blob:')) {
-          // 이미 서버 URL인 경우
-          imageUrls.push(image.url);
-        } else {
-          // [TODO: 백엔드 팀] 실제 이미지 업로드 API 호출
-          // const formData = new FormData();
-          // formData.append('image', image.file!);
-          // const uploadResponse = await fetch('/api/upload/image', {
-          //   method: 'POST',
-          //   headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` },
-          //   body: formData,
-          // });
-          // const result = await uploadResponse.json();
-          // if (result.success) {
-          //   imageUrls.push(result.data.imageUrl);
-          // }
-        }
-      }
+      // [API 명세서 Section 9.1]
+      // 이미지 업로드는 handleImageUpload에서 이미 처리되었으므로,
+      // images 배열의 url은 모두 서버 URL입니다.
+      const imageUrls: string[] = images
+        .map(image => image.url)
+        .filter((url): url is string => !!url && !url.startsWith('blob:'));
       
       // 4. 일기 저장 API 호출 (플로우 3.3, 4.3)
+      // [API 명세서 Section 4.1, 4.2]
+      // 백엔드가 자동으로 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성 처리
       // 로컬 시간대로 날짜 변환 (UTC 시간대 문제 방지)
       const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      
+      let savedDiary: DiaryDetail | null = null;
       
       if (isEditMode) {
         // 수정 모드 (플로우 4.3)
@@ -546,16 +452,14 @@ export function DiaryWritingPage({
           mood: mood.trim() || undefined,
           weather: weather || undefined,
           activities: activities.length > 0 ? activities : undefined,
-          imageUrl: aiImageUrl || undefined, // AI 생성 이미지 (기존 이미지 유지, 재생성 안 함)
           images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
+          // imageUrl 필드는 제거됨 (백엔드가 자동으로 재생성)
         };
         
-        // [백엔드 팀] 일기 수정 API 호출
         // PUT /api/diaries/{id}
-        // - emotion 필드는 제거됨 (KoBERT가 수정된 본문을 재분석하여 자동으로 업데이트)
-        // - AI 코멘트 재생성 및 음식 추천 재생성은 백엔드에서 처리
-        await updateDiary('diary-' + dateKey, dateKey, updateRequest);
-        console.log('일기 수정 완료:', updateRequest);
+        // 백엔드가 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성 처리
+        savedDiary = await updateDiary('diary-' + dateKey, dateKey, updateRequest);
+        console.log('일기 수정 완료:', savedDiary);
       } else {
         // 새 작성 모드 (플로우 3.3)
         const createRequest: CreateDiaryRequest = {
@@ -566,22 +470,17 @@ export function DiaryWritingPage({
           weather: weather || undefined,
           activities: activities.length > 0 ? activities : undefined,
           images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
+          // emotion, imageUrl 필드는 제거됨 (백엔드가 자동으로 생성)
         };
         
-        // [백엔드 팀] 일기 작성 API 호출
         // POST /api/diaries
-        // - emotion 필드는 제거됨 (KoBERT가 자동으로 분석하여 저장)
-        // - AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성은 백엔드에서 처리
-        await createDiary(createRequest);
-        console.log('일기 저장 완료:', createRequest);
+        // 백엔드가 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성 처리
+        savedDiary = await createDiary(createRequest);
+        console.log('일기 저장 완료:', savedDiary);
       }
       
-      // 5. AI 코멘트 생성/재생성 및 음식 추천 생성/재생성은 백엔드에서 처리됨
-      // [AI 팀] 백엔드에서 제미나이 API 호출하여 처리
-      // - AI 코멘트: 일기 내용 + KoBERT 감정 분석 결과 + 페르소나 스타일
-      // - 음식 추천: 일기 내용 + KoBERT 감정 분석 결과
-      
-      // 6. 저장 완료 후 처리
+      // 5. 저장 완료 후 처리
+      // 백엔드 응답에서 emotion, imageUrl, aiComment, recommendedFood를 받음
       if (onWritingComplete && selectedDate) {
         onWritingComplete(selectedDate);
       }
@@ -589,15 +488,16 @@ export function DiaryWritingPage({
       if (isEditMode && onSaveSuccess) {
         // 수정 모드: 바로 상세보기로 이동 (플로우 4.3)
         onSaveSuccess(dateKey);
-      } else {
+      } else if (savedDiary) {
         // 새 작성 모드: 감정 분석 모달 표시 (플로우 3.4)
-        // KoBERT 분석 결과를 전달
-          onFinish({
-          emotion: emotionEmoji, // KoBERT 분석 결과 이모지
-          emotionName: emotionData?.name || '중립', // KoBERT 분석 결과 이름
-          emotionCategory: emotionCategory, // 긍정/중립/부정
-            date: selectedDate,
-          });
+        // 백엔드 응답에서 KoBERT 분석 결과 사용
+        const emotionData = KOBERT_EMOTIONS[savedDiary.emotion as keyof typeof KOBERT_EMOTIONS];
+        onFinish({
+          emotion: emotionData?.emoji || '😐', // 백엔드 응답의 KoBERT 분석 결과 이모지
+          emotionName: emotionData?.name || savedDiary.emotion || '중립', // 백엔드 응답의 KoBERT 분석 결과 이름
+          emotionCategory: savedDiary.emotionCategory || 'neutral', // 백엔드 응답의 감정 카테고리
+          date: selectedDate,
+        });
       }
       
     } catch (err) {
@@ -639,27 +539,17 @@ export function DiaryWritingPage({
         
         <button
           onClick={handleSave}
-          disabled={!isValid || isSaving || isGeneratingImage || isAnalyzingEmotion}
+          disabled={!isValid || isSaving || isAnalyzingEmotion}
           className={`px-4 py-2 rounded-lg transition-all min-h-[44px] flex items-center gap-2 ${
-            isValid && !isSaving && !isGeneratingImage && !isAnalyzingEmotion
+            isValid && !isSaving && !isAnalyzingEmotion
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {isAnalyzingEmotion ? (
+          {isAnalyzingEmotion || isSaving ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              감정 분석 중...
-            </>
-          ) : isGeneratingImage ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              그림 생성 중...
-            </>
-          ) : isSaving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              저장 중...
+              {isAnalyzingEmotion ? 'AI 처리 중...' : '저장 중...'}
             </>
           ) : (
             '완료'

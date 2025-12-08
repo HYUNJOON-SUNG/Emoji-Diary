@@ -72,110 +72,7 @@ export interface Notice {
   isPinned: boolean; // 고정 여부 (ERD: Notices.is_pinned, BOOLEAN, 기본값: FALSE)
 }
 
-/**
- * Mock 공지사항 데이터
- * 
- * [백엔드 팀] 실제 구현 시:
- * - DB에서 공지사항 데이터 조회
- * - 테이블: Notices
- * - 공개 상태인 공지사항만 조회 (is_public = TRUE AND deleted_at IS NULL)
- */
-const mockNotices: Notice[] = [
-  {
-    id: 1,
-    title: '감정 일기 서비스 오픈 안내',
-    content: `
-      <p><strong>감정 일기 서비스를 찾아주셔서 감사합니다!</strong></p>
-      <p>이 서비스는 여러분의 감정을 기록하고 돌아볼 수 있는 디지털 다이어리입니다.</p>
-      <br />
-      <p><strong>주요 기능:</strong></p>
-      <ul>
-        <li>✍️ 감정 기반 일기 작성</li>
-        <li>🤖 AI 코멘트 및 페르소나 설정</li>
-        <li>📊 감정 통계 및 월별 히트맵</li>
-        <li>🗺️ 감정 기반 장소 추천</li>
-        <li>💙 정신건강 지원 리소스</li>
-      </ul>
-      <br />
-      <p>문의사항이 있으시면 언제든지 고객센터로 연락주세요.</p>
-    `,
-    author: '관리자',
-    isPinned: true,
-    views: 150,
-    createdAt: '2024-11-01T10:00:00Z',
-  },
-  {
-    id: 2,
-    title: '개인정보 처리방침 업데이트',
-    content: `
-      <p>개인정보 처리방침이 2024년 11월 15일부로 업데이트되었습니다.</p>
-      <br />
-      <p><strong>주요 변경사항:</strong></p>
-      <ul>
-        <li>데이터 보관 기간 명확화</li>
-        <li>제3자 정보 제공 항목 업데이트</li>
-        <li>사용자 권리 강화</li>
-      </ul>
-      <br />
-      <p>자세한 내용은 설정 > 개인정보 처리방침에서 확인하실 수 있습니다.</p>
-    `,
-    author: '관리자',
-    isPinned: false,
-    views: 89,
-    createdAt: '2024-11-15T14:30:00Z',
-  },
-  {
-    id: 3,
-    title: '정기 점검 안내 (완료)',
-    content: `
-      <p>서비스 안정화를 위한 정기 점검이 완료되었습니다.</p>
-      <br />
-      <p><strong>점검 일시:</strong> 2024년 11월 20일 02:00 ~ 04:00 (2시간)</p>
-      <br />
-      <p><strong>점검 내용:</strong></p>
-      <ul>
-        <li>서버 성능 최적화</li>
-        <li>보안 업데이트</li>
-        <li>버그 수정</li>
-      </ul>
-      <br />
-      <p>점검 중 일시적으로 서비스 이용이 제한되었습니다.</p>
-      <p>불편을 드려 죄송합니다.</p>
-    `,
-    author: '관리자',
-    isPinned: false,
-    views: 67,
-    createdAt: '2024-11-20T05:00:00Z',
-  },
-  {
-    id: 4,
-    title: 'AI 페르소나 기능 추가',
-    content: `
-      <p>AI 코멘트의 말투를 선택할 수 있는 페르소나 기능이 추가되었습니다!</p>
-      <br />
-      <p><strong>이용 방법:</strong></p>
-      <ol>
-        <li>마이페이지로 이동</li>
-        <li>"AI 코멘트 말투 변경" 버튼 클릭</li>
-        <li>원하는 페르소나 선택</li>
-      </ol>
-      <br />
-      <p><strong>페르소나 종류:</strong></p>
-      <ul>
-        <li>👥 친구 말투 - 따뜻하고 편안한</li>
-        <li>🌟 멘토 말투 - 격려하고 조언하는</li>
-        <li>💼 전문가 말투 - 분석적이고 객관적인</li>
-        <li>😊 가벼운 말투 - 친근하고 밝은</li>
-      </ul>
-      <br />
-      <p>다양한 스타일의 AI 코멘트를 경험해보세요!</p>
-    `,
-    author: '관리자',
-    isPinned: false,
-    views: 45,
-    createdAt: '2024-11-25T16:00:00Z',
-  },
-];
+import { apiClient } from './api';
 
 /**
  * GET /api/notices
@@ -189,15 +86,10 @@ const mockNotices: Notice[] = [
  *   1. 고정된 공지사항 우선 (isPinned = true)
  *   2. 이후 작성일 최신순 정렬 (createdAt DESC)
  * 
- * [백엔드 팀] 실제 구현 시:
  * - GET /api/notices
- * - Headers: { Authorization: Bearer {accessToken} }
+ * - Headers: { Authorization: Bearer {accessToken} } (apiClient interceptor에서 자동 추가)
  * - Query Parameters: { page?, limit? } (기본값: page=1, limit=10)
  * - Response: { success: true, data: { total, page, limit, totalPages, notices } }
- * - 쿼리:
- *   SELECT * FROM notices
- *   WHERE is_public = true AND deleted_at IS NULL
- *   ORDER BY is_pinned DESC, created_at DESC
  * 
  * @param page 페이지 번호 (기본값: 1)
  * @param limit 페이지당 항목 수 (기본값: 10)
@@ -210,55 +102,15 @@ export async function getNotices(page: number = 1, limit: number = 10): Promise<
   totalPages: number;
   notices: Notice[];
 }> {
-  await delay(500);
-  
-  // [백엔드 팀] 실제 구현 시:
-  // const token = TokenStorage.getAccessToken();
-  // const queryParams = new URLSearchParams();
-  // queryParams.append('page', page.toString());
-  // queryParams.append('limit', limit.toString());
-  // const response = await fetch(`/api/notices?${queryParams}`, {
-  //   method: 'GET',
-  //   headers: {
-  //     'Authorization': `Bearer ${token}`,
-  //   },
-  // });
-  // const result = await response.json();
-  // return result.success ? result.data : { total: 0, page, limit, totalPages: 0, notices: [] };
-  
-  // Mock 구현: 공개 상태인 공지사항만 필터링
-  const publishedNotices = mockNotices.filter((notice) => {
-    // 공개 상태 확인 (Mock에서는 모든 notice가 공개 상태로 가정)
-    return true;
+  const response = await apiClient.get('/notices', {
+    params: { page, limit },
   });
-
-  // 정렬: 고정된 공지사항 우선, 이후 최신순
-  const sortedNotices = publishedNotices.sort((a, b) => {
-    // 1. 고정 여부로 정렬 (고정된 것이 상단)
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-
-    // 2. 작성일 최신순 정렬
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
-  // 페이지네이션
-  const total = sortedNotices.length;
-  const totalPages = Math.ceil(total / limit);
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  const paginatedNotices = sortedNotices.slice(startIndex, endIndex);
-
-  // 목록 조회 시 content 제외 (API 명세서)
-  const noticesWithoutContent = paginatedNotices.map(({ content, ...notice }) => notice);
-
-  return {
-    total,
-    page,
-    limit,
-    totalPages,
-    notices: noticesWithoutContent,
-  };
+  
+  if (response.data.success) {
+    return response.data.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 목록 조회에 실패했습니다.');
+  }
 }
 
 /**
@@ -272,50 +124,20 @@ export async function getNotices(page: number = 1, limit: number = 10): Promise<
  * - 공개 상태인 공지사항만 조회 가능
  * - 조회 시 views 자동 증가
  * 
- * [백엔드 팀] 실제 구현 시:
  * - GET /api/notices/{noticeId}
- * - Headers: { Authorization: Bearer {accessToken} }
+ * - Headers: { Authorization: Bearer {accessToken} } (apiClient interceptor에서 자동 추가)
  * - Response: { success: true, data: Notice } (content 포함)
  * - Response 404: { success: false, error: { code: "NOTICE_NOT_FOUND", message: "..." } }
- * - 쿼리:
- *   SELECT * FROM notices
- *   WHERE id = ? AND is_public = true AND deleted_at IS NULL
- * - 조회 시 views 자동 증가
  * 
  * @param noticeId - 공지사항 ID
  * @returns Promise<Notice> - 공지사항 상세 정보 (content 포함)
  */
 export async function getNoticeById(noticeId: number): Promise<Notice> {
-  await delay(300);
+  const response = await apiClient.get(`/notices/${noticeId}`);
   
-  // [백엔드 팀] 실제 구현 시:
-  // const token = TokenStorage.getAccessToken();
-  // const response = await fetch(`/api/notices/${noticeId}`, {
-  //   method: 'GET',
-  //   headers: {
-  //     'Authorization': `Bearer ${token}`,
-  //   },
-  // });
-  // if (response.status === 404) {
-  //   throw new Error('공지사항을 찾을 수 없습니다.');
-  // }
-  // const result = await response.json();
-  // return result.success ? result.data : null;
-  
-  // Mock 구현
-  const notice = mockNotices.find((n) => n.id === noticeId);
-  
-  if (!notice) {
-    throw new Error('공지사항을 찾을 수 없습니다.');
+  if (response.data.success) {
+    return response.data.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항을 찾을 수 없습니다.');
   }
-
-  // 조회수 증가 (Mock)
-  notice.views = (notice.views || 0) + 1;
-
-  return notice;
 }
-
-/**
- * 지연 함수 (네트워크 지연 시뮬레이션)
- */
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

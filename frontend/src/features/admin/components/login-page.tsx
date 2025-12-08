@@ -108,122 +108,23 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setError(''); // 기존 에러 메시지 초기화
     setIsLoading(true); // 로딩 상태 시작
 
-    // ========================================
-    // 로그인 시도 이력 기록 (보안 목적)
-    // ========================================
-    // [백엔드 작업] 실제 환경에서는 서버에서 IP 주소, User Agent 등을 자동으로 기록
-    const loginAttempt = {
-      timestamp: new Date().toISOString(),
-      email: email,
-      ipAddress: 'simulated-ip', // [백엔드] 서버에서 request.ip로 실제 IP 획득
-      userAgent: navigator.userAgent
-    };
-
-    // ========================================
-    // [백엔드 API 호출 시뮬레이션]
-    // ========================================
-    /**
-     * TODO: 백엔드 팀 작업 필요
-     * 
-     * API Endpoint: POST /api/admin/login
-     * Request Body: {
-     *   email: string,
-     *   password: string
-     * }
-     * 
-     * Response (성공):
-     * {
-     *   success: true,
-     *   token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-     *   user: {
-     *     id: string,
-     *     email: string,
-     *     name: string,
-     *     role: "admin"
-     *   }
-     * }
-     * 
-     * Response (실패):
-     * {
-     *   success: false,
-     *   message: "ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다."
-     * }
-     * 
-     * 백엔드 검증 사항:
-     * 1. 이메일 형식 검증
-     * 2. 빈 필드 검증
-     * 3. 비밀번호 일치 여부 확인
-     * 4. 관리자 권한 확인 (role === 'admin')
-     * 5. 계정 잠금 상태 확인
-     * 6. 로그인 시도 횟수 제한 (예: 5회 실패 시 10분간 잠금)
-     * 
-     * 실제 코드 예시 (Cursor AI에서 적용):
-     * 
-     * const response = await fetch('/api/admin/login', {
-     *   method: 'POST',
-     *   headers: { 'Content-Type': 'application/json' },
-     *   body: JSON.stringify({ email, password })
-     * });
-     * const result = await response.json();
-     */
-
-    // 현재는 Mock 데이터로 시뮬레이션 (네트워크 딜레이 800ms)
-    setTimeout(() => {
-      const result = onLogin(email, password);
+    // [API 명세서 Section 10.1.1]
+    // POST /api/admin/auth/login
+    // 백엔드가 로그인 시도 이력을 자동으로 기록합니다 (IP 주소, User Agent 등)
+    try {
+      const result = await onLogin(email, password);
       
       if (!result.success) {
-        // ========================================
-        // 로그인 실패 처리
-        // ========================================
-        
-        // [백엔드 작업] 실패한 로그인 시도를 Database의 로그 테이블에 저장
-        const failedLoginLog = {
-          id: `LOGIN_FAIL_${Date.now()}`,
-          timestamp: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16).replace('T', ' '),
-          level: 'WARN' as const, // 경고 레벨
-          message: `Failed admin login attempt for ${email}`,
-          endpoint: '/api/admin/login',
-          errorCode: 'LOGIN_FAILED',
-          userId: email
-        };
-        
-        // 현재는 localStorage 사용 (실제로는 Database에 저장)
-        const existingLogs = localStorage.getItem('error_logs');
-        const logs = existingLogs ? JSON.parse(existingLogs) : [];
-        logs.unshift(failedLoginLog);
-        localStorage.setItem('error_logs', JSON.stringify(logs));
-        
         // 통합 에러 메시지 표시 (필드별 에러 없음)
         setError(result.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
-        
-      } else {
-        // ========================================
-        // 로그인 성공 처리
-        // ========================================
-        
-        // [백엔드 작업] 성공한 로그인을 INFO 레벨로 기록
-        const successLoginLog = {
-          id: `LOGIN_SUCCESS_${Date.now()}`,
-          timestamp: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16).replace('T', ' '),
-          level: 'INFO' as const, // 정보 레벨
-          message: `Admin login successful for ${email}`,
-          endpoint: '/api/admin/login',
-          errorCode: 'LOGIN_SUCCESS',
-          userId: email
-        };
-        
-        const existingLogs = localStorage.getItem('error_logs');
-        const logs = existingLogs ? JSON.parse(existingLogs) : [];
-        logs.unshift(successLoginLog);
-        localStorage.setItem('error_logs', JSON.stringify(logs));
-        
-        // [백엔드 작업] JWT 토큰이 반환되면 localStorage에 저장
-        // 실제 환경에서는 httpOnly Cookie 사용 권장 (XSS 공격 방지)
-        // localStorage.setItem('admin_jwt_token', result.token);
       }
-      
+      // 성공 시 onLogin에서 처리 (AdminApp.tsx의 handleLogin)
+    } catch (error: any) {
+      console.error('로그인 처리 중 오류:', error);
+      setError('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
       setIsLoading(false); // 로딩 상태 종료
-    }, 800);
+    }
   };
 
   return (

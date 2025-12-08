@@ -64,6 +64,7 @@
 
 import { useState, useEffect } from 'react';
 import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin } from 'lucide-react';
+import { getNoticeList, createNotice, updateNotice, deleteNotice, pinNotice } from '../../../services/adminApi';
 import type { Notice } from '../types';
 
 export function NoticeManagement() {
@@ -94,54 +95,24 @@ export function NoticeManagement() {
   const loadNotices = async () => {
     setIsLoading(true);
     
-    // [백엔드 작업] Mock API call: GET /api/admin/notices
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const stored = localStorage.getItem('notices');
-    if (stored) {
-      setNotices(JSON.parse(stored));
-    } else {
-      // Mock 데이터 (기본 공지사항 3개) - 연동 전까지 유지
-      const defaultNotices: Notice[] = [
-        {
-          id: 1,
-          title: '서비스 정기 점검 안내',
-          content: '<h3>정기 점검 안내</h3><p>2025년 11월 25일 새벽 2시부터 4시까지 시스템 정기 점검이 진행됩니다.</p><p>점검 시간 동안 서비스 이용이 제한될 수 있습니다.</p><p>양해 부탁드립니다.</p>',
-          author: 'admin@example.com',
-          createdAt: '2025-11-20T10:30:00Z',
-          updatedAt: '2025-11-20T10:30:00Z',
-          isPinned: true,
-          isPublic: true,
-          views: 1245
-        },
-        {
-          id: 2,
-          title: '개인정보 처리방침 개정 안내',
-          content: '<h3>개인정보 처리방침 개정</h3><p>2025년 12월 1일부터 개정된 개인정보 처리방침이 적용됩니다.</p><p>자세한 내용은 설정 > 개인정보 처리방침에서 확인하실 수 있습니다.</p>',
-          author: 'admin@example.com',
-          createdAt: '2025-11-18T14:20:00Z',
-          updatedAt: '2025-11-18T14:20:00Z',
-          isPinned: false,
-          isPublic: true,
-          views: 856
-        },
-        {
-          id: 3,
-          title: '신규 기능 업데이트 안내',
-          content: '<h3>새로운 기능이 추가되었습니다</h3><ul><li>감정 분석 고도화</li><li>상담 기관 검색 기능</li><li>일지 백업 기능</li></ul><p>업데이트된 기능을 경험해보세요!</p>',
-          author: 'admin@example.com',
-          createdAt: '2025-11-15 09:00',
-          updatedAt: '2025-11-15 09:00',
-          isPinned: false,
-          isPublic: false, // 비공개 예시
-          views: 523
-        }
-      ];
-      setNotices(defaultNotices);
-      localStorage.setItem('notices', JSON.stringify(defaultNotices));
+    try {
+      // GET /api/admin/notices
+      const response = await getNoticeList(1, 100);
+      if (response.success && response.data) {
+        // 고정된 공지사항 먼저, 그 다음 작성일 최신순 정렬
+        const sortedNotices = [...response.data.notices].sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setNotices(sortedNotices);
+      }
+    } catch (error: any) {
+      console.error('공지사항 목록 조회 실패:', error);
+      setNotices([]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   // ========================================
@@ -201,16 +172,13 @@ export function NoticeManagement() {
     }
 
     try {
-      // [백엔드 작업] Mock API call: DELETE /api/admin/notices/:id
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const updated = notices.filter(n => n.id !== id);
-      setNotices(updated);
-      localStorage.setItem('notices', JSON.stringify(updated));
-      
+      // DELETE /api/admin/notices/{id}
+      await deleteNotice(id);
       alert('공지사항이 삭제되었습니다.');
-    } catch (error) {
-      alert('삭제에 실패했습니다. 다시 시도해주세요.');
+      loadNotices(); // 목록 갱신
+    } catch (error: any) {
+      console.error('공지사항 삭제 실패:', error);
+      alert(error.message || '삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -224,44 +192,32 @@ export function NoticeManagement() {
     }
 
     try {
-      const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16).replace('T', ' ');
-      
-      let updated: Notice[];
-      
-      if (notice.id) {
-        // [백엔드 작업] Update existing: PUT /api/admin/notices/:id
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const updatedNotice = {
-          ...notice,
-          updatedAt: now
-        };
-        
-        updated = notices.map(n => n.id === notice.id ? updatedNotice : n);
+      if (notice.id && notice.id > 0) {
+        // PUT /api/admin/notices/{id}
+        await updateNotice(notice.id, {
+          title: notice.title,
+          content: notice.content,
+          isPublic: notice.isPublic,
+          isPinned: notice.isPinned
+        });
         alert('공지사항이 수정되었습니다.');
       } else {
-        // [백엔드 작업] Create new: POST /api/admin/notices
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const newNotice: Notice = {
-          ...notice,
-          id: notices.length > 0 ? Math.max(...notices.map(n => n.id)) + 1 : 1, // Mock 데이터 - 연동 전까지 유지
-          createdAt: now,
-          updatedAt: now,
-          views: 0
-        };
-        
-        updated = [newNotice, ...notices];
+        // POST /api/admin/notices
+        await createNotice({
+          title: notice.title,
+          content: notice.content,
+          isPublic: notice.isPublic,
+          isPinned: notice.isPinned
+        });
         alert('공지사항이 등록되었습니다.');
       }
       
-      setNotices(updated);
-      localStorage.setItem('notices', JSON.stringify(updated));
-      
       setShowModal(false);
       setEditingNotice(null);
-    } catch (error) {
-      alert('저장에 실패했습니다. 다시 시도해주세요.');
+      loadNotices(); // 목록 갱신
+    } catch (error: any) {
+      console.error('공지사항 저장 실패:', error);
+      alert(error.message || '저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -269,14 +225,9 @@ export function NoticeManagement() {
   // 공지사항 조회
   // ========================================
   const handleView = async (notice: Notice) => {
-    // [백엔드 작업] 조회수 증가: PATCH /api/admin/notices/:id/view
-    const updated = notices.map(n => 
-      n.id === notice.id ? { ...n, views: n.views + 1 } : n
-    );
-    setNotices(updated);
-    localStorage.setItem('notices', JSON.stringify(updated));
-    
-    setSelectedNotice({ ...notice, views: notice.views + 1 });
+    // [API 명세서 Section 7.2]
+    // 관리자가 조회하는 경우 조회수는 증가하지 않습니다.
+    setSelectedNotice(notice);
   };
 
   // ========================================
@@ -299,17 +250,15 @@ export function NoticeManagement() {
    */
   const togglePin = async (id: number) => {
     try {
-      // [백엔드 작업] Mock API call: PATCH /api/admin/notices/:id/pin
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const notice = notices.find(n => n.id === id);
+      if (!notice) return;
       
-      const updated = notices.map(n => 
-        n.id === id ? { ...n, isPinned: !n.isPinned } : n
-      );
-      
-      setNotices(updated);
-      localStorage.setItem('notices', JSON.stringify(updated));
-    } catch (error) {
-      alert('상태 변경에 실패했습니다.');
+      // PUT /api/admin/notices/{id}/pin
+      await pinNotice(id, { isPinned: !notice.isPinned });
+      loadNotices(); // 목록 갱신
+    } catch (error: any) {
+      console.error('공지사항 고정 상태 변경 실패:', error);
+      alert(error.message || '상태 변경에 실패했습니다.');
     }
   };
 
@@ -318,17 +267,20 @@ export function NoticeManagement() {
   // ========================================
   const togglePublic = async (id: number) => {
     try {
-      // [백엔드 작업] Mock API call: PATCH /api/admin/notices/:id/public
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const notice = notices.find(n => n.id === id);
+      if (!notice) return;
       
-      const updated = notices.map(n => 
-        n.id === id ? { ...n, isPublic: !n.isPublic } : n
-      );
-      
-      setNotices(updated);
-      localStorage.setItem('notices', JSON.stringify(updated));
-    } catch (error) {
-      alert('상태 변경에 실패했습니다.');
+      // PUT /api/admin/notices/{id} - isPublic 필드 업데이트
+      await updateNotice(id, {
+        title: notice.title,
+        content: notice.content,
+        isPublic: !notice.isPublic,
+        isPinned: notice.isPinned
+      });
+      loadNotices(); // 목록 갱신
+    } catch (error: any) {
+      console.error('공지사항 공개 상태 변경 실패:', error);
+      alert(error.message || '상태 변경에 실패했습니다.');
     }
   };
 

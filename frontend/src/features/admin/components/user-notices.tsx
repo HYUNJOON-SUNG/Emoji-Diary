@@ -30,6 +30,7 @@
 
 import { useState, useEffect } from 'react';
 import { Megaphone, X, Pin, Calendar } from 'lucide-react';
+import { getNotices } from '../../../services/announcementApi';
 
 // ========================================
 // 공지사항 데이터 타입
@@ -72,19 +73,26 @@ export function UserNotices() {
   const loadNotices = async () => {
     setIsLoading(true);
     
-    // [백엔드 작업] Mock API call: GET /api/user/notices
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // localStorage에서 관리자가 작성한 공지사항 가져오기
-    const stored = localStorage.getItem('notices');
-    if (stored) {
-      const allNotices: Notice[] = JSON.parse(stored);
-      // 공개된 공지사항만 필터링
-      const publicNotices = allNotices.filter(n => n.isPublic);
-      setNotices(publicNotices);
+    try {
+      // GET /api/notices
+      // [API 명세서 Section 7.1]
+      // 공개된 공지사항만 조회되며, 고정된 공지사항이 먼저 표시됩니다.
+      const response = await getNotices(1, 100);
+      if (response.success && response.data) {
+        // 고정된 공지사항 먼저, 그 다음 작성일 최신순 정렬
+        const sortedNotices = [...response.data.notices].sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        setNotices(sortedNotices);
+      }
+    } catch (error: any) {
+      console.error('공지사항 목록 조회 실패:', error);
+      setNotices([]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   // ========================================

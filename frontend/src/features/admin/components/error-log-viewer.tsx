@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Filter, Search, RefreshCw, Eye, X, Calendar, Clock, Code } from 'lucide-react';
+import { getErrorLogList } from '../../../services/adminApi';
 import type { ErrorLog } from '../types';
 
 export function ErrorLogViewer() {
@@ -24,108 +25,30 @@ export function ErrorLogViewer() {
   const loadErrorLogs = async () => {
     setIsLoading(true);
     
-    // Mock API call: GET /admin/logs/errors (Level: ERROR)
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const stored = localStorage.getItem('error_logs');
-    if (stored) {
-      setLogs(JSON.parse(stored));
-    } else {
-      // Generate mock error logs from Database(MariaDB) Log Table
-      const mockLogs: ErrorLog[] = [
-        {
-          id: 'ERR001',
-          timestamp: '2025-11-24 14:35:22',
-          level: 'ERROR',
-          message: 'Database connection timeout',
-          stackTrace: 'at DatabaseConnection.connect (db.ts:45)\nat UserService.getUser (user.service.ts:23)\nat UserController.getProfile (user.controller.ts:18)',
-          endpoint: '/api/users/profile',
-          userId: 'USR123',
-          errorCode: 'DB_TIMEOUT'
-        },
-        {
-          id: 'ERR002',
-          timestamp: '2025-11-24 13:20:15',
-          level: 'ERROR',
-          message: 'Failed to send notification email',
-          stackTrace: 'at EmailService.sendEmail (email.service.ts:67)\nat NotificationService.send (notification.service.ts:34)',
-          endpoint: '/api/notifications/send',
-          errorCode: 'EMAIL_SEND_FAILED'
-        },
-        {
-          id: 'ERR003',
-          timestamp: '2025-11-24 12:45:08',
-          level: 'WARN',
-          message: 'High memory usage detected (85%)',
-          endpoint: '/system/health',
-          errorCode: 'HIGH_MEMORY'
-        },
-        {
-          id: 'ERR004',
-          timestamp: '2025-11-24 11:30:42',
-          level: 'ERROR',
-          message: 'JWT token verification failed',
-          stackTrace: 'at JwtService.verify (jwt.service.ts:12)\nat AuthMiddleware.authenticate (auth.middleware.ts:25)',
-          endpoint: '/api/auth/verify',
-          userId: 'USR456',
-          errorCode: 'JWT_INVALID'
-        },
-        {
-          id: 'ERR005',
-          timestamp: '2025-11-24 10:15:33',
-          level: 'ERROR',
-          message: 'API rate limit exceeded',
-          endpoint: '/api/entries/create',
-          userId: 'USR789',
-          errorCode: 'RATE_LIMIT'
-        },
-        {
-          id: 'ERR006',
-          timestamp: '2025-11-24 09:22:17',
-          level: 'WARN',
-          message: 'Slow query detected (execution time: 3.2s)',
-          endpoint: '/api/analytics/dashboard',
-          errorCode: 'SLOW_QUERY'
-        },
-        {
-          id: 'ERR007',
-          timestamp: '2025-11-24 08:45:09',
-          level: 'INFO',
-          message: 'Scheduled backup completed successfully',
-          errorCode: 'BACKUP_SUCCESS'
-        },
-        {
-          id: 'ERR008',
-          timestamp: '2025-11-23 23:55:44',
-          level: 'ERROR',
-          message: 'File upload failed - maximum size exceeded',
-          endpoint: '/api/files/upload',
-          userId: 'USR321',
-          errorCode: 'FILE_TOO_LARGE'
-        },
-        {
-          id: 'ERR009',
-          timestamp: '2025-11-23 22:30:21',
-          level: 'ERROR',
-          message: 'External API service unavailable',
-          stackTrace: 'at ExternalService.call (external.service.ts:89)\nat EmotionAnalyzer.analyze (emotion.service.ts:45)',
-          endpoint: '/api/emotions/analyze',
-          errorCode: 'EXTERNAL_SERVICE_DOWN'
-        },
-        {
-          id: 'ERR010',
-          timestamp: '2025-11-23 20:15:36',
-          level: 'WARN',
-          message: 'Cache miss rate exceeding threshold (45%)',
-          errorCode: 'HIGH_CACHE_MISS'
-        }
-      ];
+    try {
+      // GET /api/admin/error-logs
+      const params: any = {};
+      if (severityFilter !== 'ALL') params.level = severityFilter;
+      if (dateFilter) {
+        const [startDate, endDate] = dateFilter.split(' to ');
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+      }
+      if (searchQuery) params.search = searchQuery;
       
-      setLogs(mockLogs);
-      localStorage.setItem('error_logs', JSON.stringify(mockLogs));
+      const response = await getErrorLogList(params);
+      
+      if (response.success && response.data) {
+        setLogs(response.data.logs);
+      } else {
+        setLogs([]);
+      }
+    } catch (error: any) {
+      console.error('에러 로그 조회 실패:', error);
+      setLogs([]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const applyFilters = () => {

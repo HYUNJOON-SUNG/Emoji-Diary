@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Save, Plus, Edit2, Trash2, Phone, Globe, Building2, X, Check } from 'lucide-react';
+import { getRiskDetectionSettings, updateRiskDetectionSettings, getCounselingResources, createCounselingResource, updateCounselingResource, deleteCounselingResource } from '../../../services/adminApi';
 import type { RiskThreshold, CounselingResource } from '../types';
 
 export function SystemSettings() {
@@ -52,69 +53,35 @@ export function SystemSettings() {
   const loadSettings = async () => {
     setIsLoading(true);
     
-    // Mock API call to fetch settings from Database (MariaDB)
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Get from localStorage (simulating DB)
-    const storedThreshold = localStorage.getItem('risk_threshold_settings');
-    if (storedThreshold) {
-      const parsed = JSON.parse(storedThreshold);
-      setRiskThreshold(parsed);
-      setOriginalThreshold(parsed);
+    try {
+      // GET /api/admin/settings/risk-detection
+      const riskResponse = await getRiskDetectionSettings();
+      if (riskResponse.success && riskResponse.data) {
+        const settings = riskResponse.data;
+        const threshold: RiskThreshold = {
+          monitoringPeriodDays: settings.monitoringPeriod,
+          highConsecutiveDays: settings.high.consecutiveScore,
+          highTotalDays: settings.high.scoreInPeriod,
+          mediumConsecutiveDays: settings.medium.consecutiveScore,
+          mediumTotalDays: settings.medium.scoreInPeriod,
+          lowConsecutiveDays: settings.low.consecutiveScore,
+          lowTotalDays: settings.low.scoreInPeriod
+        };
+        setRiskThreshold(threshold);
+        setOriginalThreshold(threshold);
+      }
+      
+      // GET /api/admin/settings/counseling-resources
+      const resourcesResponse = await getCounselingResources();
+      if (resourcesResponse.success && resourcesResponse.data) {
+        setResources(resourcesResponse.data.resources);
+      }
+    } catch (error: any) {
+      console.error('설정 로드 실패:', error);
+      alert(error.message || '설정을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
-
-    const storedResources = localStorage.getItem('counseling_resources');
-    if (storedResources) {
-      setResources(JSON.parse(storedResources));
-    } else {
-      // Default resources (Mock 데이터 - 연동 전까지 유지)
-      const defaultResources: CounselingResource[] = [
-        {
-          id: 1,
-          name: '자살예방 상담전화',
-          category: '긴급상담',
-          phone: '1393',
-          website: 'https://www.suicide.or.kr',
-          description: '24시간 위기상담 및 자살예방 전문 상담',
-          operatingHours: '24시간',
-          isUrgent: true
-        },
-        {
-          id: 2,
-          name: '정신건강 위기상담 전화',
-          category: '긴급상담',
-          phone: '1577-0199',
-          website: 'https://www.mentalhealth.go.kr',
-          description: '정신건강 위기 상황에 대한 전문 상담',
-          operatingHours: '24시간',
-          isUrgent: true
-        },
-        {
-          id: 3,
-          name: '청소년 상담전화',
-          category: '상담전화',
-          phone: '1388',
-          website: 'https://www.cyber1388.kr',
-          description: '청소년 대상 심리 상담 및 위기 지원',
-          operatingHours: '평일 09:00-22:00',
-          isUrgent: false
-        },
-        {
-          id: 4,
-          name: '한국심리상담협회',
-          category: '전문상담',
-          phone: '02-3452-0091',
-          website: 'https://www.krcpa.or.kr',
-          description: '전문 심리상담사와의 1:1 상담',
-          operatingHours: '평일 09:00-18:00',
-          isUrgent: false
-        }
-      ];
-      setResources(defaultResources);
-      localStorage.setItem('counseling_resources', JSON.stringify(defaultResources));
-    }
-    
-    setIsLoading(false);
   };
 
   const handleSaveThreshold = async () => {
@@ -127,35 +94,32 @@ export function SystemSettings() {
     setIsSaving(true);
     
     try {
-      // Mock API call to update Database (MariaDB)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Log the change (for audit trail)
-      const changeLog = {
-        timestamp: new Date().toISOString(),
-        changedBy: 'admin@example.com',
-        before: originalThreshold,
-        after: riskThreshold
+      // PUT /api/admin/settings/risk-detection
+      const settings = {
+        monitoringPeriod: riskThreshold.monitoringPeriodDays,
+        high: {
+          consecutiveScore: riskThreshold.highConsecutiveDays,
+          scoreInPeriod: riskThreshold.highTotalDays
+        },
+        medium: {
+          consecutiveScore: riskThreshold.mediumConsecutiveDays,
+          scoreInPeriod: riskThreshold.mediumTotalDays
+        },
+        low: {
+          consecutiveScore: riskThreshold.lowConsecutiveDays,
+          scoreInPeriod: riskThreshold.lowTotalDays
+        }
       };
       
-      console.log('Setting Change Log:', changeLog);
-      
-      // Save to server (simulated with localStorage)
-      localStorage.setItem('risk_threshold_settings', JSON.stringify(riskThreshold));
-      
-      // Save change log
-      const existingLogs = localStorage.getItem('setting_change_logs');
-      const logs = existingLogs ? JSON.parse(existingLogs) : [];
-      logs.push(changeLog);
-      localStorage.setItem('setting_change_logs', JSON.stringify(logs));
+      await updateRiskDetectionSettings(settings);
       
       setOriginalThreshold(riskThreshold);
       setHasThresholdChanges(false);
       
       alert('설정이 성공적으로 저장되었습니다.');
-    } catch (error) {
-      alert('설정 저장에 실패했습니다. 다시 시도해주세요.');
-      console.error('Failed to save threshold:', error);
+    } catch (error: any) {
+      console.error('위험 신호 감지 기준 저장 실패:', error);
+      alert(error.message || '설정 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsSaving(false);
     }
@@ -190,16 +154,13 @@ export function SystemSettings() {
     }
 
     try {
-      // Mock API call to delete from Database (MariaDB)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const updated = resources.filter(r => r.id !== id);
-      setResources(updated);
-      localStorage.setItem('counseling_resources', JSON.stringify(updated));
-      
+      // DELETE /api/admin/settings/counseling-resources/{resourceId}
+      await deleteCounselingResource(id);
       alert('상담 기관이 삭제되었습니다.');
-    } catch (error) {
-      alert('삭제에 실패했습니다. 다시 시도해주세요.');
+      loadSettings(); // 목록 갱신
+    } catch (error: any) {
+      console.error('상담 기관 삭제 실패:', error);
+      alert(error.message || '삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -217,32 +178,38 @@ export function SystemSettings() {
     }
 
     try {
-      // Mock API call to save to Database (MariaDB)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      let updated: CounselingResource[];
-      
-      if (resource.id) {
-        // Update existing
-        updated = resources.map(r => r.id === resource.id ? resource : r);
+      if (resource.id && resource.id > 0) {
+        // PUT /api/admin/settings/counseling-resources/{resourceId}
+        await updateCounselingResource(resource.id, {
+          name: resource.name,
+          category: resource.category,
+          phone: resource.phone,
+          website: resource.website,
+          description: resource.description,
+          operatingHours: resource.operatingHours,
+          isUrgent: resource.isUrgent
+        });
         alert('상담 기관 정보가 수정되었습니다.');
       } else {
-        // Add new (Mock 데이터 - 연동 전까지 유지)
-        const newResource: CounselingResource = {
-          ...resource,
-          id: resources.length > 0 ? Math.max(...resources.map(r => r.id)) + 1 : 1
-        };
-        updated = [...resources, newResource];
+        // POST /api/admin/settings/counseling-resources
+        await createCounselingResource({
+          name: resource.name,
+          category: resource.category,
+          phone: resource.phone,
+          website: resource.website,
+          description: resource.description,
+          operatingHours: resource.operatingHours,
+          isUrgent: resource.isUrgent
+        });
         alert('새 상담 기관이 추가되었습니다.');
       }
       
-      setResources(updated);
-      localStorage.setItem('counseling_resources', JSON.stringify(updated));
-      
       setShowResourceModal(false);
       setEditingResource(null);
-    } catch (error) {
-      alert('저장에 실패했습니다. 다시 시도해주세요.');
+      loadSettings(); // 목록 갱신
+    } catch (error: any) {
+      console.error('상담 기관 저장 실패:', error);
+      alert(error.message || '저장에 실패했습니다. 다시 시도해주세요.');
     }
   };
 

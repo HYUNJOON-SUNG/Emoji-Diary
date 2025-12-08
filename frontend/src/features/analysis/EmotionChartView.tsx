@@ -154,9 +154,9 @@ export function EmotionChartView() {
    *   - period: 'weekly' | 'monthly'
    * - 응답: ChartDataPoint[] (날짜, 감정별 빈도)
    * 
-   * Mock 구현:
-   * - fetchChartStats 함수 사용
-   * - 실제 API로 교체 필요
+   * [API 명세서 Section 5.2.2]
+   * - GET /api/statistics/emotion-trend
+   * - 실제 API 호출로 구현됨
    * 
    * 기간 계산:
    * - weekly: 최근 7일 (오늘 포함)
