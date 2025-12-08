@@ -95,6 +95,9 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   
   /** 약관 동의 상태 { termId: true/false } */
   const [agreements, setAgreements] = useState<{ [key: string]: boolean }>({});
+  
+  /** 성별 선택 (필수, AI 이미지 생성 시 주인공 성별 결정) */
+  const [gender, setGender] = useState<'MALE' | 'FEMALE' | ''>('');
 
   // ========== 로딩 및 에러 상태 ==========
   
@@ -695,11 +698,21 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       console.log('✅ 비밀번호 확인 통과');
     }
     
+    // 성별 검증
+    console.log('6️⃣ 성별 검증:', { gender });
+    if (!gender || (gender !== 'MALE' && gender !== 'FEMALE')) {
+      setError('성별을 선택해주세요.');
+      hasError = true;
+      console.log('❌ 성별 에러: 미선택');
+    } else {
+      console.log('✅ 성별 검증 통과');
+    }
+    
     // 필수 약관 동의 확인
     const requiredTerms = termsData.filter(t => t.required);
     const allRequiredAgreed = requiredTerms.every(term => !!agreements[term.id]);
     
-    console.log('6️⃣ 약관 동의 검증:');
+    console.log('7️⃣ 약관 동의 검증:');
     console.log('  - agreements 객체:', agreements);
     console.log('  - 필수 약관 ID 목록:', requiredTerms.map(t => t.id));
     console.log('  - 각 약관 동의 상태:', requiredTerms.map(t => ({ id: t.id, agreed: agreements[t.id] })));
@@ -721,18 +734,22 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       return;
     }
     
+    // 모든 검증 통과 시 에러 메시지 초기화
+    setError('');
     console.log('✅ 모든 검증 통과! 회원가입 API 호출');
     
     // ===== API 호출: 회원가입 =====
     setIsLoading(true);
     
     try {
-      // [백엔드 팀] 회원가입 API 구현 필요
+      // [API 명세서 Section 2.2.4] 회원가입 API 호출
       const response = await signup({ 
         email, 
         password, 
         name,
-        verificationCode: verificationCode.join(''), // 6자리 인증 코드
+        emailVerified: true, // 이메일 인증 완료 (codeVerified가 true이므로)
+        gender: gender as 'MALE' | 'FEMALE', // 성별 (필수)
+        verificationCode: verificationCode.join(''), // 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증 완료)
         termsAccepted: true // 약관 동의 (여기까지 왔다면 필수 약관 동의 완료)
       });
       
@@ -869,15 +886,6 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
               {/* 인증 코드 입력 (발송 후 표시) */}
               {codeSent && !codeVerified && (
                 <div className="space-y-3">
-                  {/* ⚠️ [UI 테스트용 안내] - 배포 전 삭제 필수 ⚠️ */}
-                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                    <p className="text-xs text-amber-700">
-                      <strong>💡 테스트용 인증 코:</strong> <code className="bg-amber-100 px-2 py-0.5 rounded">123456</code> 입력 시 자동 통과됩니다.
-                      <br />
-                      (이메일 발송 없이 회원가입 플로우 테스트 가능)
-                    </p>
-                  </div>
-                  {/* ⚠️ [여기까지 삭제] ⚠️ */}
                   
                   {/* Timer */}
                   <div className="text-center">
@@ -1018,6 +1026,46 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                     {confirmPasswordError && (
                       <p className="text-xs text-rose-500 mt-1.5">{confirmPasswordError}</p>
                     )}
+                  </div>
+
+                  {/* Gender Selection */}
+                  <div>
+                    <label className="text-xs text-stone-600 block mb-2">
+                      성별 <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="MALE"
+                          checked={gender === 'MALE'}
+                          onChange={(e) => {
+                            setGender(e.target.value as 'MALE');
+                            setError('');
+                          }}
+                          disabled={isLoading}
+                          className="w-4 h-4 text-blue-600 border-stone-300 focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <span className="text-sm text-stone-700">남성</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="FEMALE"
+                          checked={gender === 'FEMALE'}
+                          onChange={(e) => {
+                            setGender(e.target.value as 'FEMALE');
+                            setError('');
+                          }}
+                          disabled={isLoading}
+                          className="w-4 h-4 text-blue-600 border-stone-300 focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <span className="text-sm text-stone-700">여성</span>
+                      </label>
+                    </div>
+                    <p className="text-xs text-stone-500 mt-1">AI 그림일기 주인공 성별 결정에 사용됩니다</p>
                   </div>
 
                   {/* Terms Agreement */}
