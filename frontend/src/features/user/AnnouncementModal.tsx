@@ -106,10 +106,10 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
               <span>{formatDate(selectedNotice.createdAt)}</span>
             </div>
             {selectedNotice.content ? (
-              <div
-                className="prose prose-sm max-w-none text-stone-700"
+            <div
+              className="prose prose-sm max-w-none text-stone-700"
                 dangerouslySetInnerHTML={{ __html: selectedNotice.content }}
-              />
+            />
             ) : (
               <p className="text-stone-500">내용이 없습니다.</p>
             )}
