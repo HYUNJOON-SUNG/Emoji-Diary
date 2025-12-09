@@ -137,7 +137,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
    * - timerActive가 true일 때 매 1초마다 timeLeft 감소
    * - timeLeft가 0이 되면 타이머 중지 및 만료 처리
    * 
-   * [백엔드 팀]
+   * [API 명세서 Section 2.3.1, 2.3.2, 2.3.3]
    * 서버에서도 5분 유효 시간을 검증해야 합니다.
    * 프론트엔드 타이머는 UX를 위한 것이며, 실제 검증은 서버에서 해야 합니다.
    */

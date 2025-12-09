@@ -86,7 +86,11 @@ export function Dashboard() {
   const [riskChartType, setRiskChartType] = useState<'pie' | 'bar'>('pie');
 
   // Custom hook으로 데이터 로딩 로직 분리
-  const { stats, isLoading, error } = useDashboardData(period, selectedMetrics);
+  // [API 명세서 Section 10.2.1]
+  // activeUserType과 newUserPeriod 파라미터를 전달하여 필터 변경 시 API 재호출
+  const activeUserTypeParam = activeUserFilter === 'dau' ? 'dau' : activeUserFilter === 'wau' ? 'wau' : 'mau';
+  const newUserPeriodParam = newUserFilter === 'today' ? 'daily' : newUserFilter === 'thisWeek' ? 'weekly' : 'monthly';
+  const { stats, isLoading, error } = useDashboardData(period, selectedMetrics, activeUserTypeParam, newUserPeriodParam);
 
   // ========================================
   // 로딩 상태 UI
@@ -129,8 +133,8 @@ export function Dashboard() {
     {
       title: '전체 사용자 수',
       value: (stats.totalUsers ?? 0).toLocaleString(),
-      change: '+12.5%',
-      trend: 'up' as const,
+      change: stats.totalUsersChange ? (stats.totalUsersChange > 0 ? `+${stats.totalUsersChange}` : `${stats.totalUsersChange}`) : '0',
+      trend: (stats.totalUsersChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
       icon: Users,
       color: 'blue' as const,
       description: '등록된 전체 사용자'
@@ -142,7 +146,7 @@ export function Dashboard() {
         : activeUserFilter === 'wau'
         ? (stats.activeUsers?.wau ?? 0).toLocaleString()
         : (stats.activeUsers?.mau ?? 0).toLocaleString(),
-      change: '+8.2%',
+      change: '-', // 활성 사용자 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: Activity,
       color: 'green' as const,
@@ -168,7 +172,7 @@ export function Dashboard() {
         : newUserFilter === 'thisWeek'
         ? (stats.newUsers?.thisWeek ?? 0).toLocaleString()
         : (stats.newUsers?.thisMonth ?? 0).toLocaleString(),
-      change: '+15.3%',
+      change: '-', // 신규 가입자 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: UserPlus,
       color: 'purple' as const,
@@ -190,8 +194,8 @@ export function Dashboard() {
     {
       title: '총 일지 작성 수',
       value: (stats.totalDiaries ?? 0).toLocaleString(),
-      change: '+18.7%',
-      trend: 'up' as const,
+      change: stats.totalDiariesChange ? (stats.totalDiariesChange > 0 ? `+${stats.totalDiariesChange}` : `${stats.totalDiariesChange}`) : '0',
+      trend: (stats.totalDiariesChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
       icon: BookOpen,
       color: 'orange' as const,
       description: '전체 누적 일지 작성 개수'
@@ -199,7 +203,7 @@ export function Dashboard() {
     {
       title: '일평균 일지 작성 수',
       value: (stats.avgDailyDiaries ?? 0).toLocaleString(),
-      change: '+5.2%',
+      change: '-', // 일평균 일지 작성 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: TrendingUp,
       color: 'green' as const,
@@ -208,7 +212,7 @@ export function Dashboard() {
     {
       title: '위험 레벨별 사용자 수',
       value: `${(stats.riskLevelUsers?.high ?? 0) + (stats.riskLevelUsers?.medium ?? 0) + (stats.riskLevelUsers?.low ?? 0)}명`,
-      change: '-2.1%',
+      change: '-', // 위험 레벨별 사용자 수는 change 필드가 API 응답에 없음
       trend: 'down' as const,
       icon: AlertTriangle,
       color: 'red' as const,

@@ -186,14 +186,22 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
     } else {
       setEntry(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   /**
    * 일기 상세 데이터 로드 (플로우 3.1, 5.2)
    * 
-   * [백엔드 팀 작업 필요]
-   * - 엔드포인트: GET /api/diaries/details?date={YYYY-MM-DD}
+   * [API 명세서 Section 4.4]
+   * - 엔드포인트: GET /api/diaries/date/{date}
+   * - URL Parameters: date (YYYY-MM-DD 형식)
    * - 응답 형식: DiaryDetail (제목, 본문, 감정, 기분, 날씨, 활동, AI 이미지, AI 코멘트 등)
+   * - Response 404: 일기 없음 (해당 날짜에 작성된 일기가 없습니다)
+   * 
+   * [ERD 설계서 참고 - Diaries 테이블]
+   * - Diaries 테이블에서 date 컬럼으로 조회
+   * - 인덱스: idx_diaries_date, idx_diaries_user_date (조회 최적화)
+   * - 관계: Diary_Activities, Diary_Images 테이블과 JOIN하여 activities, images 배열 반환
    * 
    * 동작:
    * 1. 날짜를 YYYY-MM-DD 형식으로 변환
@@ -206,16 +214,26 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * - 날씨, 본문 내용, AI 생성 이미지, AI 코멘트
    */
   const loadDiaryDetails = async () => {
-    if (!selectedDate) return;
+    if (!selectedDate) {
+      setEntry(null);
+      return;
+    }
 
     setIsLoading(true);
+    setEntry(null); // 로딩 시작 시 이전 데이터 초기화
     try {
       const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       const data = await fetchDiaryDetails(dateKey);
-      setEntry(data);
-    } catch (error) {
+      setEntry(data); // null이거나 DiaryDetail 객체
+    } catch (error: any) {
       console.error('Failed to load diary details:', error);
-      setEntry(null);
+      // 404 에러는 정상 (일기 없음), 다른 에러는 null로 설정
+      if (error?.response?.status === 404) {
+        setEntry(null);
+      } else {
+        setEntry(null);
+        // 에러가 발생했지만 사용자에게는 일기 없는 것으로 표시
+      }
     } finally {
       setIsLoading(false);
     }
@@ -258,7 +276,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * - 감정 스티커 자동 갱신
    * - 해당 날짜의 감정 이모지 제거, 빈 날짜로 표시
    * 
-   * [백엔드 팀] 실제 구현 시:
+   * [API 명세서 Section 4.6] DELETE /api/diaries/{diaryId}
+   * [ERD 설계서 참고 - Diaries 테이블] 소프트 삭제 (deleted_at 컬럼 업데이트)
+   * 실제 구현:
    * - JWT 토큰으로 사용자 인증
    * - 해당 일기가 현재 사용자 것인지 권한 확인
    * - DB에서 일기 삭제
@@ -321,9 +341,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
     // 장소 추천 모드
     if (showMapRecommendation) {
       return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col overflow-hidden">
           {/* 좌우 페이지 레이아웃 */}
-          <div className="flex-1 grid grid-cols-2 gap-6 relative">
+          <div className="flex-1 grid grid-cols-2 gap-6 relative overflow-hidden">
             {/* 왼쪽 페이지 - 지도만 크게 */}
             <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-lg overflow-hidden shadow-sm">
               {/* 지도 헤더 */}
@@ -412,7 +432,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
     // 일반 일기 보기 모드
     return (
-      <div className="p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가 */}
+      <div className="h-full w-full overflow-y-auto p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
         {/* 
           Date Header (플로우 6.3)
           
@@ -426,52 +446,52 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           - 이전 화면으로 복귀 (검색 페이지 또는 캘린더)
           - 검색 키워드 및 필터 상태 유지
         */}
-        <div className="relative bg-white rounded-lg p-4 shadow-sm">
+        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           {/* X 버튼 - 우측 상단에 배치 */}
           {onBackToCalendar && (
             <button
               onClick={onBackToCalendar}
-              className="absolute top-3 right-3 p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
+              className="absolute top-4 right-4 p-2 active:bg-gray-100 rounded-xl transition-colors text-gray-500 active:text-gray-700 touch-manipulation"
               title="닫기"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           )}
           
-          <div className="flex items-start justify-between pr-8">
+          <div className="flex items-start justify-between pr-10">
             <div>
-              <div className="text-xs text-slate-500 mb-1">오늘의 일기</div>
-              <div className="text-sm text-slate-800">{formattedDate}</div>
+              <div className="text-xs text-gray-500 mb-1 font-medium">오늘의 일기</div>
+              <div className="text-base text-gray-900 font-semibold">{formattedDate}</div>
             </div>
             <div className="flex items-center">
-              <span className="text-4xl">{getEmotionEmoji(entry.emotion)}</span>
+              <span className="text-5xl">{getEmotionEmoji(entry.emotion)}</span>
             </div>
           </div>
         </div>
 
         {/* Title Card */}
-        <div className="relative bg-white rounded-lg p-4 shadow-sm">
-          <h3 className="text-slate-800">{entry.title}</h3>
+        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 className="text-gray-900 font-semibold text-lg">{entry.title}</h3>
         </div>
 
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
-        <div className="relative bg-white rounded-lg p-3 shadow-sm">
-          <div className="text-xs text-slate-500 mb-2">📷 내가 올린 사진</div>
+        <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
           {entry.images && entry.images.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
               {entry.images.map((imageUrl, index) => (
                 <div
                   key={index}
-                  className="relative rounded-lg overflow-hidden bg-slate-100 aspect-square"
+                  className="relative rounded-lg overflow-hidden bg-slate-100"
                 >
                   <img
                     src={imageUrl}
                     alt={`사용자 업로드 이미지 ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    className="w-full rounded-lg"
                     style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'cover',
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      objectPosition: 'center'
                     }}
                     onError={(e) => {
                       // 이미지 로드 실패 시 대체 처리
@@ -491,56 +511,65 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
         {/* Mood & Weather Card - 2 Column */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="relative bg-white rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-slate-500 mb-1">내용</div>
-            <div className="text-sm text-slate-700">{entry.mood}</div>
-            
-            {entry.activities && entry.activities.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {entry.activities.map((activity, index) => (
-                  <span
-                    key={index}
-                    className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
-                  >
-                    {activity}
-                  </span>
-                ))}
-              </div>
-            )}
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
           </div>
 
-          <div className="relative bg-white rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-slate-500 mb-1">날씨</div>
-            <div className="text-sm text-slate-700">{entry.weather || '맑음'}</div>
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
           </div>
         </div>
 
+        {/* Activities Card */}
+        {entry.activities && entry.activities.length > 0 && (
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-2 font-medium">활동</div>
+            <div className="flex flex-wrap gap-1.5">
+              {entry.activities.map((activity, index) => (
+                <span
+                  key={index}
+                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
+                >
+                  {activity}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* AI Generated Image */}
         {entry.imageUrl && (
-          <div className="relative bg-white rounded-lg p-3 shadow-sm">
-            <div className="text-xs text-slate-500 mb-2">AI 그림 일기</div>
-            <div className="relative rounded-lg overflow-hidden">
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
+            <div className="relative rounded-lg overflow-hidden bg-slate-100">
               <img 
                 src={entry.imageUrl} 
                 alt="AI Generated Diary Illustration"
-                className="w-full h-48 object-cover"
+                className="w-full rounded-lg"
+                style={{
+                  maxHeight: '400px',
+                  objectFit: 'contain',
+                  objectPosition: 'center'
+                }}
               />
             </div>
           </div>
         )}
 
-        {/* Note Card */}
-        <div className="relative bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-xs text-slate-500 mb-2">메모</div>
-          <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+        {/* Content Card */}
+        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             {entry.content}
           </p>
         </div>
 
         {/* AI Comment Card */}
         {entry.aiComment && (
-          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-blue-700 mb-2 flex items-center gap-1.5">
+          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
+            <div className="text-xs text-blue-700 mb-3 flex items-center gap-1.5 font-medium">
               <span>{(() => {
                 const persona = localStorage.getItem('aiPersona') || 'friend';
                 const personaMap: { [key: string]: string } = {
@@ -749,7 +778,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * - 뒤로가기 버튼 클릭 → onBackToCalendar 호출 (플로우 6.3)
    */
   return (
-    <div className="h-full flex flex-col py-4">
+    <div className="min-h-full flex flex-col overflow-y-auto py-4">
       {/* 
         X 버튼 (플로우 6.3)
         

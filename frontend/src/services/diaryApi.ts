@@ -271,12 +271,16 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
       const diary = response.data.data;
       return {
         ...diary,
+        // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
+        id: diary.id != null ? String(diary.id) : '',
+        // activities 필드 처리 (배열, API 명세서에 포함됨)
+        activities: diary.activities || [],
         // 백엔드에서 snake_case로 올 수 있는 필드들을 camelCase로 변환
         // 이미지 경로가 상대 경로인 경우 백엔드 URL 추가
+        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
         imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
         aiComment: diary.aiComment || diary.ai_comment,
         recommendedFood: diary.recommendedFood || diary.recommended_food,
-        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
         createdAt: diary.createdAt || diary.created_at,
         updatedAt: diary.updatedAt || diary.updated_at,
         emotionCategory: getEmotionCategory(diary.emotion),
@@ -357,8 +361,19 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
     if (response.data.success) {
       const diary = response.data.data;
       // 백엔드에서 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성이 모두 처리됨
+      // 이미지 경로 처리 (상대 경로인 경우 백엔드 URL 추가)
       return {
         ...diary,
+        // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
+        id: diary.id != null ? String(diary.id) : '',
+        // activities 필드 처리 (배열, API 명세서에 포함됨)
+        activities: diary.activities || [],
+        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
+        imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
+        aiComment: diary.aiComment || diary.ai_comment,
+        recommendedFood: diary.recommendedFood || diary.recommended_food,
+        createdAt: diary.createdAt || diary.created_at,
+        updatedAt: diary.updatedAt || diary.updated_at,
         emotionCategory: getEmotionCategory(diary.emotion),
       };
     } else {
@@ -424,8 +439,19 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     if (response.data.success) {
       const diary = response.data.data;
       // 백엔드에서 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성이 모두 처리됨
+      // 이미지 경로 처리 (상대 경로인 경우 백엔드 URL 추가)
       return {
         ...diary,
+        // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
+        id: diary.id != null ? String(diary.id) : '',
+        // activities 필드 처리 (배열, API 명세서에 포함됨)
+        activities: diary.activities || [],
+        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
+        imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
+        aiComment: diary.aiComment || diary.ai_comment,
+        recommendedFood: diary.recommendedFood || diary.recommended_food,
+        createdAt: diary.createdAt || diary.created_at,
+        updatedAt: diary.updatedAt || diary.updated_at,
         emotionCategory: getEmotionCategory(diary.emotion),
       };
     } else {
@@ -514,14 +540,30 @@ export async function fetchDailyStats(yearMonth: string): Promise<DailyStats[]> 
     const [year, month] = yearMonth.split('-').map(Number);
     const emotions = await fetchMonthlyEmotions(year, month - 1);
     
-    // 캘린더 데이터를 DailyStats 형식으로 변환
-    // 제목 정보는 별도 조회가 필요할 수 있음
-    return emotions.map(emotion => ({
-      date: emotion.date,
-      emotion: emotion.emotion,
-      emotionCategory: emotion.emotionCategory,
-      title: '', // 제목은 별도 조회 필요
-    }));
+    // 각 날짜별로 일기 상세 정보를 조회하여 제목 가져오기
+    // 병렬 처리로 성능 최적화
+    const statsPromises = emotions.map(async (emotion) => {
+      try {
+        // GET /api/diaries/date/{date}로 일기 상세 정보 조회
+        const diary = await fetchDiaryDetails(emotion.date);
+        return {
+          date: emotion.date,
+          emotion: emotion.emotion,
+          emotionCategory: emotion.emotionCategory,
+          title: diary?.title || '', // 일기 제목 가져오기
+        };
+      } catch (error) {
+        // 일기 조회 실패 시 제목 없이 반환
+        return {
+          date: emotion.date,
+          emotion: emotion.emotion,
+          emotionCategory: emotion.emotionCategory,
+          title: '',
+        };
+      }
+    });
+    
+    return await Promise.all(statsPromises);
   } catch (error: any) {
     throw error;
   }
@@ -567,47 +609,94 @@ export interface ChartDataPoint {
  * @param type - 집계 타입 (weekly 또는 monthly)
  * @returns 차트 데이터 포인트 배열
  */
+/**
+ * GET /api/statistics/emotion-trend
+ * 기간별 감정 변화 추이 데이터 조회
+ * 
+ * [API 명세서 Section 5.2.2]
+ * - 엔드포인트: GET /api/statistics/emotion-trend
+ * - Query Parameters: period (weekly, monthly), year, month
+ * - Response: { period, dates, emotions }
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - emotions 배열의 각 항목은 Diaries 테이블의 레코드
+ * - date: Diaries.date (DATE, YYYY-MM-DD 형식)
+ * - emotion: Diaries.emotion (ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ */
 export async function fetchChartStats(
   startDate: string,
   endDate: string,
   type: 'weekly' | 'monthly'
 ): Promise<ChartDataPoint[]> {
-  // [백엔드 팀] 통계 API로 이동 예정
-  // 현재는 GET /api/statistics/emotion-trend API를 사용하여 구현 가능
   try {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const year = start.getFullYear();
     const month = start.getMonth() + 1;
     
+    // [백엔드 코드 확인] StatsService.getEmotionTrend
+    // - weekly일 때: getDailyTrendForMonth 호출 → year와 month가 필수 (validateYearAndMonth 호출)
+    // - monthly일 때: getWeeklyTrendForMonth 호출 → year와 month가 필수
+    // [API 명세서 Section 5.2.2] GET /api/statistics/emotion-trend
+    // period: 'weekly' | 'monthly', year: number, month: number (weekly와 monthly 모두 필수)
     const response = await apiClient.get('/statistics/emotion-trend', {
       params: {
         period: type,
         year,
-        month,
+        month, // weekly와 monthly 모두 month 필수
       },
     });
 
     if (response.data.success) {
       const data = response.data.data;
+      
       // API 응답을 ChartDataPoint 형식으로 변환
-      // API 응답 형식에 따라 변환 로직 필요
-      return data.emotions.map((emotion: any) => ({
-        date: emotion.date,
-        displayLabel: formatDateLabel(emotion.date, type),
-        happy: emotion.emotion === '행복' ? 1 : 0,
-        love: 0,
-        excited: 0,
-        calm: 0,
-        grateful: 0,
-        hopeful: 0,
-        tired: 0,
-        sad: emotion.emotion === '슬픔' ? 1 : 0,
-        angry: emotion.emotion === '분노' ? 1 : 0,
-        anxious: emotion.emotion === '불안' ? 1 : 0,
-        neutral: emotion.emotion === '중립' || emotion.emotion === '당황' ? 1 : 0,
-        total: 1,
-      }));
+      // dates 배열과 emotions 배열을 결합하여 날짜별 감정 데이터 생성
+      const dateEmotionMap: { [date: string]: { [emotion: string]: number } } = {};
+      
+      // 각 날짜별로 감정 카운트 집계
+      data.emotions.forEach((item: { date: string; emotion: string }) => {
+        if (!dateEmotionMap[item.date]) {
+          dateEmotionMap[item.date] = {
+            happy: 0,
+            love: 0,
+            excited: 0,
+            calm: 0,
+            grateful: 0,
+            hopeful: 0,
+            tired: 0,
+            sad: 0,
+            angry: 0,
+            anxious: 0,
+            neutral: 0,
+            total: 0,
+          };
+        }
+        
+        // KoBERT 감정을 ChartDataPoint 형식으로 매핑
+        const emotion = item.emotion;
+        if (emotion === '행복') dateEmotionMap[item.date].happy++;
+        else if (emotion === '슬픔') dateEmotionMap[item.date].sad++;
+        else if (emotion === '분노') dateEmotionMap[item.date].angry++;
+        else if (emotion === '불안') dateEmotionMap[item.date].anxious++;
+        else if (emotion === '중립' || emotion === '당황') dateEmotionMap[item.date].neutral++;
+        
+        dateEmotionMap[item.date].total++;
+      });
+      
+      // dates 배열을 기준으로 ChartDataPoint 배열 생성
+      return data.dates.map((date: string) => {
+        const emotionData = dateEmotionMap[date] || {
+          happy: 0, love: 0, excited: 0, calm: 0, grateful: 0, hopeful: 0,
+          tired: 0, sad: 0, angry: 0, anxious: 0, neutral: 0, total: 0,
+        };
+        
+        return {
+          date,
+          displayLabel: formatDateLabel(date, type),
+          ...emotionData,
+        };
+      });
     } else {
       throw new Error(response.data.error?.message || '차트 데이터를 불러오는데 실패했습니다.');
     }
@@ -719,6 +808,8 @@ export async function searchDiaries(params: DiarySearchParams): Promise<DiarySea
       return {
         diaries: result.diaries.map((diary: DiaryDetail) => ({
           ...diary,
+          // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
+          id: String(diary.id || diary.id),
           emotionCategory: getEmotionCategory(diary.emotion),
         })),
         total: result.total,

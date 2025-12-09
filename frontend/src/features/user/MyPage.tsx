@@ -68,7 +68,7 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
     setIsLoading(true);
     setError('');
     
-    // 먼저 localStorage에서 사용자 정보를 가져와서 임시로 표시
+    // 먼저 localStorage에서 사용자 정보를 가져와서 표시 (API 호출 실패 시 fallback)
     const savedUserStr = localStorage.getItem('user');
     if (savedUserStr) {
       try {
@@ -91,7 +91,7 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
         setError('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
       } else if (err?.response?.status === 401) {
         setError('로그인이 필요합니다. 다시 로그인해주세요.');
-        // localStorage의 사용자 정보는 유지 (임시 표시용)
+        // localStorage의 사용자 정보는 유지 (API 호출 실패 시 fallback으로 사용)
       } else {
         setError('사용자 정보를 불러오지 못했습니다. ' + (err?.message || ''));
       }
@@ -104,12 +104,18 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
   const handleToggleNotification = async () => {
     if (!user) return;
     try {
-      const updatedUser = await updateNotification({ notificationEnabled: !user.notificationEnabled });
+      // [API 명세서 Section 3.1] PUT /api/users/me/notification
+      // updateNotification은 updateNotificationSettings의 alias로 enabled: boolean을 직접 받음
+      const result = await updateNotification(!user.notificationEnabled);
+      // 사용자 정보 업데이트
+      const updatedUser = { ...user, notificationEnabled: result.enabled };
       setUser(updatedUser);
-      setSuccess(updatedUser.notificationEnabled ? '알림이 켜졌습니다.' : '알림이 꺼졌습니다.');
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setSuccess(result.enabled ? '알림이 켜졌습니다.' : '알림이 꺼졌습니다.');
       setTimeout(() => setSuccess(''), 2000);
-    } catch (err) {
-      setError('설정 변경 실패');
+    } catch (err: any) {
+      setError(err?.message || '설정 변경 실패');
+      console.error('알림 설정 변경 실패:', err);
     }
   };
 
@@ -128,7 +134,13 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
     }
 
     try {
-      await changePassword({ currentPassword, newPassword });
+      // [API 명세서 Section 3.3] PUT /api/users/me/password
+      // confirmPassword 필드도 함께 전달해야 함
+      await changePassword({ 
+        currentPassword, 
+        newPassword, 
+        confirmPassword: confirmNewPassword 
+      });
       setSuccess('비밀번호가 변경되었습니다.');
       setShowPasswordEdit(false);
       setCurrentPassword('');
@@ -136,8 +148,9 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
       setConfirmNewPassword('');
       setPasswordError('');
       setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setPasswordError('비밀번호 변경 실패. 현재 비밀번호를 확인해주세요.');
+    } catch (err: any) {
+      setPasswordError(err?.message || '비밀번호 변경 실패. 현재 비밀번호를 확인해주세요.');
+      console.error('비밀번호 변경 실패:', err);
     }
   };
 
@@ -186,7 +199,7 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4 pb-6">
+    <div className="min-h-full flex flex-col space-y-4 pb-6">
       {/* Header */}
       <div className="text-center space-y-1 pb-2 border-b border-stone-200/60">
         <div className="flex items-center justify-center gap-2 text-blue-700">

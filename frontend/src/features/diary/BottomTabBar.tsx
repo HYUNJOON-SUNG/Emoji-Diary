@@ -27,8 +27,8 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-stone-200 shadow-lg">
-      <div className="flex items-center justify-around h-16 px-2">
+    <div className="absolute bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] safe-area-bottom">
+      <div className="flex items-center justify-around h-16 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -37,20 +37,22 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-all ${
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all relative ${
                 isActive
-                  ? 'text-blue-600'
-                  : 'text-stone-500 hover:text-stone-700'
+                  ? 'text-blue-500'
+                  : 'text-gray-500 active:text-gray-700'
               }`}
             >
-              <Icon 
-                className={`w-6 h-6 mb-1 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} 
-              />
-              <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}>
+              <div className={`relative ${isActive ? 'scale-110' : 'scale-100'} transition-transform`}>
+                <Icon 
+                  className={`w-6 h-6 mb-1 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} 
+                />
+              </div>
+              <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : 'font-normal'}`}>
                 {tab.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-500 rounded-full" />
               )}
             </button>
           );

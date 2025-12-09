@@ -74,7 +74,41 @@ export function removeToken(): void {
 }
 
 /**
+ * JWT 토큰 디코딩 (Base64 디코딩만 수행, 서명 검증은 백엔드에서 수행)
+ * 
+ * @param token - JWT 토큰
+ * @returns 디코딩된 페이로드 또는 null
+ */
+function decodeJwtPayload(token: string): any | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    // Base64 URL 디코딩
+    const payload = parts[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('JWT 디코딩 오류:', error);
+    return null;
+  }
+}
+
+/**
  * JWT 토큰 유효성 검증
+ * 
+ * [API 명세서 참고]
+ * - JWT 토큰의 서명 검증은 백엔드에서 수행됩니다.
+ * - 프론트엔드에서는 토큰 존재 여부와 만료 시간만 확인합니다.
  * 
  * @returns 토큰 유효 여부
  */
@@ -85,16 +119,24 @@ export function hasValidToken(): boolean {
     return false;
   }
   
-  // TODO: JWT 토큰 파싱 및 만료 시간 검증
-  // 현재는 토큰 존재 여부만 확인
-  // 실제 구현 시:
-  // 1. JWT 디코딩 (jwt-decode 라이브러리 사용)
-  // 2. exp (만료 시간) 필드 확인
-  // 3. 현재 시간과 비교
-  
   try {
-    // Mock validation - 실제로는 JWT 디코딩 필요
-    return token.length > 0;
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      return false;
+    }
+    
+    // exp (만료 시간) 필드 확인
+    if (payload.exp) {
+      const expirationTime = payload.exp * 1000; // 초를 밀리초로 변환
+      const currentTime = Date.now();
+      
+      // 만료 시간이 현재 시간보다 작으면 만료됨
+      if (expirationTime < currentTime) {
+        return false;
+      }
+    }
+    
+    return true;
   } catch (error) {
     console.error('Token validation error:', error);
     return false;
@@ -103,6 +145,10 @@ export function hasValidToken(): boolean {
 
 /**
  * JWT 토큰 만료 확인
+ * 
+ * [API 명세서 참고]
+ * - JWT 토큰의 exp 필드를 확인하여 만료 여부를 판단합니다.
+ * - 서명 검증은 백엔드에서 수행됩니다.
  * 
  * @returns 토큰 만료 여부
  */
@@ -113,14 +159,27 @@ export function isTokenExpired(): boolean {
     return true;
   }
   
-  // TODO: JWT 토큰 만료 시간 확인
-  // 실제 구현 시:
-  // 1. jwt-decode 라이브러리로 토큰 디코딩
-  // 2. exp 필드에서 만료 시간 추출
-  // 3. 현재 시간과 비교
-  
-  // Mock implementation
-  return false;
+  try {
+    const payload = decodeJwtPayload(token);
+    if (!payload) {
+      return true;
+    }
+    
+    // exp (만료 시간) 필드 확인
+    if (payload.exp) {
+      const expirationTime = payload.exp * 1000; // 초를 밀리초로 변환
+      const currentTime = Date.now();
+      
+      // 만료 시간이 현재 시간보다 작으면 만료됨
+      return expirationTime < currentTime;
+    }
+    
+    // exp 필드가 없으면 만료되지 않은 것으로 간주 (백엔드에서 검증)
+    return false;
+  } catch (error) {
+    console.error('Token expiration check error:', error);
+    return true;
+  }
 }
 
 // ========================================

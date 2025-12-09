@@ -28,9 +28,11 @@
  * - 감정 색상 범례
  * - 차트 읽는 방법 안내
  * 
- * [백엔드 팀 작업 필요]
- * - 엔드포인트: GET /api/diaries/chart-stats?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&period=weekly|monthly
- * - 응답: ChartDataPoint[] (날짜별 감정 빈도 데이터)
+ * [API 명세서 Section 5.2.2]
+ * - 엔드포인트: GET /api/statistics/emotion-trend
+ * - Query Parameters: period (weekly, monthly), year, month
+ * - 응답: { period, dates, emotions } (날짜별 감정 데이터)
+ * - 실제 API 호출로 구현됨 (diaryApi.ts의 fetchChartStats 함수 사용)
  * 
  * 디자인:
  * - 파란색 톤온톤 컬러
@@ -131,10 +133,11 @@ export function EmotionChartView() {
   /**
    * 기간 변경 시 데이터 로드 (플로우 7.5)
    * 
-   * [백엔드 팀 작업 필요]
-   * - 엔드포인트: GET /api/diaries/chart-stats
-   * - 파라미터: startDate, endDate, period
-   * - 응답: ChartDataPoint[] (날짜별 감정 빈도)
+   * [API 명세서 Section 5.2.2]
+   * - 엔드포인트: GET /api/statistics/emotion-trend
+   * - Query Parameters: period (weekly, monthly), year, month
+   * - 응답: { period, dates, emotions } (날짜별 감정 데이터)
+   * - 실제 API 호출로 구현됨 (diaryApi.ts의 fetchChartStats 함수 사용)
    * 
    * 동작:
    * - 주간/월간 전환 시 자동으로 데이터 재로드
@@ -146,17 +149,18 @@ export function EmotionChartView() {
   /**
    * 차트 데이터 로드 (플로우 7.5)
    * 
-   * [백엔드 팀 작업 필요]
-   * - 엔드포인트: GET /api/diaries/chart-stats?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&period=weekly|monthly
-   * - 파라미터:
-   *   - startDate: 시작 날짜 (YYYY-MM-DD)
-   *   - endDate: 종료 날짜 (YYYY-MM-DD)
-   *   - period: 'weekly' | 'monthly'
-   * - 응답: ChartDataPoint[] (날짜, 감정별 빈도)
-   * 
    * [API 명세서 Section 5.2.2]
-   * - GET /api/statistics/emotion-trend
-   * - 실제 API 호출로 구현됨
+   * - 엔드포인트: GET /api/statistics/emotion-trend
+   * - Query Parameters: period (weekly, monthly), year, month
+   * - 응답: { period, dates, emotions } (날짜별 감정 데이터)
+   * - 실제 API 호출로 구현됨 (diaryApi.ts의 fetchChartStats 함수 사용)
+   * 
+   * [ERD 설계서 참고 - Diaries 테이블]
+   * - emotions 배열의 각 항목은 Diaries 테이블의 레코드
+   * - date: Diaries.date (DATE, YYYY-MM-DD 형식)
+   * - emotion: Diaries.emotion (ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+   * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+   * - 인덱스: idx_diaries_emotion_date (통계 조회 최적화)
    * 
    * 기간 계산:
    * - weekly: 최근 7일 (오늘 포함)
@@ -167,14 +171,22 @@ export function EmotionChartView() {
     setError(null);
     
     try {
-      // Calculate date range based on period type
+      // [API 명세서 Section 5.2.2] GET /api/statistics/emotion-trend
+      // period: 'weekly' | 'monthly', year: number, month?: number (월간 조회 시 필수)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1; // 1-12
+      
+      // fetchChartStats는 내부적으로 API를 호출하므로 year, month를 전달
+      // 하지만 함수 시그니처가 startDate, endDate를 받으므로 유지
       const endDate = new Date();
       const startDate = new Date();
       
       if (periodType === 'weekly') {
         startDate.setDate(endDate.getDate() - 7);
       } else {
-        startDate.setDate(endDate.getDate() - 30);
+        // 월간: 현재 월의 첫날부터 오늘까지
+        startDate.setDate(1);
       }
       
       const startStr = formatDateString(startDate);

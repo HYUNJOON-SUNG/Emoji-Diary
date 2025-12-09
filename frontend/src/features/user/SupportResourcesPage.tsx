@@ -161,7 +161,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
               {getCategoryIcon(key)}
               <span>{label}</span>
             </button>
-          ))}\n        </div>
+          ))}       </div>
         {selectedCategory !== 'all' && (
           <button
             onClick={() => setSelectedCategory('all')}
