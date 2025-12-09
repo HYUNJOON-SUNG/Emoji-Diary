@@ -10,12 +10,16 @@ prompt = Prompt()
 # 추후 환경변수로 관리
 api_key = "REDACTED_API_KEY"
 
-def nano_banana(diary_content, sex, weather):
+def nano_banana(diary_content, sex, weather=None):
     system_prompt = prompt.nano_banana
     
     client = genai.Client(api_key=api_key)
     
-    full_prompt = f"{system_prompt}\n\n성별: \"{sex}\"\n\n날씨: \"{weather}\"\n\n일기 내용: \"{diary_content}\""
+    # 날씨가 있으면 포함, 없으면 제외
+    if weather:
+        full_prompt = f"{system_prompt}\n\n성별: \"{sex}\"\n\n날씨: \"{weather}\"\n\n일기 내용: \"{diary_content}\""
+    else:
+        full_prompt = f"{system_prompt}\n\n성별: \"{sex}\"\n\n일기 내용: \"{diary_content}\""
     
     try:
         response = client.models.generate_content(

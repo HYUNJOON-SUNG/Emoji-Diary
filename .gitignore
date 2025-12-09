@@ -126,6 +126,8 @@ out/
 .DS_Store
 Thumbs.db
 emoji-diary-rules.md
+.claude/
+CLAUDE.md
 
 # ========================================
 # 로그 파일

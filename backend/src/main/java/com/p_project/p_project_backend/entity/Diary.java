@@ -80,10 +80,6 @@ public class Diary {
     @Column(name = "recommended_food", columnDefinition = "JSON")
     private String recommendedFood;
 
-    // KoBERT 감정 분석 결과 (kobert_analysis) - JSON
-    @Column(name = "kobert_analysis", columnDefinition = "JSON")
-    private String kobertAnalysis;
-
     // 생성일시 (created_at)
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

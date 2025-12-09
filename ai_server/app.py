@@ -86,7 +86,7 @@ class Sex(str, Enum):
 
 class AiServerRequest(BaseModel):
     content: str
-    weather: Weather
+    weather: Optional[Weather] = None  # 선택사항 (요구사항: 날씨는 선택)
     persona: Persona
     gender: Sex  # 'sex' -> 'gender'로 필드명 변경 (백엔드와 통일)
 
