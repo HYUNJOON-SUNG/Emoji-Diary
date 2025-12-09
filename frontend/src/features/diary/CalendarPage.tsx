@@ -155,7 +155,9 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
    * - 감정 스티커 자동 갱신
    * - 일기 삭제 후: 해당 날짜의 감정 이모지 제거
    * 
-   * [백엔드 팀] 실제 구현 시:
+   * [API 명세서 Section 4.5] GET /api/diaries/calendar
+   * [ERD 설계서 참고 - Diaries 테이블] 인덱스: idx_diaries_date, idx_diaries_user_date (조회 최적화)
+   * 실제 구현:
    * - JWT 토큰으로 사용자 인증
    * - DB에서 해당 사용자의 해당 월 일기 조회
    * - 날짜별 감정 이모지 반환
@@ -326,8 +328,8 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
           key={day}
           onClick={() => onDateSelect(new Date(year, month, day))}
           disabled={isLoading}
-          className={`aspect-square rounded-lg relative flex items-center justify-center transition-all text-slate-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed p-2
-            ${selected ? 'bg-blue-200 ring-2 ring-blue-500 shadow-md' : today ? 'bg-blue-100 ring-1 ring-blue-400' : 'bg-white/30'}`}
+          className={`aspect-square rounded-xl relative flex items-center justify-center transition-all text-gray-800 active:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed p-1 touch-manipulation
+            ${selected ? 'bg-blue-500 text-white shadow-md scale-105' : today ? 'bg-blue-100 text-blue-700 font-semibold' : 'bg-white hover:bg-gray-50'}`}
         >
           {/* 날짜 숫자 - 항상 중앙 정렬 (플로우 5.1) */}
           <span className="text-sm">{day}</span>
@@ -344,7 +346,7 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
   };
 
   return (
-    <div className={`space-y-4 ${compact ? 'space-y-2' : 'space-y-4'} pt-8`}>
+    <div className={`w-full space-y-4 ${compact ? 'space-y-2' : 'space-y-4'} pt-4`}>
       {/* 
         Month Header 
         
@@ -354,22 +356,22 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
           - isRightPage=false: 왼쪽 < 버튼만 표시 (양페이지 캘린더 좌측)
           - isRightPage=true: 오른쪽 > 버튼만 표시 (양페이지 캘린더 우측)
       */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 px-1">
         {(showBothButtons || !isRightPage) && (
           <button
             onClick={goToPreviousMonth}
             disabled={isLoading}
-            className="p-2 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2.5 rounded-xl active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
-            <ChevronLeft className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-slate-600`} />
+            <ChevronLeft className={`${compact ? 'w-5 h-5' : 'w-6 h-6'} text-gray-700`} />
           </button>
         )}
         {!showBothButtons && isRightPage && <div className="w-9" />}
         
         <div className="text-center flex items-center gap-2">
           <div>
-            <div className={`text-slate-800 ${compact ? 'text-base' : 'text-lg'}`}>{monthNames[month]}</div>
-            <div className={`text-slate-500 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
+            <div className={`text-gray-900 font-semibold ${compact ? 'text-lg' : 'text-xl'}`}>{monthNames[month]}</div>
+            <div className={`text-gray-500 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
           </div>
           {isLoading && (
             <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -380,25 +382,25 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
           <button
             onClick={goToNextMonth}
             disabled={isLoading}
-            className="p-2 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2.5 rounded-xl active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
-            <ChevronRight className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-slate-600`} />
+            <ChevronRight className={`${compact ? 'w-5 h-5' : 'w-6 h-6'} text-gray-700`} />
           </button>
         )}
         {!showBothButtons && !isRightPage && <div className="w-9" />}
       </div>
 
       {/* Day Names */}
-      <div className="grid grid-cols-7 gap-2 mb-2">
+      <div className="grid grid-cols-7 gap-1.5 mb-2 px-1">
         {dayNames.map((day, index) => (
-          <div key={index} className={`text-center text-slate-500 ${compact ? 'text-xs' : 'text-sm'}`}>
+          <div key={index} className={`text-center text-gray-500 font-medium ${compact ? 'text-xs' : 'text-sm'}`}>
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1.5 px-1">
         {renderCalendarDays()}
       </div>
     </div>

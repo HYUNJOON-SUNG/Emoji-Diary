@@ -19,6 +19,7 @@
 
 import { LandingPage, LoginPage, SignupPage, ForgotPasswordPage } from './pages';
 import { DiaryBook } from './features/diary/DiaryBook';
+import { MobileFrame } from './components/MobileFrame';
 import { InitialPersonaSetup } from './components/InitialPersonaSetup';
 import { useUserApp } from './hooks/use-user-app';
 
@@ -152,18 +153,13 @@ export default function UserApp() {
    * - 설정 (프로필, 페르소나 변경)
    * 
    * 배경:
-   * - 파란색 계열 그라데이션 배경
-   * - 중앙 정렬 레이아웃
+   * - 모바일 테두리 적용 (사용자 화면만)
+   * - 반응형으로 작동 (갤럭시 -> 탭 -> 노트북)
    */
   return (
-    <div className="min-h-screen w-full relative overflow-x-hidden bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100">
-      {/* 메인 컨텐츠 영역 - 모바일 최적화 */}
-      <div className="relative z-10 min-h-screen w-full">
-        <div className="w-full">
-          <DiaryBook onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
-        </div>
-      </div>
-    </div>
+    <MobileFrame>
+      <DiaryBook onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
+    </MobileFrame>
   );
 }
 

@@ -8,6 +8,7 @@ import {
 
 interface DashboardStats {
   totalUsers: number;
+  totalUsersChange?: number; // API 응답의 totalUsers.change
   activeUsers: {
     dau: number;
     wau: number;
@@ -19,6 +20,7 @@ interface DashboardStats {
     thisMonth: number;
   };
   totalDiaries: number;
+  totalDiariesChange?: number; // API 응답의 totalDiaries.change
   avgDailyDiaries: number;
   riskLevelUsers: {
     high: number;
@@ -44,7 +46,9 @@ interface DashboardStats {
 
 export function useDashboardData(
   period: 'week' | 'month' | 'year',
-  selectedMetrics: string[]
+  selectedMetrics: string[],
+  activeUserType?: 'dau' | 'wau' | 'mau',
+  newUserPeriod?: 'daily' | 'weekly' | 'monthly'
 ) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,15 +56,26 @@ export function useDashboardData(
 
   const fetchDashboardData = useCallback(async (
     period: 'week' | 'month' | 'year',
-    selectedMetrics: string[]
+    selectedMetrics: string[],
+    activeUserType?: 'dau' | 'wau' | 'mau',
+    newUserPeriod?: 'daily' | 'weekly' | 'monthly'
   ) => {
     try {
       const periodParam = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly';
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
+      // [API 명세서 Section 10.2.1]
+      // GET /api/admin/dashboard/stats
+      // - period: 기간 (weekly, monthly, yearly) - 전체 사용자 수, 일평균 일지 작성 수에 적용
+      // - activeUserType: 활성 사용자 타입 (dau, wau, mau) - 활성 사용자 수에 적용
+      // - newUserPeriod: 신규 가입자 기간 (daily, weekly, monthly) - 신규 가입자 수에 적용
       const [statsRes, trendRes, activityRes, riskRes] = await Promise.all([
-        getDashboardStats({ period: periodParam }),
+        getDashboardStats({ 
+          period: periodParam,
+          activeUserType: activeUserType || 'dau', // 대시보드에서 필터로 변경 가능
+          newUserPeriod: newUserPeriod || 'daily' // 대시보드에서 필터로 변경 가능
+        }),
         getDiaryTrend({ period: periodParam, year: currentYear, month: currentMonth }),
         getUserActivityStats({ period: periodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') }),
         getRiskLevelDistribution({ period: periodParam, year: currentYear, month: currentMonth })
@@ -75,16 +90,30 @@ export function useDashboardData(
       const activity = Array.isArray(activityRes.data.trend) ? activityRes.data.trend : [];
       const risk = riskRes.data.distribution;
 
-      const weeklyData = trend.map((item: any, index: number) => {
-        if (period === 'week') {
-          const days = ['월', '화', '수', '목', '금', '토', '일'];
-          return { day: days[index] || `Day ${index + 1}`, diaries: item?.count || 0 };
-        } else if (period === 'month') {
-          return { day: `${index + 1}주차`, diaries: item?.count || 0 };
-        } else {
-          const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-          return { day: months[index] || `Month ${index + 1}`, diaries: item?.count || 0 };
+      // API 응답의 date 필드를 day로 변환
+      // weekly, monthly: date는 "YYYY-MM-DD" 형식 (일별)
+      // yearly: date는 "YYYY-MM" 형식 (월별)
+      const weeklyData = trend.map((item: any) => {
+        const dateStr = item?.date || '';
+        let day = dateStr;
+        
+        if (period === 'week' || period === 'month') {
+          // "YYYY-MM-DD" 형식에서 일자만 추출
+          if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const date = new Date(dateStr);
+            const dayOfWeek = date.getDay();
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            day = `${date.getMonth() + 1}/${date.getDate()}(${days[dayOfWeek]})`;
+          }
+        } else if (period === 'year') {
+          // "YYYY-MM" 형식에서 월만 추출
+          if (dateStr.match(/^\d{4}-\d{2}$/)) {
+            const month = parseInt(dateStr.split('-')[1], 10);
+            day = `${month}월`;
+          }
         }
+        
+        return { day: day || dateStr, diaries: item?.count || 0 };
       });
 
       const userActivityData = activity.map((item: any) => ({
@@ -105,6 +134,7 @@ export function useDashboardData(
 
       return {
         totalUsers: stats?.totalUsers?.count ?? 0,
+        totalUsersChange: stats?.totalUsers?.change, // API 응답의 change 필드
         activeUsers: {
           dau: stats?.activeUsers?.dau ?? 0,
           wau: stats?.activeUsers?.wau ?? 0,
@@ -116,6 +146,7 @@ export function useDashboardData(
           thisMonth: stats?.newUsers?.monthly ?? 0
         },
         totalDiaries: stats?.totalDiaries?.count ?? 0,
+        totalDiariesChange: stats?.totalDiaries?.change, // API 응답의 change 필드
         avgDailyDiaries: stats?.averageDailyDiaries?.count ?? 0,
         riskLevelUsers: stats?.riskLevelUsers || { high: 0, medium: 0, low: 0, none: 0 },
         weeklyData,
@@ -133,15 +164,17 @@ export function useDashboardData(
       setIsLoading(true);
       setError(null);
       try {
-        const data = await fetchDashboardData(period, selectedMetrics);
+        const data = await fetchDashboardData(period, selectedMetrics, activeUserType, newUserPeriod);
         setStats(data);
       } catch (error: any) {
         setError(error?.message || '데이터를 불러오는 중 오류가 발생했습니다.');
         setStats({
           totalUsers: 0,
+          totalUsersChange: 0,
           activeUsers: { dau: 0, wau: 0, mau: 0 },
           newUsers: { today: 0, thisWeek: 0, thisMonth: 0 },
           totalDiaries: 0,
+          totalDiariesChange: 0,
           avgDailyDiaries: 0,
           riskLevelUsers: { high: 0, medium: 0, low: 0, none: 0 },
           weeklyData: [],
@@ -154,7 +187,7 @@ export function useDashboardData(
     };
 
     loadStats();
-  }, [period, selectedMetrics, fetchDashboardData]);
+  }, [period, selectedMetrics, activeUserType, newUserPeriod, fetchDashboardData]);
 
   return { stats, isLoading, error };
 }

@@ -66,6 +66,7 @@ import { useState, useEffect } from 'react';
 import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin } from 'lucide-react';
 import { getNoticeList, createNotice, updateNotice, deleteNotice, pinNotice } from '../../../services/adminApi';
 import type { Notice } from '../types';
+import { getAdminInfo } from '../utils/session-manager';
 
 export function NoticeManagement() {
   // ========================================
@@ -97,7 +98,7 @@ export function NoticeManagement() {
     
     try {
       // GET /api/admin/notices
-      const response = await getNoticeList(1, 100);
+      const response = await getNoticeList({ page: 1, limit: 100 });
       if (response.success && response.data) {
         // 고정된 공지사항 먼저, 그 다음 작성일 최신순 정렬
         const sortedNotices = [...response.data.notices].sort((a, b) => {
@@ -119,11 +120,13 @@ export function NoticeManagement() {
   // 새 공지사항 작성 (4.2)
   // ========================================
   const handleCreate = () => {
+    // 현재 로그인한 관리자 정보 가져오기
+    const adminInfo = getAdminInfo();
     setEditingNotice({
       id: 0, // 새로 추가할 때는 0 (저장 시 서버에서 생성)
       title: '',
       content: '',
-      author: 'admin@example.com',
+      author: adminInfo?.email || '관리자', // 실제 관리자 이메일 사용
       createdAt: '',
       updatedAt: '',
       isPinned: false,
@@ -254,7 +257,7 @@ export function NoticeManagement() {
       if (!notice) return;
       
       // PUT /api/admin/notices/{id}/pin
-      await pinNotice(id, { isPinned: !notice.isPinned });
+      await pinNotice(id, !notice.isPinned);
       loadNotices(); // 목록 갱신
     } catch (error: any) {
       console.error('공지사항 고정 상태 변경 실패:', error);

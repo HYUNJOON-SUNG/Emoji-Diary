@@ -253,8 +253,10 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     if (response.data.success) {
       const { accessToken, refreshToken, user } = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
+      // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
       const userWithPersona = {
         ...user,
+        id: user.id != null ? String(user.id) : '', // 숫자 → string 변환
         persona: enumToPersona(user.persona as any), // enum → 한글
       };
       TokenStorage.setTokens(accessToken, refreshToken);
@@ -337,8 +339,10 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
     if (response.data.success) {
       const { accessToken, refreshToken, user } = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
+      // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
       const userWithPersona = {
         ...user,
+        id: user.id != null ? String(user.id) : '', // 숫자 → string 변환
         persona: enumToPersona(user.persona as any), // enum → 한글
       };
       TokenStorage.setTokens(accessToken, refreshToken);
@@ -647,8 +651,10 @@ export async function refreshToken(refreshToken: string): Promise<{ accessToken:
       
       // user가 포함된 경우 persona 변환
       if (user) {
+        // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
         const userWithPersona = {
           ...user,
+          id: user.id != null ? String(user.id) : '', // 숫자 → string 변환
           persona: enumToPersona(user.persona as any), // enum → 한글
         };
         localStorage.setItem('user', JSON.stringify(userWithPersona));
@@ -703,8 +709,10 @@ export async function getCurrentUser(): Promise<User> {
     if (response.data.success) {
       const userResponse = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
+      // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
       const user = {
         ...userResponse,
+        id: userResponse.id != null ? String(userResponse.id) : '', // 숫자 → string 변환
         persona: enumToPersona(userResponse.persona as any), // enum → 한글
       };
       // localStorage 동기화
@@ -926,10 +934,17 @@ export async function updateNotificationSettings(enabled: boolean): Promise<{ me
       throw new Error(response.data.error?.message || '알림 설정 변경에 실패했습니다.');
     }
   } catch (error: any) {
+    // 네트워크 오류 또는 CORS 오류 처리
+    if (!error.response) {
+      throw new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
+    }
     if (error.response?.status === 401) {
+      window.location.href = '/login';
       throw new Error('로그인이 필요합니다.');
     }
-    throw error;
+    // 기타 에러는 서버 메시지 사용
+    const errorMessage = error.response?.data?.error?.message || error.message || '알림 설정 변경에 실패했습니다.';
+    throw new Error(errorMessage);
   }
 }
 

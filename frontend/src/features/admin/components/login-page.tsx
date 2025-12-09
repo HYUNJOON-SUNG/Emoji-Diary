@@ -174,15 +174,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             }}
           >
             <div className="relative bg-white/90 rounded-lg p-6 border border-slate-200 shadow-sm">
-              {/* 데모 계정 안내 (개발용) */}
-              <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <p className="text-blue-800 text-sm">
-                  <span className="font-medium">데모 계정:</span><br />
-                  이메일: admin@example.com<br />
-                  비밀번호: admin123
-                </p>
-              </div>
-
               {/* ========================================
                   로그인 폼
                   ======================================== */}

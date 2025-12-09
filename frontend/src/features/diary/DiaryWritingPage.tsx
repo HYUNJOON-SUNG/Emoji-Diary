@@ -16,9 +16,10 @@ import { theme } from '../../styles/theme';
  * - 중립: 중립, 당황
  * - 부정: 슬픔, 분노, 불안, 혐오
  * 
- * [백엔드 팀] KoBERT API 응답 형식:
+ * [API 명세서 Section 4.1, 4.2] KoBERT 감정 분석 결과:
  * - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
- * - confidence: 0.0 ~ 1.0 (신뢰도)
+ * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+ * - 결과는 Diaries.emotion 컬럼에 저장됨 (ERD: Diaries.emotion, ENUM)
  */
 const KOBERT_EMOTIONS = {
   '행복': { emoji: '😊', name: '행복', category: 'positive' },
@@ -77,6 +78,7 @@ interface DiaryWritingPageProps {
   isEditMode?: boolean;
   /** 수정할 기존 일기 데이터 (플로우 4.1) */
   existingDiary?: {
+    id?: string | number; // 일기 ID (수정 시 필수, API 명세서: PUT /api/diaries/{diaryId})
     title: string;
     content: string;
     emotion: string;
@@ -313,7 +315,7 @@ export function DiaryWritingPage({
    * 4. 이미지 목록에 추가
    * 5. 미리보기 표시
    * 
-   * [백엔드 팀] POST /api/upload/image
+   * [API 명세서 Section 9.1] POST /api/upload/image
    * Request: FormData { image: File }
    * Response: { url: string }
    */
@@ -326,7 +328,7 @@ export function DiaryWritingPage({
    * 3. 업로드 성공 시 이미지 URL 획득
    * 4. 이미지 목록에 추가
    * 
-   * [백엔드 팀] POST /api/upload/image
+   * [API 명세서 Section 9.1] POST /api/upload/image
    * Request: FormData { image: File }
    * Response: { url: string }
    */
@@ -444,18 +446,26 @@ export function DiaryWritingPage({
    *    - 재생성된 음식을 DB에 업데이트
    * 6. 감정 분석 모달 표시 안 함 → 바로 상세보기로 이동
    * 
-   * [백엔드 팀 API]
-   * - POST /api/ai/kobert-analyze (KoBERT) - 새 작성 & 수정 모두 사용
-   *   - Request: { content: string } (일기 본문)
-   *   - Response: { emotion: string, confidence: number }
-   *     - emotion: "행복" | "중립" | "당황" | "슬픔" | "분노" | "불안" | "혐오"
-   * - POST /api/ai/generate-image (나노바나나) - 새 작성만 사용
+   * [API 명세서 Section 4.1, 4.2]
    * - POST /api/diaries - 새 작성
-   * - PUT /api/diaries/{id} - 수정
-   * - POST /api/ai/generate-comment (제미나이) - 새 작성 & 수정 모두 사용
-   * - POST /api/ai/generate-food-recommendation (제미나이) - 새 작성 & 수정 모두 사용
-   *   - Request: { title, content, mood, weather, activities, emotion }
-   *   - Response: { name: string, reason: string }
+   * - PUT /api/diaries/{diaryId} - 수정
+   * 
+   * 처리 순서 (백엔드에서 자동 수행):
+   * 1. KoBERT 감정 분석: 일기 본문(content)만 분석하여 7가지 감정 중 하나로 분류
+   *    - 감정 종류: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+   *    - 결과는 Diaries.emotion 컬럼에 저장됨
+   * 2. AI 이미지 생성 (NanoVana API): 일기 본문, 날씨, KoBERT 감정 분석 결과 활용
+   *    - 새 작성 시: 이미지 생성
+   *    - 수정 시: 수정된 내용 반영하여 이미지 재생성
+   * 3. AI 코멘트 생성 (Gemini API): 일기 본문, 날씨, KoBERT 감정 분석 결과, 페르소나 스타일 반영
+   * 4. 음식 추천 생성 (Gemini API): 일기 본문, 날씨, KoBERT 감정 분석 결과 반영
+   * 
+   * [ERD 설계서 참고 - Diaries 테이블]
+   * - emotion: ENUM (KoBERT 분석 결과, 자동 저장)
+   * - image_url: AI 생성 이미지 URL (NanoVana API)
+   * - ai_comment: AI 코멘트 (Gemini API)
+   * - recommended_food: JSON 형식 음식 추천 정보 (Gemini API)
+   * - kobert_analysis: JSON 형식 KoBERT 상세 분석 결과
    */
   const handleSave = async () => {
     if (!isValid || !selectedDate) return;
@@ -491,6 +501,10 @@ export function DiaryWritingPage({
       
       if (isEditMode) {
         // 수정 모드 (플로우 4.3)
+        if (!existingDiary?.id) {
+          throw new Error('일기 ID가 없습니다. 수정할 수 없습니다.');
+        }
+        
         const updateRequest: UpdateDiaryRequest = {
           title: title.trim(),
           content: content.trim(), // API 명세서: content
@@ -501,9 +515,11 @@ export function DiaryWritingPage({
           // imageUrl 필드는 제거됨 (백엔드가 자동으로 재생성)
         };
         
-        // PUT /api/diaries/{id}
+        // PUT /api/diaries/{diaryId}
+        // API 명세서: diaryId는 숫자 (BIGINT)
         // 백엔드가 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성 처리
-        savedDiary = await updateDiary('diary-' + dateKey, dateKey, updateRequest);
+        const diaryId = String(existingDiary.id); // 숫자 또는 문자열로 변환
+        savedDiary = await updateDiary(diaryId, dateKey, updateRequest);
         console.log('일기 수정 완료:', savedDiary);
       } else {
         // 새 작성 모드 (플로우 3.3)
@@ -546,9 +562,31 @@ export function DiaryWritingPage({
         });
       }
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('일기 저장 실패:', err);
-      setError('일기 저장에 실패했습니다. 다시 시도해주세요.');
+      
+      // AI 서버 오류 감지 및 처리
+      const errorMessage = err?.message || '';
+      const isAIServerError = 
+        errorMessage.includes('AI') || 
+        errorMessage.includes('서버') || 
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        err?.response?.status === 503 ||
+        err?.response?.status === 502;
+      
+      if (isAIServerError) {
+        setError('AI 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요. (AI 이미지 생성, 코멘트 생성, 음식 추천 기능이 일시적으로 사용 불가능할 수 있습니다.)');
+      } else if (err?.response?.status === 401) {
+        setError('로그인이 필요합니다. 다시 로그인해주세요.');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      } else if (err?.response?.status === 500) {
+        setError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        setError(err?.message || '일기 저장에 실패했습니다. 다시 시도해주세요.');
+      }
     } finally {
       setIsSaving(false);
       setIsAnalyzingEmotion(false);
@@ -568,7 +606,7 @@ export function DiaryWritingPage({
   // ========== 렌더링 ==========
   
   return (
-    <div className="flex flex-col h-full bg-white"> {/* 전체 화면 모달 */}
+    <div className="flex flex-col h-full w-full bg-white"> {/* 전체 화면 모달 */}
       {/* 상단 헤더 - 고정 */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <button
@@ -770,7 +808,12 @@ export function DiaryWritingPage({
                           return `${baseUrlOrigin}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
                         })()}
                         alt={`업로드 이미지 ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-blue-200"
+                        className="w-full rounded-lg border border-blue-200"
+                        style={{ 
+                          maxHeight: '300px',
+                          objectFit: 'contain',
+                          objectPosition: 'center'
+                        }}
                       />
                       <button
                         onClick={() => handleRemoveImage(index)}
@@ -803,6 +846,25 @@ export function DiaryWritingPage({
           {!isValid && (
             <div className="mt-3 text-xs text-slate-500 text-right">
               * 제목, 본문은 필수 항목입니다
+            </div>
+          )}
+          
+          {/* 에러 메시지 표시 */}
+          {error && (
+            <div className="mt-4 p-4 bg-rose-50 border-2 border-rose-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <span className="text-rose-600 text-lg">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm text-rose-800 font-medium mb-1">오류 발생</p>
+                  <p className="text-xs text-rose-600 whitespace-pre-wrap">{error}</p>
+                </div>
+                <button
+                  onClick={() => setError('')}
+                  className="text-rose-400 hover:text-rose-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>

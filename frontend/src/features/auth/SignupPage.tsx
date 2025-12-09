@@ -275,7 +275,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     setEmailError('');
     
     try {
-      // [백엔드 팀] 이메일 중복 확인 API 구현 필요
+      // [API 명세서 Section 2.2.1] POST /api/auth/check-email
       const response = await checkEmailDuplicate(email);
       
       if (response.available) {
@@ -312,11 +312,10 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * Request: { email: string }
    * Response: { message: string, sentAt: number }
    * 
-   * [백엔드 팀 작업 필요]
-   * 1. 6자리 랜덤 숫자 생성
-   * 2. 이메일 발송 (SMTP 또는 이메일 서비스)
-   * 3. 서버에 코드 저장 (5분 유효 시간 포함)
-   * 4. Redis 등 임시 저장소 사용 권장
+   * [API 명세서 Section 2.2.2] POST /api/auth/send-verification-code
+   * - 이메일로 6자리 인증 코드 발송
+   * - 인증 코드 유효 시간: 5분(300초)
+   * - ERD: Email_Verification_Codes 테이블에 저장 (TTL: 300초)
    * 
    * [Cursor AI 연동 코드]
    * ```typescript
@@ -342,7 +341,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     setSuccess('');
     
     try {
-      // [백엔드 팀] 인증 코드 발송 API 구현 필요
+      // [API 명세서 Section 2.2.2] POST /api/auth/send-verification-code
       const response = await sendVerificationCodeForSignup({ email });
       setSuccess(response.message);
       setCodeSentAt(response.sentAt);
@@ -372,8 +371,8 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 2. 타이머 리셋 (5분)
    * 3. 입력 필드 초기화
    * 
-   * [백엔드 팀]
-   * 기존 인증 코드 무효화 후 새 코드 발송
+   * [API 명세서 Section 2.2.2] POST /api/auth/send-verification-code
+   * - 기존 인증 코드 무효화 후 새 코드 발송
    */
   const handleResendCode = async () => {
     setIsLoading(true);
@@ -496,7 +495,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     setIsLoading(true);
     
     try {
-      // [백엔드 팀] 인증 코드 검증 API 구현 필요
+      // [API 명세서 Section 2.2.3] POST /api/auth/verify-code
       const response = await verifyCode(email, code);
       setSuccess(response.message);
       setTimerActive(false);
@@ -584,11 +583,12 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    *   user: { id: string, email: string, name: string, notificationEnabled: boolean }
    * }
    * 
-   * [백엔드 팀 작업 필요]
-   * 1. 비밀번호 해싱 (bcrypt 권장)
-   * 2. 사용자 DB 저장
-   * 3. JWT 토큰 발급 (accessToken, refreshToken)
-   * 4. 초기 설정값 생성 (알림 설정 등)
+   * [API 명세서 Section 2.2.4] POST /api/auth/register
+   * - Request: { name, email, password, emailVerified, gender }
+   * - Response: { accessToken, refreshToken, user }
+   * - ERD: Users 테이블에 저장, Refresh_Tokens 테이블에 refreshToken 저장
+   * - 비밀번호는 bcrypt로 해싱하여 저장
+   * - 페르소나 기본값: "베프" (BEST_FRIEND)
    * 
    * [Cursor AI 연동 코드]
    * ```typescript

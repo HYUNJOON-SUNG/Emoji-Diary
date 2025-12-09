@@ -32,7 +32,7 @@ import { BottomTabBar, TabType } from './BottomTabBar';
 import { analyzeRiskSignals, RiskAnalysis } from '../../services/riskDetection';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 import { getCurrentUser, User as UserType } from '../../services/authApi';
-import { Plus } from 'lucide-react';
+import { Plus, Wifi, Battery } from 'lucide-react';
 
 /**
  * 뷰 모드 타입 정의
@@ -49,6 +49,26 @@ interface DiaryBookProps {
 }
 
 export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBookProps) {
+  // 실시간 시간 상태
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // 시간 업데이트 (1분마다)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // 1초마다 업데이트
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  // 시간 포맷팅 (HH:MM)
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('ko-KR', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  };
   // ========== 상태 관리 ==========
   
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -240,13 +260,14 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       
       if (diaryData) {
         setExistingDiaryData({
+          id: diaryData.id, // 일기 ID 추가 (수정 시 필요)
           title: diaryData.title,
-          content: diaryData.note,
+          content: diaryData.content, // note → content 수정
           emotion: diaryData.emotion,
           mood: diaryData.mood,
           weather: diaryData.weather,
           activities: diaryData.activities,
-          images: [],
+          images: diaryData.images || [], // 이미지 목록 추가
           aiImage: diaryData.imageUrl,
         });
         setIsEditMode(true);
@@ -419,7 +440,37 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="relative w-full h-screen overflow-hidden bg-white flex flex-col">
+      {/* 상단 상태바 영역 (모바일 앱 스타일) */}
+      <div className="w-full h-9 sm:h-10 bg-white flex items-center justify-between px-4 text-xs sm:text-sm text-gray-900 z-40 border-b border-gray-100">
+        {/* 왼쪽: 시간 */}
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">{formatTime(currentTime)}</span>
+        </div>
+        
+        {/* 오른쪽: 신호, 와이파이, 배터리 */}
+        <div className="flex items-center gap-2">
+          {/* 신호 강도 (4단계) */}
+          <div className="flex items-end gap-0.5 h-3">
+            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '3px' }}></div>
+            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '5px' }}></div>
+            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '7px' }}></div>
+            <div className="w-1 bg-gray-400 rounded-t-sm" style={{ height: '9px' }}></div>
+          </div>
+          
+          {/* 와이파이 */}
+          <Wifi className="w-4 h-4 text-gray-900" strokeWidth={2} />
+          
+          {/* 배터리 */}
+          <div className="flex items-center">
+            <Battery className="w-5 h-5 text-gray-900" strokeWidth={2} />
+            <span className="text-[10px] font-medium text-gray-900 ml-0.5">85%</span>
+          </div>
+        </div>
+      </div>
+      
+      {/* 메인 콘텐츠 영역 */}
+      <div className="flex-1 overflow-hidden relative">
       {/* Navigation Warning Modal */}
       {showNavigationWarning && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -452,11 +503,11 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       )}
 
       {/* Main Content - 하단 탭 바를 위한 패딩 추가 */}
-      <div className="relative pb-20"> {/* 하단 탭 바 높이만큼 패딩 */}
-        <div className="max-w-2xl mx-auto">
+      <div className="relative pb-20 h-full overflow-y-auto w-full" style={{ minHeight: 'calc(100vh - 8rem)' }}> {/* 하단 탭 바 높이만큼 패딩 */}
+        <div className="w-full max-w-2xl mx-auto px-4" style={{ minHeight: '100%' }}>
           {/* Home View - 캘린더 + 일기 요약 */}
           {viewMode === 'home' && (
-            <div className="min-h-screen">
+            <div className="w-full px-4 py-2">
               <CalendarPage 
                 onDateSelect={handleDateSelect} 
                 selectedDate={selectedDate}
@@ -473,7 +524,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           <AnimatePresence>
             {viewMode === 'writing' && (
               <motion.div 
-                className="fixed inset-0 bg-white z-50"
+                className="absolute inset-0 bg-white z-50"
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
@@ -507,7 +558,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           <AnimatePresence>
             {viewMode === 'reading' && (
               <motion.div 
-                className="fixed inset-0 bg-white z-40 overflow-y-auto"
+                className="absolute inset-0 bg-white z-40 overflow-hidden flex flex-col"
                 initial={{ x: '100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
@@ -541,7 +592,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
           {/* List View */}
           {viewMode === 'list' && (
-            <div className="min-h-screen p-4">
+            <div className="w-full p-4">
               <DiaryListPage 
                 onDiaryClick={handleDateSelect}
               />
@@ -550,7 +601,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
           {/* Stats View */}
           {viewMode === 'stats' && (
-            <div className="min-h-screen">
+            <div className="w-full">
               <EmotionStatsPage 
                 onDateClick={handleDateSelect}
               />
@@ -559,7 +610,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           
           {/* My Page View */}
           {viewMode === 'mypage' && (
-            <div className="min-h-screen p-4">
+            <div className="w-full p-4">
               <MyPage 
                 onModalStateChange={setIsPersonaModalOpen}
                 onAccountDeleted={onAccountDeleted}
@@ -575,11 +626,12 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
           {/* Support View */}
           {viewMode === 'support' && (
-            <div className="min-h-screen p-4">
+            <div className="w-full p-4">
               <SupportResourcesPage />
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* Bottom Tab Bar - viewMode가 writing이 아닐 때만 표시 */}
@@ -594,7 +646,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       {viewMode === 'home' && (
         <button
           onClick={() => handleStartWriting(selectedDate || new Date())}
-          className="fixed bottom-24 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-all hover:scale-110 active:scale-95 z-30"
+          className="absolute bottom-24 right-4 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center active:bg-blue-600 transition-all active:scale-95 z-30 touch-manipulation"
+          title="일기 작성하기"
+          aria-label="일기 작성하기"
         >
           <Plus className="w-7 h-7" strokeWidth={2.5} />
         </button>

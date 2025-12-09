@@ -8,7 +8,7 @@ import { ErrorLogs } from './components/error-logs';
 import { LoginPage } from './components/login-page';
 import { login, logout, type AdminInfo } from './utils/session-manager';
 import { useAuth } from './hooks/useAuth';
-import { adminLogin } from '../../services/adminApi';
+import { adminLogin, adminLogout } from '../../services/adminApi';
 // Import admin-specific CSS
 import './index.css';
 import './styles/admin-globals.css';
@@ -93,8 +93,14 @@ export default function AdminApp() {
   /**
    * 관리자 로그아웃 (7.1, 9.1 관리자 세션 관리)
    * 
+   * [API 명세서 Section 10.1.3]
+   * POST /api/admin/auth/logout
+   * - 관리자 Access Token 및 Refresh Token 무효화 처리 (DB에서 Refresh Token 삭제)
+   * 
    * @description
+   * - 관리자 로그아웃 API 호출 (서버에서 Refresh Token 무효화)
    * - 관리자 JWT 토큰 삭제 (localStorage에서 admin_jwt_token 제거)
+   * - 관리자 리프레시 토큰 삭제 (localStorage에서 admin_refresh_token 제거)
    * - 관리자 정보 삭제 (localStorage에서 admin_info 제거)
    * - 인증 상태 초기화 (isAuthenticated = false)
    * - 관리자 로그인 페이지로 자동 이동
@@ -103,20 +109,31 @@ export default function AdminApp() {
    * 1. NavigationTabs의 "로그아웃" 버튼 클릭
    * 2. 로그아웃 확인 모달 표시 ("정말 로그아웃하시겠습니까?")
    * 3. "로그아웃" 확인 → handleLogout() 실행
-   * 4. JWT 토큰 삭제 및 관리자 정보 삭제
-   * 5. 인증 상태 초기화
-   * 6. LoginPage 컴포넌트 표시 (자동 리디렉션)
+   * 4. POST /api/admin/auth/logout API 호출 (서버에서 Refresh Token 무효화)
+   * 5. JWT 토큰 삭제 및 관리자 정보 삭제
+   * 6. 인증 상태 초기화
+   * 7. LoginPage 컴포넌트 표시 (자동 리디렉션)
    */
-  const handleLogout = () => {
-    // Logout and clear session (7.1, 9.1)
-    logout();
-    
-    // Clear admin authentication state
-    setIsAuthenticated(false);
-    
-    // Reset to dashboard tab
-    setActiveTab('dashboard');
-    navigate('/admin');
+  const handleLogout = async () => {
+    try {
+      // [API 명세서 Section 10.1.3] POST /api/admin/auth/logout
+      // 서버에서 관리자 Refresh Token 무효화 처리
+      await adminLogout();
+    } catch (error: any) {
+      // API 호출 실패해도 클라이언트 측 로그아웃은 진행
+      console.error('관리자 로그아웃 API 호출 실패:', error);
+    } finally {
+      // Logout and clear session (7.1, 9.1)
+      // adminLogout 함수에서 이미 localStorage의 토큰을 제거함
+      logout();
+      
+      // Clear admin authentication state
+      setIsAuthenticated(false);
+      
+      // Reset to dashboard tab
+      setActiveTab('dashboard');
+      navigate('/admin');
+    }
   };
 
   const handleTabChange = (tab: string) => {

@@ -3,11 +3,22 @@
  * 감정 통계 페이지 컴포넌트 (EmotionStatsPage)
  * ========================================
  * 
- * 주요 기능 (모바일 웹 최적화):
+ * 주요 기능 (플로우 7.1, 7.2, 7.3, 7.4, 7.5):
  * - 감정 통계 조회 (3가지 뷰 모드)
- * - 캘린더 뷰: 월별 캘린더 형태로 감정 표시
- * - 타임라인 뷰: 시간순으로 일기 목록 표시
- * - 차트 뷰: 감정 분포 차트 및 통계 데이터
+ * - 캘린더 뷰 (플로우 7.3): 월별 캘린더 형태로 감정 표시
+ * - 타임라인 뷰 (플로우 7.4): 시간순으로 일기 목록 표시
+ * - 차트 뷰 (플로우 7.5): 감정 분포 차트 및 통계 데이터
+ * 
+ * [API 명세서 Section 5.2]
+ * - GET /api/statistics/emotions: 감정 통계 조회 (기간별)
+ * - GET /api/statistics/emotion-trend: 감정 변화 추이 조회
+ * - GET /api/diaries/calendar: 캘린더 월별 조회
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - 통계는 Diaries 테이블의 emotion 컬럼 기준으로 집계됨
+ * - emotion: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+ * - 인덱스: idx_diaries_emotion, idx_diaries_emotion_date (통계 조회 최적화)
  * 
  * 변경 사항 (모바일):
  * - 좌우 2페이지 레이아웃 → 단일 세로 스크롤 레이아웃
@@ -247,7 +258,7 @@ export function EmotionStatsPage({ onDateClick }: EmotionStatsPageProps) {
   };
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="min-h-full flex flex-col space-y-4">
       {/* Header */}
       <div className="text-center space-y-1 pb-2 border-b border-stone-200/60">
         <div className="flex items-center justify-center gap-2 text-blue-700">

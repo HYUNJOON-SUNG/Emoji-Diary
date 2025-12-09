@@ -98,9 +98,14 @@ export function ErrorLogs() {
   // ========================================
   // 필터 변경 시 자동 갱신 (6.2)
   // ========================================
+  // 주의: 필터 변경 시 서버에서 다시 조회하므로, 
+  // loadErrorLogs 함수 내부에서 필터 파라미터를 전달하여 서버 측 필터링 수행
+  // 클라이언트 측 필터링은 제거됨 (서버에서 필터링된 결과를 받음)
   useEffect(() => {
-    applyFilters();
-  }, [levelFilter, startDate, endDate, searchQuery, allLogs]);
+    // 필터가 변경되면 서버에서 다시 조회
+    loadErrorLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelFilter, startDate, endDate, searchQuery]);
 
   /**
    * 에러 로그 목록 로드 (6.1)
@@ -219,41 +224,13 @@ export function ErrorLogs() {
 
   /**
    * 필터 적용 (6.2)
+   * 주의: 필터는 서버에서 처리되므로 클라이언트 측 필터링은 제거됨
+   * loadErrorLogs에서 필터 파라미터를 전달하여 서버에서 필터링된 결과를 받음
    */
-  const applyFilters = () => {
-    let filteredLogs = allLogs;
-
-    // 레벨 필터 적용
-    if (levelFilter !== 'ALL') {
-      filteredLogs = filteredLogs.filter(log => log.level === levelFilter);
-    }
-
-    // 날짜 범위 필터 적용
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      
-      filteredLogs = filteredLogs.filter(log => {
-        const logDate = new Date(log.timestamp);
-        return logDate >= start && logDate <= end;
-      });
-    }
-
-    // 검색 쿼리 적용 (메시지, 엔드포인트, 로그 ID, 에러 코드)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filteredLogs = filteredLogs.filter(log => 
-        log.message.toLowerCase().includes(query) ||
-        (log.endpoint && log.endpoint.toLowerCase().includes(query)) ||
-        log.id.toString().includes(query) ||
-        (log.errorCode && log.errorCode.toLowerCase().includes(query))
-      );
-    }
-
-    setLogs(filteredLogs);
-  };
+  useEffect(() => {
+    // 서버에서 필터링된 결과를 받아서 그대로 표시
+    setLogs(allLogs);
+  }, [allLogs]);
 
   /**
    * 빠른 날짜 선택 (6.2)
@@ -428,7 +405,7 @@ export function ErrorLogs() {
                 className="w-full pl-10 pr-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
-                    applyFilters();
+                    loadErrorLogs();
                   }
                 }}
               />

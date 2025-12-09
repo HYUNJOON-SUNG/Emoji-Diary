@@ -42,6 +42,7 @@ export interface AdminLoginResponse {
   success: true;
   data: {
     accessToken: string;
+    refreshToken: string;
     admin: {
       id: number;
       email: string;
@@ -65,6 +66,10 @@ export async function adminLogin(email: string, password: string): Promise<Admin
     if (response.data.data.accessToken) {
       localStorage.setItem('admin_jwt_token', response.data.data.accessToken);
     }
+    // 관리자 리프레시 토큰 저장
+    if (response.data.data.refreshToken) {
+      localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
+    }
     return response.data;
   } else {
     throw new Error(response.data.error?.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
@@ -72,7 +77,46 @@ export async function adminLogin(email: string, password: string): Promise<Admin
 }
 
 /**
- * 관리자 로그아웃 (10.1.2)
+ * 관리자 토큰 재발급 (10.1.2)
+ * POST /api/admin/auth/refresh
+ */
+export interface AdminRefreshRequest {
+  refreshToken: string;
+}
+
+export interface AdminRefreshResponse {
+  success: true;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+  };
+}
+
+/**
+ * 관리자 토큰 재발급 함수
+ * 
+ * @param refreshToken - 관리자 리프레시 토큰
+ * @returns 새로운 액세스 토큰과 리프레시 토큰
+ */
+export async function adminRefresh(refreshToken: string): Promise<AdminRefreshResponse> {
+  const response = await adminApiClient.post('/auth/refresh', { refreshToken });
+  
+  if (response.data.success) {
+    // 새로운 토큰 저장
+    if (response.data.data.accessToken) {
+      localStorage.setItem('admin_jwt_token', response.data.data.accessToken);
+    }
+    if (response.data.data.refreshToken) {
+      localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
+    }
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '토큰 재발급에 실패했습니다.');
+  }
+}
+
+/**
+ * 관리자 로그아웃 (10.1.3)
  * POST /api/admin/auth/logout
  */
 export async function adminLogout(): Promise<{ success: true; data: { message: string } }> {
@@ -81,6 +125,7 @@ export async function adminLogout(): Promise<{ success: true; data: { message: s
   if (response.data.success) {
     // 관리자 토큰 제거
     localStorage.removeItem('admin_jwt_token');
+    localStorage.removeItem('admin_refresh_token');
     return response.data;
   } else {
     throw new Error(response.data.error?.message || '로그아웃에 실패했습니다.');
@@ -381,6 +426,31 @@ export async function getNoticeList(params?: NoticeListRequest): Promise<NoticeL
     return response.data;
   } else {
     throw new Error(response.data.error?.message || '공지사항 목록 조회에 실패했습니다.');
+  }
+}
+
+/**
+ * 공지사항 상세 조회 (10.3.2)
+ * GET /api/admin/notices/{noticeId}
+ */
+export interface NoticeDetailResponse {
+  success: true;
+  data: Notice;
+}
+
+/**
+ * 공지사항 상세 조회 함수
+ * 
+ * @param noticeId - 공지사항 ID
+ * @returns 공지사항 상세 정보
+ */
+export async function getNoticeById(noticeId: number): Promise<NoticeDetailResponse> {
+  const response = await adminApiClient.get(`/notices/${noticeId}`);
+  
+  if (response.data.success) {
+    return response.data;
+  } else {
+    throw new Error(response.data.error?.message || '공지사항 상세 조회에 실패했습니다.');
   }
 }
 

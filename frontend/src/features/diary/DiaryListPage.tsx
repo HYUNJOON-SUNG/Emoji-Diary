@@ -3,11 +3,23 @@
  * 일기 검색 및 목록 페이지 컴포넌트 (DiaryListPage)
  * ========================================
  * 
- * 주요 기능 (모바일 웹 최적화):
+ * 주요 기능 (플로우 6.1, 6.2, 6.3):
  * - 일기 검색 (키워드, 기간, 감정별)
  * - 검색 결과 목록 표시
  * - 페이지네이션
- * - 일기 클릭 시 상세보기로 이동
+ * - 일기 클릭 시 상세보기로 이동 (플로우 6.3)
+ * 
+ * [API 명세서 Section 5.1]
+ * - GET /api/diaries/search
+ * - Query Parameters: keyword, startDate, endDate, emotions, page, limit
+ * - emotions: 감정 필터 (여러 개 가능, 쉼표로 구분, 예: "행복,중립,슬픔")
+ *   - KoBERT 감정 종류: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ * - Response: { total, page, limit, totalPages, diaries }
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - 검색은 Diaries 테이블의 title, content 필드에서 수행
+ * - FULLTEXT 인덱스: idx_diaries_title_content (일기 검색 최적화)
+ * - emotion 필터는 Diaries.emotion 컬럼 기준 (ENUM: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
  * 
  * 변경 사항 (모바일):
  * - 좌우 2페이지 레이아웃 → 단일 세로 스크롤 레이아웃
@@ -25,32 +37,24 @@ interface DiaryListPageProps {
   onDateClick?: (date: Date) => void;
 }
 
-const emotionColors: { [key: string]: string } = {
-  happy: 'bg-sky-200',
-  love: 'bg-blue-200',
-  excited: 'bg-indigo-200',
-  calm: 'bg-cyan-200',
-  grateful: 'bg-teal-200',
-  hopeful: 'bg-sky-300',
-  tired: 'bg-rose-200',
-  sad: 'bg-red-200',
-  angry: 'bg-rose-300',
-  anxious: 'bg-pink-200',
-  neutral: 'bg-stone-200',
-};
+/**
+ * KoBERT 감정 종류 (7가지)
+ * [API 명세서 Section 5.1] emotions 파라미터는 KoBERT 감정 종류를 사용
+ * [ERD 설계서 참고 - Diaries 테이블] emotion: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ */
+const KOBERT_EMOTIONS = ['행복', '중립', '당황', '슬픔', '분노', '불안', '혐오'];
 
-const emotionLabels: { [key: string]: string } = {
-  happy: '행복',
-  love: '사랑',
-  excited: '설렘',
-  calm: '평온',
-  grateful: '감사',
-  hopeful: '희망',
-  tired: '피곤',
-  sad: '슬픔',
-  angry: '화남',
-  anxious: '불안',
-  neutral: '평온',
+/**
+ * KoBERT 감정별 색상 매핑
+ */
+const emotionColors: { [key: string]: string } = {
+  '행복': 'bg-sky-200',
+  '중립': 'bg-stone-200',
+  '당황': 'bg-gray-200',
+  '슬픔': 'bg-red-200',
+  '분노': 'bg-rose-300',
+  '불안': 'bg-pink-200',
+  '혐오': 'bg-rose-200',
 };
 
 export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
@@ -62,13 +66,26 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [emotionCategories, setEmotionCategories] = useState<string[]>([]);
+  const [emotionCategories, setEmotionCategories] = useState<string[]>([]); // KoBERT 감정 배열 (예: ['행복', '슬픔'])
   const [currentPage, setCurrentPage] = useState(1);
   const [showHelp, setShowHelp] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // 초기 로드 여부
 
+  // 초기 로드 시 전체 일기 조회
   useEffect(() => {
-    performSearch();
-  }, [currentPage, emotionCategories]);
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      // 필터 없이 전체 일기 조회
+      performSearch();
+    }
+  }, []); // 컴포넌트 마운트 시 한 번만 실행
+
+  // 페이지 변경 시 검색 실행
+  useEffect(() => {
+    if (currentPage > 1 && searchResult && !isInitialLoad) {
+      performSearch();
+    }
+  }, [currentPage]);
 
   const performSearch = async () => {
     setIsLoading(true);
@@ -79,7 +96,7 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
         keyword,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-        emotionCategory: emotionCategories.length > 0 ? emotionCategories.join(',') : undefined,
+        emotions: emotionCategories.length > 0 ? emotionCategories.join(',') : undefined, // API 명세서: emotions 파라미터 사용 (KoBERT 감정)
         page: currentPage,
         limit: 10,
       };
@@ -106,6 +123,10 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
     setEndDate('');
     setEmotionCategories([]);
     setCurrentPage(1);
+    // 필터 초기화 후 전체 일기 조회
+    setTimeout(() => {
+      performSearch();
+    }, 0);
   };
 
   const handleEmotionToggle = (emotion: string) => {
@@ -128,7 +149,7 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
   const hasActiveFilters = keyword || startDate || endDate || emotionCategories.length > 0;
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="w-full min-h-full flex flex-col space-y-4">
       {/* Header */}
       <div className="text-center space-y-1 pb-2 border-b border-stone-200/60 relative">
         <div className="flex items-center justify-center gap-2 text-blue-700">
@@ -141,6 +162,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
         <button 
           onClick={() => setShowHelp(!showHelp)}
           className="absolute right-0 top-0 p-1.5 text-stone-400 hover:text-blue-600 transition-colors"
+          title="도움말"
+          aria-label="도움말"
         >
           <HelpCircle className="w-4 h-4" />
         </button>
@@ -194,6 +217,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-white border border-stone-300 rounded-md focus:border-blue-500 outline-none"
+                title="시작 날짜"
+                aria-label="시작 날짜"
               />
               <span className="text-stone-400 text-xs">~</span>
               <input
@@ -201,25 +226,27 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-white border border-stone-300 rounded-md focus:border-blue-500 outline-none"
+                title="종료 날짜"
+                aria-label="종료 날짜"
               />
             </div>
 
             {/* Emotions */}
             <div>
-              <label className="text-xs text-stone-500 mb-1.5 block">감정 선택</label>
+              <label className="text-xs text-stone-500 mb-1.5 block">감정 선택 (KoBERT 감정)</label>
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(emotionLabels).slice(0, 8).map(([key, label]) => (
+                {KOBERT_EMOTIONS.map((emotion) => (
                   <button
-                    key={key}
+                    key={emotion}
                     type="button"
-                    onClick={() => handleEmotionToggle(key)}
+                    onClick={() => handleEmotionToggle(emotion)}
                     className={`px-2.5 py-1.5 text-xs rounded-full border transition-colors ${
-                      emotionCategories.includes(key)
-                        ? `${emotionColors[key]} border-stone-400 text-stone-900 font-medium`
+                      emotionCategories.includes(emotion)
+                        ? `${emotionColors[emotion]} border-stone-400 text-stone-900 font-medium`
                         : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-100'
                     }`}
                   >
-                    {label}
+                    {emotion}
                   </button>
                 ))}
               </div>
@@ -284,6 +311,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                     key={diary.id}
                     onClick={() => handleDiaryClick(diary)}
                     className="w-full flex items-start gap-3 p-3 bg-white/70 hover:bg-white rounded-xl border border-stone-200/80 shadow-sm hover:shadow-md transition-all text-left group"
+                    title={`${diary.title} - ${date.toLocaleDateString('ko-KR')}`}
+                    aria-label={`${diary.title} 일기 보기`}
                   >
                     {/* Date Badge */}
                     <div className="flex flex-col items-center justify-center min-w-[50px] h-full py-1 border-r border-stone-100 pr-3">
@@ -301,9 +330,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                     {/* Content */}
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-center justify-between mb-1">
-                         <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 ${emotionColors[diary.emotionCategory]}`}>
+                         <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 ${emotionColors[diary.emotion] || 'bg-stone-200'}`}>
                            <span>{diary.emotion}</span>
-                           <span className="opacity-80">{emotionLabels[diary.emotionCategory] || '기타'}</span>
                          </div>
                          {diary.weather && (
                            <span className="text-[10px] text-stone-400 flex items-center gap-0.5">
@@ -315,7 +343,7 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                         {diary.title}
                       </h3>
                       <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed">
-                        {diary.note}
+                        {diary.content}
                       </p>
                     </div>
                   </button>
@@ -330,6 +358,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                   className="p-1.5 rounded-md bg-white border border-stone-200 disabled:opacity-30"
+                  title="이전 페이지"
+                  aria-label="이전 페이지"
                 >
                   <ChevronLeft className="w-4 h-4 text-stone-600" />
                 </button>
@@ -340,6 +370,8 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
                   onClick={() => setCurrentPage(prev => Math.min(searchResult.totalPages, prev + 1))}
                   disabled={currentPage === searchResult.totalPages}
                   className="p-1.5 rounded-md bg-white border border-stone-200 disabled:opacity-30"
+                  title="다음 페이지"
+                  aria-label="다음 페이지"
                 >
                   <ChevronRight className="w-4 h-4 text-stone-600" />
                 </button>

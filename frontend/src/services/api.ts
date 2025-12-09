@@ -65,6 +65,13 @@ export const apiClient: AxiosInstance = axios.create({
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // 로그인, 회원가입, 비밀번호 재설정 관련 API는 토큰을 보내지 않음
+    if (config.url?.includes('/auth/login') || 
+        config.url?.includes('/auth/register') ||
+        config.url?.includes('/auth/password-reset')) {
+      return config;
+    }
+
     const token = TokenStorage.getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -96,24 +103,44 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // 401 에러 (인증 실패) 처리
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    // 401 또는 403 에러 (인증 실패 또는 권한 없음) 처리
+    // 토큰 만료로 인한 403도 처리하기 위해 403도 포함
+    // 로그인/회원가입 API는 인증이 필요 없으므로 interceptor를 건너뜀
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
+                           originalRequest?.url?.includes('/auth/register') ||
+                           originalRequest?.url?.includes('/auth/password-reset');
+    
+    const isTokenError = error.response?.status === 401 || error.response?.status === 403;
+    
+    if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = TokenStorage.getRefreshToken();
         if (!refreshToken) {
-          throw new Error('Refresh token이 없습니다.');
+          // Refresh token이 없으면 로그인 페이지로 리다이렉트
+          console.warn('토큰이 만료되었고 refresh token이 없습니다. 로그인 페이지로 이동합니다.');
+          TokenStorage.clearTokens();
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return Promise.reject(new Error('로그인이 필요합니다.'));
         }
 
         // 토큰 재발급 시도
-        const refreshResponse = await axios.post(`${BASE_URL}/auth/refresh`, {
+        // refresh API는 interceptor를 거치지 않도록 axios 인스턴스를 직접 생성
+        console.log('토큰이 만료되어 자동으로 재발급을 시도합니다...');
+        const refreshAxios = axios.create({
+          baseURL: BASE_URL,
+          timeout: 10000,
+        });
+        const refreshResponse = await refreshAxios.post('/auth/refresh', {
           refreshToken,
         });
 
         if (refreshResponse.data.success) {
           const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
           TokenStorage.setTokens(accessToken, newRefreshToken);
+          console.log('토큰 재발급 성공. 원래 요청을 재시도합니다.');
 
           // 원래 요청 재시도
           if (originalRequest.headers) {
@@ -123,10 +150,21 @@ apiClient.interceptors.response.use(
         } else {
           throw new Error('토큰 재발급에 실패했습니다.');
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         // 토큰 재발급 실패 시 로그인 페이지로 리다이렉트
+        console.error('토큰 재발급 실패:', refreshError);
         TokenStorage.clearTokens();
         localStorage.removeItem('user');
+        
+        // 사용자에게 피드백 제공
+        if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+          // Refresh token도 만료된 경우
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else {
+          // 네트워크 오류 등 기타 오류
+          alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
+        }
+        
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -188,16 +226,56 @@ adminApiClient.interceptors.request.use(
 
 /**
  * 관리자 API Response Interceptor
- * 401 에러 시 관리자 로그인 페이지로 리다이렉트
+ * 401 에러 시 리프레시 토큰으로 재발급 시도, 실패 시 관리자 로그인 페이지로 리다이렉트
  */
 adminApiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   async (error: AxiosError) => {
-    // 401 에러 시 관리자 로그인 페이지로 리다이렉트
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // 401 에러 (인증 실패) 처리
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem('admin_refresh_token');
+        if (!refreshToken) {
+          throw new Error('Refresh token이 없습니다.');
+        }
+
+        // 토큰 재발급 시도
+        const refreshResponse = await axios.post(`${BASE_URL}/admin/auth/refresh`, {
+          refreshToken,
+        });
+
+        if (refreshResponse.data.success) {
+          const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+          localStorage.setItem('admin_jwt_token', accessToken);
+          localStorage.setItem('admin_refresh_token', newRefreshToken);
+
+          // 원래 요청 재시도
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          return adminApiClient(originalRequest);
+        } else {
+          throw new Error('토큰 재발급에 실패했습니다.');
+        }
+      } catch (refreshError) {
+        // 토큰 재발급 실패 시 관리자 로그인 페이지로 리다이렉트
+        localStorage.removeItem('admin_jwt_token');
+        localStorage.removeItem('admin_refresh_token');
+        window.location.href = '/admin/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // 기타 에러 처리
     if (error.response?.status === 401) {
       localStorage.removeItem('admin_jwt_token');
+      localStorage.removeItem('admin_refresh_token');
       window.location.href = '/admin/login';
     }
 

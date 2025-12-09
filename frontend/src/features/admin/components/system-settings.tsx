@@ -85,9 +85,39 @@ export function SystemSettings() {
   };
 
   const handleSaveThreshold = async () => {
-    // Validation
+    // Validation (API 명세서 Section 10.4.2 검증 규칙)
     if (riskThreshold.monitoringPeriodDays < 1 || riskThreshold.monitoringPeriodDays > 365) {
       alert('모니터링 기간은 1~365일 사이의 값이어야 합니다.');
+      return;
+    }
+
+    // 연속 부정 감정 임계 점수 검증 (1-100)
+    if (riskThreshold.highConsecutiveDays < 1 || riskThreshold.highConsecutiveDays > 100 ||
+        riskThreshold.mediumConsecutiveDays < 1 || riskThreshold.mediumConsecutiveDays > 100 ||
+        riskThreshold.lowConsecutiveDays < 1 || riskThreshold.lowConsecutiveDays > 100) {
+      alert('연속 부정 감정 임계 점수는 1~100 사이의 값이어야 합니다.');
+      return;
+    }
+
+    // 모니터링 기간 내 부정 감정 임계 점수 검증 (1-200)
+    if (riskThreshold.highTotalDays < 1 || riskThreshold.highTotalDays > 200 ||
+        riskThreshold.mediumTotalDays < 1 || riskThreshold.mediumTotalDays > 200 ||
+        riskThreshold.lowTotalDays < 1 || riskThreshold.lowTotalDays > 200) {
+      alert('모니터링 기간 내 부정 감정 임계 점수는 1~200 사이의 값이어야 합니다.');
+      return;
+    }
+
+    // 검증 규칙: High > Medium > Low (consecutiveScore)
+    if (riskThreshold.highConsecutiveDays <= riskThreshold.mediumConsecutiveDays ||
+        riskThreshold.mediumConsecutiveDays <= riskThreshold.lowConsecutiveDays) {
+      alert('연속 부정 감정 임계 점수는 High > Medium > Low 순서여야 합니다.');
+      return;
+    }
+
+    // 검증 규칙: High > Medium > Low (scoreInPeriod)
+    if (riskThreshold.highTotalDays <= riskThreshold.mediumTotalDays ||
+        riskThreshold.mediumTotalDays <= riskThreshold.lowTotalDays) {
+      alert('모니터링 기간 내 부정 감정 임계 점수는 High > Medium > Low 순서여야 합니다.');
       return;
     }
 
@@ -280,6 +310,39 @@ export function SystemSettings() {
           </div>
 
           <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+            {/* 부정 감정 기준 정보 (4.2 - 정보 표시, 수정 불가) */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+              <label className="block text-slate-700 font-medium mb-2">
+                부정 감정 기준 (정보 표시, 수정 불가)
+              </label>
+              <div className="space-y-2 text-sm text-slate-600">
+                <p>
+                  <span className="font-medium">KoBERT 감정 분석 기준:</span> 위험 신호 판정은 KoBERT가 분석한 감정(`emotion` 컬럼)을 기준으로 함
+                </p>
+                <p>
+                  <span className="font-medium">KoBERT 감정 종류:</span> 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오 (7가지)
+                </p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li>긍정: 행복 (1가지)</li>
+                  <li>중립: 중립, 당황 (2가지)</li>
+                  <li>부정: 슬픔, 분노, 불안, 혐오 (4가지)</li>
+                </ul>
+                <p className="mt-2">
+                  <span className="font-medium">부정 감정 심각도별 분류:</span>
+                </p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li><span className="font-medium">고위험 부정 감정 (2점):</span> 슬픔, 분노</li>
+                  <li><span className="font-medium">중위험 부정 감정 (1점):</span> 불안, 혐오</li>
+                </ul>
+                <p className="mt-2">
+                  <span className="font-medium">계산 방식:</span> 각 감정의 가중치를 합산하여 점수로 계산 (예: 슬픔 2일 = 4점, 불안 3일 = 3점, 총 7점)
+                </p>
+                <p className="mt-2 text-slate-500 italic">
+                  참고: 중립(`중립`, `당황`)과 긍정(`행복`) 감정은 위험 신호 계산에 포함되지 않음
+                </p>
+              </div>
+            </div>
+
             {/* Monitoring Period */}
             <div className="min-w-0">
               <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
@@ -316,19 +379,19 @@ export function SystemSettings() {
                 둘 중 하나라도 충족하면 High 레벨로 판정됩니다
               </p>
               
-              {/* 연속 부정 감정 임계 일수 */}
+              {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
-                  연속 부정 감정 임계 일수
+                  연속 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  연속으로 부정적 감정을 기록한 일수가 이 값을 초과하면 High 레벨로 판정됩니다
+                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 High 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max="30"
+                    max="100"
                     value={riskThreshold.highConsecutiveDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -336,10 +399,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.highConsecutiveDays}일 이상 연속 부정 감정 시 High 레벨
+                  현재 설정: 연속 부정 감정 점수 {riskThreshold.highConsecutiveDays}점 이상 시 High 레벨
                 </div>
               </div>
               
@@ -348,19 +411,19 @@ export function SystemSettings() {
                 또는
               </div>
               
-              {/* 모니터링 기간 내 부정 감정 임계 일수 */}
+              {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
-                  모니터링 기간 내 부정 감정 임계 일수
+                  모니터링 기간 내 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 중 부정 감정이 이 값 이상 발생하면 High 레벨로 판정됩니다
+                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 High 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max={riskThreshold.monitoringPeriodDays}
+                    max="200"
                     value={riskThreshold.highTotalDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -368,10 +431,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 {riskThreshold.highTotalDays}일 이상 부정 감정 시 High 레벨
+                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 부정 감정 점수 {riskThreshold.highTotalDays}점 이상 시 High 레벨
                 </div>
               </div>
             </div>
@@ -385,19 +448,19 @@ export function SystemSettings() {
                 둘 중 하나라도 충족하면 Medium 레벨로 판정됩니다 (단, High 레벨 기준을 충족하지 않은 경우)
               </p>
               
-              {/* 연속 부정 감정 임계 일수 */}
+              {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
-                  연속 부정 감정 임계 일수
+                  연속 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  연속으로 부정적 감정을 기록한 일수가 이 값 이상이면 Medium 레벨로 판정됩니다
+                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 Medium 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max="30"
+                    max="100"
                     value={riskThreshold.mediumConsecutiveDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -405,10 +468,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.mediumConsecutiveDays}일 이상 연속 부정 감정 시 Medium 레벨
+                  현재 설정: 연속 부정 감정 점수 {riskThreshold.mediumConsecutiveDays}점 이상 시 Medium 레벨
                 </div>
               </div>
               
@@ -417,19 +480,19 @@ export function SystemSettings() {
                 또는
               </div>
               
-              {/* 모니터링 기간 내 부정 감정 임계 일수 */}
+              {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
-                  모니터링 기간 내 부정 감정 임계 일수
+                  모니터링 기간 내 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 중 부정 감정이 이 값 이상 발생하면 Medium 레벨로 판정됩니다
+                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 Medium 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max={riskThreshold.monitoringPeriodDays}
+                    max="200"
                     value={riskThreshold.mediumTotalDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -437,10 +500,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 {riskThreshold.mediumTotalDays}일 이상 부정 감정 시 Medium 레벨
+                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 부정 감정 점수 {riskThreshold.mediumTotalDays}점 이상 시 Medium 레벨
                 </div>
               </div>
             </div>
@@ -454,19 +517,19 @@ export function SystemSettings() {
                 둘 중 하나라도 충족하면 Low 레벨로 판정됩니다 (단, High 또는 Medium 레벨 기준을 충족하지 않은 경우)
               </p>
               
-              {/* 연속 부정 감정 임계 일수 */}
+              {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
-                  연속 부정 감정 임계 일수
+                  연속 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  연속으로 부정적 감정을 기록한 일수가 이 값 이상이면 Low 레벨로 판정됩니다
+                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 Low 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max="30"
+                    max="100"
                     value={riskThreshold.lowConsecutiveDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -474,10 +537,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.lowConsecutiveDays}일 이상 연속 부정 감정 시 Low 레벨
+                  현재 설정: 연속 부정 감정 점수 {riskThreshold.lowConsecutiveDays}점 이상 시 Low 레벨
                 </div>
               </div>
               
@@ -486,19 +549,19 @@ export function SystemSettings() {
                 또는
               </div>
               
-              {/* 모니터링 기간 내 부정 감정 임계 일수 */}
+              {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
-                  모니터링 기간 내 부정 감정 임계 일수
+                  모니터링 기간 내 부정 감정 임계 점수
                 </label>
                 <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 중 부정 감정이 이 값 이상 발생하면 Low 레벨로 판정됩니다
+                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 Low 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
                 </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     min="1"
-                    max={riskThreshold.monitoringPeriodDays}
+                    max="200"
                     value={riskThreshold.lowTotalDays}
                     onChange={(e) => setRiskThreshold({
                       ...riskThreshold,
@@ -506,10 +569,10 @@ export function SystemSettings() {
                     })}
                     className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-base sm:text-lg min-w-0"
                   />
-                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">일</span>
+                  <span className="text-slate-700 font-medium text-base sm:text-lg flex-shrink-0">점</span>
                 </div>
                 <div className="mt-2 text-sm text-slate-500">
-                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 {riskThreshold.lowTotalDays}일 이상 부정 감정 시 Low 레벨
+                  현재 설정: {riskThreshold.monitoringPeriodDays}일 중 부정 감정 점수 {riskThreshold.lowTotalDays}점 이상 시 Low 레벨
                 </div>
               </div>
             </div>
