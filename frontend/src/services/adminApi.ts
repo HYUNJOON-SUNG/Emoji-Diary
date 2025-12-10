@@ -59,21 +59,28 @@ export interface AdminLoginResponse {
  * @returns 로그인 결과
  */
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
-  const response = await adminApiClient.post('/auth/login', { email, password });
-  
-  if (response.data.success) {
-    // [명세서 1.1] 관리자 Access Token 및 Refresh Token을 localStorage에 저장
-    // - admin_access_token: 관리자 Access Token
-    // - admin_refresh_token: 관리자 Refresh Token
-    if (response.data.data.accessToken) {
-      localStorage.setItem('admin_access_token', response.data.data.accessToken);
+  try {
+    const response = await adminApiClient.post('/auth/login', { email, password });
+
+    if (response.data.success) {
+      // [명세서 1.1] 관리자 Access Token 및 Refresh Token을 localStorage에 저장
+      // - admin_access_token: 관리자 Access Token
+      // - admin_refresh_token: 관리자 Refresh Token
+      if (response.data.data.accessToken) {
+        localStorage.setItem('admin_access_token', response.data.data.accessToken);
+      }
+      if (response.data.data.refreshToken) {
+        localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
+      }
+      return response.data;
+    } else {
+      throw new Error(response.data.error?.message || '아이디 또는 비밀번호가 일치하지 않습니다.');
     }
-    if (response.data.data.refreshToken) {
-      localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
-    }
-    return response.data;
-  } else {
-    throw new Error(response.data.error?.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
+  } catch (error: any) {
+    // [API 명세서 10.1.1] axios 에러 처리 - 서버 에러 메시지 추출
+    // 400/401 에러 시 error.response.data에서 서버 메시지를 가져옴
+    const serverMessage = error.response?.data?.error?.message;
+    throw new Error(serverMessage || '아이디 또는 비밀번호가 일치하지 않습니다.');
   }
 }
 
@@ -101,7 +108,7 @@ export interface AdminRefreshResponse {
  */
 export async function adminRefresh(refreshToken: string): Promise<AdminRefreshResponse> {
   const response = await adminApiClient.post('/auth/refresh', { refreshToken });
-  
+
   if (response.data.success) {
     // [명세서 1.1] 관리자 Access Token 및 Refresh Token 저장
     if (response.data.data.accessToken) {
@@ -122,7 +129,7 @@ export async function adminRefresh(refreshToken: string): Promise<AdminRefreshRe
  */
 export async function adminLogout(): Promise<{ success: true; data: { message: string } }> {
   const response = await adminApiClient.post('/auth/logout');
-  
+
   if (response.data.success) {
     // [명세서 6.1] 관리자 Access Token 및 Refresh Token 제거
     localStorage.removeItem('admin_access_token');
@@ -195,9 +202,9 @@ export async function getDashboardStats(params?: DashboardStatsRequest): Promise
   if (params?.period) queryParams.period = params.period;
   if (params?.activeUserType) queryParams.activeUserType = params.activeUserType;
   if (params?.newUserPeriod) queryParams.newUserPeriod = params.newUserPeriod;
-  
+
   const response = await adminApiClient.get('/dashboard/stats', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -236,9 +243,9 @@ export async function getDiaryTrend(params: DiaryTrendRequest): Promise<DiaryTre
   const queryParams: Record<string, string | number> = { period: params.period };
   if (params.year !== undefined) queryParams.year = params.year;
   if (params.month !== undefined) queryParams.month = params.month;
-  
+
   const response = await adminApiClient.get('/dashboard/diary-trend', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -286,9 +293,9 @@ export async function getUserActivityStats(params: UserActivityStatsRequest): Pr
   if (params.year !== undefined) queryParams.year = params.year;
   if (params.month !== undefined) queryParams.month = params.month;
   if (params.metrics) queryParams.metrics = params.metrics;
-  
+
   const response = await adminApiClient.get('/dashboard/user-activity-stats', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -344,9 +351,9 @@ export async function getRiskLevelDistribution(params: RiskLevelDistributionRequ
   const queryParams: Record<string, string | number> = { period: params.period };
   if (params.year !== undefined) queryParams.year = params.year;
   if (params.month !== undefined) queryParams.month = params.month;
-  
+
   const response = await adminApiClient.get('/dashboard/risk-level-distribution', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -420,9 +427,9 @@ export async function getNoticeList(params?: NoticeListRequest): Promise<NoticeL
   const queryParams: Record<string, number> = {};
   if (params?.page) queryParams.page = params.page;
   if (params?.limit) queryParams.limit = params.limit;
-  
+
   const response = await adminApiClient.get('/notices', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -447,7 +454,7 @@ export interface NoticeDetailResponse {
  */
 export async function getNoticeById(noticeId: number): Promise<NoticeDetailResponse> {
   const response = await adminApiClient.get(`/notices/${noticeId}`);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -479,7 +486,7 @@ export interface CreateNoticeResponse {
  */
 export async function createNotice(notice: CreateNoticeRequest): Promise<CreateNoticeResponse> {
   const response = await adminApiClient.post('/notices', notice);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -512,7 +519,7 @@ export interface UpdateNoticeResponse {
  */
 export async function updateNotice(noticeId: number, notice: UpdateNoticeRequest): Promise<UpdateNoticeResponse> {
   const response = await adminApiClient.put(`/notices/${noticeId}`, notice);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -539,7 +546,7 @@ export interface DeleteNoticeResponse {
  */
 export async function deleteNotice(noticeId: number): Promise<DeleteNoticeResponse> {
   const response = await adminApiClient.delete(`/notices/${noticeId}`);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -572,7 +579,7 @@ export interface PinNoticeResponse {
  */
 export async function pinNotice(noticeId: number, isPinned: boolean): Promise<PinNoticeResponse> {
   const response = await adminApiClient.put(`/notices/${noticeId}/pin`, { isPinned });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -644,7 +651,7 @@ export interface RiskDetectionSettingsResponse {
  */
 export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsResponse> {
   const response = await adminApiClient.get('/settings/risk-detection');
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -660,7 +667,7 @@ export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsR
  */
 export async function updateRiskDetectionSettings(settings: RiskDetectionSettings): Promise<{ success: true; data: { message: string; updatedAt: string } }> {
   const response = await adminApiClient.put('/settings/risk-detection', settings);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -718,7 +725,7 @@ export interface CounselingResourcesResponse {
  */
 export async function getCounselingResources(): Promise<CounselingResourcesResponse> {
   const response = await adminApiClient.get('/settings/counseling-resources');
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -753,7 +760,7 @@ export interface CreateCounselingResourceResponse {
  */
 export async function createCounselingResource(resource: CreateCounselingResourceRequest): Promise<CreateCounselingResourceResponse> {
   const response = await adminApiClient.post('/settings/counseling-resources', resource);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -789,7 +796,7 @@ export interface UpdateCounselingResourceResponse {
  */
 export async function updateCounselingResource(resourceId: number, resource: UpdateCounselingResourceRequest): Promise<UpdateCounselingResourceResponse> {
   const response = await adminApiClient.put(`/settings/counseling-resources/${resourceId}`, resource);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -816,7 +823,7 @@ export interface DeleteCounselingResourceResponse {
  */
 export async function deleteCounselingResource(resourceId: number): Promise<DeleteCounselingResourceResponse> {
   const response = await adminApiClient.delete(`/settings/counseling-resources/${resourceId}`);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -899,9 +906,9 @@ export async function getErrorLogList(params?: ErrorLogListRequest): Promise<Err
   if (params?.search) queryParams.search = params.search;
   if (params?.page) queryParams.page = params.page;
   if (params?.limit) queryParams.limit = params.limit;
-  
+
   const response = await adminApiClient.get('/error-logs', { params: queryParams });
-  
+
   if (response.data.success) {
     return response.data;
   } else {
@@ -926,7 +933,7 @@ export interface ErrorLogDetailResponse {
  */
 export async function getErrorLogDetail(logId: number): Promise<ErrorLogDetailResponse> {
   const response = await adminApiClient.get(`/error-logs/${logId}`);
-  
+
   if (response.data.success) {
     return response.data;
   } else {
