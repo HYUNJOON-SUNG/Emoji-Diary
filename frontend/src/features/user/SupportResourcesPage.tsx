@@ -10,9 +10,10 @@
  * - 도움 요청 안내
  */
 
-import { useState } from 'react';
-import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X } from 'lucide-react';
-import { supportResources, categoryLabels, categoryColors } from '../../services/supportResources';
+import { useState, useEffect } from 'react';
+import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X, Loader2 } from 'lucide-react';
+import { getCounselingResources, type CounselingResource } from '../../services/counselingResourcesApi';
+import { categoryLabels, categoryColors } from '../../services/supportResources';
 
 interface SupportResourcesPageProps {
   showRiskWarning?: boolean;
@@ -21,12 +22,87 @@ interface SupportResourcesPageProps {
   onBack?: () => void;
 }
 
+/**
+ * 백엔드 카테고리(한글)를 프론트엔드 카테고리(영문)로 변환
+ */
+const mapCategoryToFrontend = (category: string): 'emergency' | 'counseling' | 'hotline' | 'community' => {
+  switch (category) {
+    case '긴급상담':
+      return 'emergency';
+    case '전문상담':
+      return 'counseling';
+    case '상담전화':
+      return 'hotline';
+    case '의료기관':
+      return 'community';
+    default:
+      return 'emergency';
+  }
+};
+
+/**
+ * 프론트엔드 카테고리(영문)를 백엔드 카테고리(한글)로 변환
+ */
+const mapCategoryToBackend = (category: string): 'all' | '긴급상담' | '전문상담' | '상담전화' | '의료기관' => {
+  switch (category) {
+    case 'emergency':
+      return '긴급상담';
+    case 'counseling':
+      return '전문상담';
+    case 'hotline':
+      return '상담전화';
+    case 'community':
+      return '의료기관';
+    default:
+      return 'all';
+  }
+};
+
+/**
+ * CounselingResource를 SupportResource 형식으로 변환
+ */
+const convertToSupportResource = (resource: CounselingResource) => {
+  return {
+    id: resource.id.toString(),
+    name: resource.name,
+    description: resource.description || '',
+    phone: resource.phone || undefined,
+    website: resource.website || undefined,
+    hours: resource.operatingHours || undefined,
+    category: mapCategoryToFrontend(resource.category),
+    isUrgent: resource.isUrgent,
+  };
+};
+
 export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }: SupportResourcesPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [resources, setResources] = useState<ReturnType<typeof convertToSupportResource>[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredResources = selectedCategory === 'all'
-    ? supportResources
-    : supportResources.filter(r => r.category === selectedCategory);
+  // 상담 기관 목록 조회
+  useEffect(() => {
+    const loadResources = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const categoryParam = selectedCategory === 'all' ? 'all' : mapCategoryToBackend(selectedCategory);
+        const response = await getCounselingResources(categoryParam);
+        const convertedResources = response.resources.map(convertToSupportResource);
+        setResources(convertedResources);
+      } catch (err: any) {
+        console.error('상담 기관 목록 조회 실패:', err);
+        setError('상담 기관 목록을 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.');
+        setResources([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadResources();
+  }, [selectedCategory]);
+
+  const filteredResources = resources;
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -175,11 +251,27 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
 
       {/* 리소스 목록 */}
       <div className="space-y-4">
-        <p className="text-sm text-stone-700 font-medium">
-          총 {filteredResources.length}개의 기관
-        </p>
-        
-        {filteredResources.map((resource) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+            <span className="ml-2 text-sm text-stone-600">상담 기관 목록을 불러오는 중...</span>
+          </div>
+        ) : error ? (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-stone-700 font-medium">
+              총 {filteredResources.length}개의 기관
+            </p>
+            
+            {filteredResources.length === 0 ? (
+              <div className="p-8 text-center bg-stone-50 rounded-lg border border-stone-200">
+                <p className="text-sm text-stone-600">표시할 상담 기관이 없습니다.</p>
+              </div>
+            ) : (
+              filteredResources.map((resource) => (
           <div
             key={resource.id}
             className="p-5 bg-white rounded-xl border border-stone-200 space-y-4 hover:shadow-md transition-shadow"
@@ -235,7 +327,10 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
               )}
             </div>
           </div>
-        ))}
+        ))
+            )}
+          </>
+        )}
       </div>
 
       {/* Bottom Info */}

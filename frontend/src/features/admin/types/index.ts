@@ -87,9 +87,9 @@ export interface CounselingResource {
   id: number; // ERD: Counseling_Resources.id (BIGINT)
   name: string; // ERD: Counseling_Resources.name (VARCHAR(255))
   category: '긴급상담' | '전문상담' | '상담전화' | '의료기관'; // ERD: Counseling_Resources.category (ENUM)
-  phone: string; // ERD: Counseling_Resources.phone (VARCHAR(50), NULL 가능)
+  phone?: string; // ERD: Counseling_Resources.phone (VARCHAR(50), NULL 가능)
   website?: string; // ERD: Counseling_Resources.website (VARCHAR(500), NULL 가능)
-  description: string; // ERD: Counseling_Resources.description (TEXT, NULL 가능)
+  description?: string; // ERD: Counseling_Resources.description (TEXT, NULL 가능)
   operatingHours?: string; // ERD: Counseling_Resources.operating_hours (VARCHAR(255), NULL 가능)
   isUrgent: boolean; // ERD: Counseling_Resources.is_urgent (BOOLEAN, 기본값: FALSE)
 }

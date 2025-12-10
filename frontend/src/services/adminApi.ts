@@ -693,9 +693,9 @@ export interface CounselingResource {
   id: number; // 상담 기관 고유 ID (ERD: Counseling_Resources.id, BIGINT)
   name: string; // 기관명 (ERD: Counseling_Resources.name, VARCHAR(255))
   category: '긴급상담' | '전문상담' | '상담전화' | '의료기관'; // 카테고리 (ERD: Counseling_Resources.category, ENUM)
-  phone: string; // 전화번호 (ERD: Counseling_Resources.phone, VARCHAR(50), NULL 가능)
+  phone?: string; // 전화번호 (ERD: Counseling_Resources.phone, VARCHAR(50), NULL 가능)
   website?: string; // 웹사이트 URL (ERD: Counseling_Resources.website, VARCHAR(500), NULL 가능)
-  description: string; // 설명 (ERD: Counseling_Resources.description, TEXT, NULL 가능)
+  description?: string; // 설명 (ERD: Counseling_Resources.description, TEXT, NULL 가능)
   operatingHours?: string; // 운영 시간 (ERD: Counseling_Resources.operating_hours, VARCHAR(255), NULL 가능)
   isUrgent: boolean; // 긴급 상담 기관 여부 (ERD: Counseling_Resources.is_urgent, BOOLEAN, 기본값: FALSE, High 레벨 위험 신호 시 전화번호 표시)
 }
@@ -733,9 +733,9 @@ export async function getCounselingResources(): Promise<CounselingResourcesRespo
 export interface CreateCounselingResourceRequest {
   name: string;
   category: '긴급상담' | '전문상담' | '상담전화' | '의료기관';
-  phone: string;
+  phone?: string; // NULL 가능
   website?: string;
-  description: string;
+  description?: string; // NULL 가능
   operatingHours?: string;
   isUrgent: boolean;
 }
@@ -768,9 +768,9 @@ export async function createCounselingResource(resource: CreateCounselingResourc
 export interface UpdateCounselingResourceRequest {
   name: string;
   category: '긴급상담' | '전문상담' | '상담전화' | '의료기관';
-  phone: string;
+  phone?: string; // NULL 가능
   website?: string;
-  description: string;
+  description?: string; // NULL 가능
   operatingHours?: string;
   isUrgent: boolean;
 }

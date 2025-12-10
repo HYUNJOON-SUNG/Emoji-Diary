@@ -692,13 +692,17 @@ export function SystemSettings() {
                           )}
                         </div>
                         
-                        <p className="text-slate-600 text-sm mb-3 break-words">{resource.description}</p>
+                        {resource.description && (
+                          <p className="text-slate-600 text-sm mb-3 break-words">{resource.description}</p>
+                        )}
                         
                         <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 text-sm">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Phone className="w-4 h-4 flex-shrink-0" />
-                            <span className="break-all">{resource.phone}</span>
-                          </div>
+                          {resource.phone && (
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Phone className="w-4 h-4 flex-shrink-0" />
+                              <span className="break-all">{resource.phone}</span>
+                            </div>
+                          )}
                           {resource.website && (
                             <div className="flex items-center gap-2 text-blue-600">
                               <Globe className="w-4 h-4 flex-shrink-0" />
@@ -828,15 +832,14 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
             {/* Phone */}
             <div className="min-w-0">
               <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                전화번호 <span className="text-red-600">*</span>
+                전화번호
               </label>
               <input
                 type="tel"
-                required
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.phone || ''}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value || undefined })}
                 className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-words min-w-0"
-                placeholder="예: 1393"
+                placeholder="예: 1393 (선택사항)"
               />
             </div>
 
@@ -857,16 +860,15 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
             {/* Description */}
             <div className="min-w-0">
               <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                설명 <span className="text-red-600">*</span>
+                설명
               </label>
               <textarea
-                required
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value || undefined })}
                 className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 resize-none break-words overflow-x-auto"
                 style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 rows={3}
-                placeholder="상담 기관에 대한 간단한 설명을 입력하세요"
+                placeholder="상담 기관에 대한 간단한 설명을 입력하세요 (선택사항)"
               />
             </div>
 
