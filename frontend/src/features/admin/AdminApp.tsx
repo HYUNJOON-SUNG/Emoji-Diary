@@ -68,8 +68,8 @@ export default function AdminApp() {
           department: 'IT 운영팀'
         };
         
-        // Save session (9.1)
-        // adminLogin 함수에서 이미 admin_jwt_token을 localStorage에 저장함
+        // [명세서 1.1] 관리자 세션 저장
+        // adminLogin 함수에서 이미 admin_access_token과 admin_refresh_token을 localStorage에 저장함
         login(response.data.accessToken, adminInfo);
         setIsAuthenticated(true);
         navigate('/admin/dashboard');
@@ -99,8 +99,8 @@ export default function AdminApp() {
    * 
    * @description
    * - 관리자 로그아웃 API 호출 (서버에서 Refresh Token 무효화)
-   * - 관리자 JWT 토큰 삭제 (localStorage에서 admin_jwt_token 제거)
-   * - 관리자 리프레시 토큰 삭제 (localStorage에서 admin_refresh_token 제거)
+   * - 관리자 Access Token 삭제 (localStorage에서 admin_access_token 제거, 명세서 1.1)
+   * - 관리자 Refresh Token 삭제 (localStorage에서 admin_refresh_token 제거, 명세서 1.1)
    * - 관리자 정보 삭제 (localStorage에서 admin_info 제거)
    * - 인증 상태 초기화 (isAuthenticated = false)
    * - 관리자 로그인 페이지로 자동 이동

@@ -89,6 +89,10 @@ export function useDashboardData(
       const trend = Array.isArray(trendRes.data.trend) ? trendRes.data.trend : [];
       const activity = Array.isArray(activityRes.data.trend) ? activityRes.data.trend : [];
       const risk = riskRes.data.distribution;
+      
+      // 디버깅: 위험 레벨 분포 데이터 확인
+      console.log('위험 레벨 분포 API 응답:', riskRes.data);
+      console.log('위험 레벨 분포 distribution:', risk);
 
       // API 응답의 date 필드를 day로 변환
       // weekly, monthly: date는 "YYYY-MM-DD" 형식 (일별)

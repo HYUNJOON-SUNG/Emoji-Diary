@@ -62,11 +62,12 @@ export async function adminLogin(email: string, password: string): Promise<Admin
   const response = await adminApiClient.post('/auth/login', { email, password });
   
   if (response.data.success) {
-    // 관리자 토큰을 localStorage에 저장 (adminApiClient interceptor에서 사용)
+    // [명세서 1.1] 관리자 Access Token 및 Refresh Token을 localStorage에 저장
+    // - admin_access_token: 관리자 Access Token
+    // - admin_refresh_token: 관리자 Refresh Token
     if (response.data.data.accessToken) {
-      localStorage.setItem('admin_jwt_token', response.data.data.accessToken);
+      localStorage.setItem('admin_access_token', response.data.data.accessToken);
     }
-    // 관리자 리프레시 토큰 저장
     if (response.data.data.refreshToken) {
       localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
     }
@@ -102,9 +103,9 @@ export async function adminRefresh(refreshToken: string): Promise<AdminRefreshRe
   const response = await adminApiClient.post('/auth/refresh', { refreshToken });
   
   if (response.data.success) {
-    // 새로운 토큰 저장
+    // [명세서 1.1] 관리자 Access Token 및 Refresh Token 저장
     if (response.data.data.accessToken) {
-      localStorage.setItem('admin_jwt_token', response.data.data.accessToken);
+      localStorage.setItem('admin_access_token', response.data.data.accessToken);
     }
     if (response.data.data.refreshToken) {
       localStorage.setItem('admin_refresh_token', response.data.data.refreshToken);
@@ -123,8 +124,8 @@ export async function adminLogout(): Promise<{ success: true; data: { message: s
   const response = await adminApiClient.post('/auth/logout');
   
   if (response.data.success) {
-    // 관리자 토큰 제거
-    localStorage.removeItem('admin_jwt_token');
+    // [명세서 6.1] 관리자 Access Token 및 Refresh Token 제거
+    localStorage.removeItem('admin_access_token');
     localStorage.removeItem('admin_refresh_token');
     return response.data;
   } else {

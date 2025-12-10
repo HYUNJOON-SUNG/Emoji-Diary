@@ -338,13 +338,12 @@ export function EmotionStatsPage({ onDateClick }: EmotionStatsPageProps) {
                   <div className="grid grid-cols-4 gap-2">
                     {[
                       { label: '행복', emoji: '😊' },
-                      { label: '사랑', emoji: '🥰' },
-                      { label: '설렘', emoji: '✨' },
-                      { label: '평온', emoji: '😌' },
+                      { label: '중립', emoji: '😐' },
+                      { label: '당황', emoji: '😳' },
                       { label: '슬픔', emoji: '😢' },
-                      { label: '화남', emoji: '😡' },
-                      { label: '피곤', emoji: '😴' },
+                      { label: '분노', emoji: '😠' },
                       { label: '불안', emoji: '😰' },
+                      { label: '혐오', emoji: '🤢' },
                     ].map((item) => (
                       <div key={item.label} className="text-center p-1.5 bg-white rounded border border-stone-100">
                         <div className="text-lg">{item.emoji}</div>

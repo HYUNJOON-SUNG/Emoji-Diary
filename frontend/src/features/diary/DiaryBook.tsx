@@ -385,18 +385,44 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     loadUser();
   }, []);
 
+  // 위험 신호 감지 (플로우 9.1, 9.2)
+  // 로그인 성공 후 다이어리 메인 화면 진입 시 한 번만 실행
+  // 세션 중에는 다시 표시하지 않음
   useEffect(() => {
     const analyzeRisk = async () => {
-      const analysis = await analyzeRiskSignals();
-      setRiskAnalysis(analysis);
-      if (analysis.isAtRisk && analysis.riskLevel !== 'none' && currentUser?.notificationEnabled) {
-        setShowRiskAlert(true);
+      try {
+        // 세션 상태 확인 (이미 표시했는지 확인)
+        const { getRiskSessionStatus } = await import('../../services/riskDetection');
+        const sessionStatus = await getRiskSessionStatus();
+        
+        // 이미 표시했다면 다시 표시하지 않음
+        if (sessionStatus.alreadyShown) {
+          return;
+        }
+        
+        // 위험 신호 분석
+        const analysis = await analyzeRiskSignals();
+        setRiskAnalysis(analysis);
+        
+        // 위험 레벨이 medium 이상이고 알림 설정이 활성화된 경우에만 표시 (플로우 9.2)
+        if ((analysis.riskLevel === 'medium' || analysis.riskLevel === 'high') && currentUser?.notificationEnabled) {
+          setShowRiskAlert(true);
+          
+          // 표시 완료 기록
+          const { markRiskAlertShown } = await import('../../services/riskDetection');
+          await markRiskAlertShown();
+        }
+      } catch (error) {
+        console.error('위험 신호 분석 실패:', error);
       }
     };
-    if (currentUser) {
+    
+    // 로그인 성공 후 다이어리 메인 화면 진입 시 한 번만 실행
+    // viewMode가 'home'이고 currentUser가 있을 때만 실행
+    if (currentUser && viewMode === 'home') {
       analyzeRisk();
     }
-  }, [refreshKey, currentUser]);
+  }, [currentUser, viewMode]); // refreshKey 제거 (세션 중 재분석 방지)
 
   const handleGoToSupport = () => {
     setIsFlipping(true);
@@ -658,7 +684,10 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       <AnimatePresence>
         {showRiskAlert && riskAnalysis && (
           <RiskAlertModal 
+            isOpen={showRiskAlert}
             riskLevel={riskAnalysis.riskLevel}
+            reasons={riskAnalysis.reasons}
+            urgentCounselingPhones={riskAnalysis.urgentCounselingPhones}
             onClose={() => setShowRiskAlert(false)}
             onViewResources={handleViewResources}
           />

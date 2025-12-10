@@ -11,7 +11,8 @@
  * 
  * @features
  * 1. JWT 토큰 관리 (9.1):
- *    - localStorage에 admin_jwt_token 저장
+ *    - localStorage에 admin_access_token 저장 (명세서 1.1)
+ *    - localStorage에 admin_refresh_token 저장 (명세서 1.1)
  *    - 토큰 유효성 검증
  *    - 토큰 만료 시 자동 로그아웃
  * 2. 관리자 정보 관리 (9.1):
@@ -21,8 +22,9 @@
  *    - 토큰 만료 감지
  *    - 401 에러 발생 시 자동 처리
  * 
- * @data_storage (9.2 데이터 저장소)
- * - admin_jwt_token (localStorage): 관리자 JWT 토큰
+ * @data_storage (9.2 데이터 저장소, 명세서 1.1)
+ * - admin_access_token (localStorage): 관리자 Access Token (명세서 1.1)
+ * - admin_refresh_token (localStorage): 관리자 Refresh Token (명세서 1.1)
  * - admin_info (localStorage): 관리자 정보 (id, name, email, role, department, lastLogin)
  * 
  * @note
@@ -49,28 +51,34 @@ export interface AdminInfo {
 // ========================================
 
 /**
- * JWT 토큰 저장
+ * JWT 토큰 저장 (명세서 1.1)
  * 
- * @param token - JWT 토큰
+ * @param token - 관리자 Access Token
+ * @description
+ * 명세서 1.1에 따라 localStorage에 admin_access_token으로 저장합니다.
  */
 export function saveToken(token: string): void {
-  localStorage.setItem('admin_jwt_token', token);
+  localStorage.setItem('admin_access_token', token);
 }
 
 /**
- * JWT 토큰 가져오기
+ * JWT 토큰 가져오기 (명세서 1.1)
  * 
- * @returns JWT 토큰 또는 null
+ * @returns 관리자 Access Token 또는 null
+ * @description
+ * 명세서 1.1에 따라 localStorage에서 admin_access_token을 가져옵니다.
  */
 export function getToken(): string | null {
-  return localStorage.getItem('admin_jwt_token');
+  return localStorage.getItem('admin_access_token');
 }
 
 /**
- * JWT 토큰 삭제
+ * JWT 토큰 삭제 (명세서 1.1)
+ * @description
+ * 명세서 1.1에 따라 localStorage에서 admin_access_token을 삭제합니다.
  */
 export function removeToken(): void {
-  localStorage.removeItem('admin_jwt_token');
+  localStorage.removeItem('admin_access_token');
 }
 
 /**

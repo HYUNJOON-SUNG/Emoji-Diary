@@ -655,6 +655,8 @@ export async function fetchChartStats(
       const dateEmotionMap: { [date: string]: { [emotion: string]: number } } = {};
       
       // 각 날짜별로 감정 카운트 집계
+      // [ERD 설계서] KoBERT 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오 (7가지)
+      console.log('API 응답 emotions 데이터:', data.emotions);
       data.emotions.forEach((item: { date: string; emotion: string }) => {
         if (!dateEmotionMap[item.date]) {
           dateEmotionMap[item.date] = {
@@ -674,29 +676,58 @@ export async function fetchChartStats(
         }
         
         // KoBERT 감정을 ChartDataPoint 형식으로 매핑
+        // [ERD 설계서] KoBERT 감정 7가지: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
         const emotion = item.emotion;
-        if (emotion === '행복') dateEmotionMap[item.date].happy++;
-        else if (emotion === '슬픔') dateEmotionMap[item.date].sad++;
-        else if (emotion === '분노') dateEmotionMap[item.date].angry++;
-        else if (emotion === '불안') dateEmotionMap[item.date].anxious++;
-        else if (emotion === '중립' || emotion === '당황') dateEmotionMap[item.date].neutral++;
+        if (emotion === '행복') {
+          dateEmotionMap[item.date].happy++;
+        } else if (emotion === '슬픔') {
+          dateEmotionMap[item.date].sad++;
+        } else if (emotion === '분노') {
+          dateEmotionMap[item.date].angry++;
+        } else if (emotion === '불안') {
+          dateEmotionMap[item.date].anxious++;
+        } else if (emotion === '혐오') {
+          // 혐오 감정은 anxious에 포함 (부정 감정이므로)
+          // 또는 별도 필드가 필요하면 추가 가능
+          dateEmotionMap[item.date].anxious++; // 임시로 불안과 함께 처리
+        } else if (emotion === '중립' || emotion === '당황') {
+          dateEmotionMap[item.date].neutral++;
+        } else {
+          // 알 수 없는 감정은 로그로 기록
+          console.warn('알 수 없는 감정:', emotion, 'date:', item.date);
+        }
         
         dateEmotionMap[item.date].total++;
       });
       
+      // 디버깅: 날짜별 감정 데이터 확인
+      console.log('날짜별 감정 데이터 집계 결과:', dateEmotionMap);
+      console.log('API 응답 dates 배열:', data.dates);
+      
       // dates 배열을 기준으로 ChartDataPoint 배열 생성
-      return data.dates.map((date: string) => {
+      // 월간일 때는 주별로 그룹화된 데이터가 올 수 있음
+      const chartData = data.dates.map((date: string) => {
         const emotionData = dateEmotionMap[date] || {
           happy: 0, love: 0, excited: 0, calm: 0, grateful: 0, hopeful: 0,
           tired: 0, sad: 0, angry: 0, anxious: 0, neutral: 0, total: 0,
         };
         
-        return {
+        const point = {
           date,
           displayLabel: formatDateLabel(date, type),
           ...emotionData,
         };
+        
+        // 디버깅: 각 데이터 포인트 확인 (월간일 때만)
+        if (type === 'monthly') {
+          console.log(`월간 데이터 포인트 [${date}]:`, point);
+        }
+        
+        return point;
       });
+      
+      console.log('최종 차트 데이터:', chartData);
+      return chartData;
     } else {
       throw new Error(response.data.error?.message || '차트 데이터를 불러오는데 실패했습니다.');
     }
@@ -710,11 +741,26 @@ export async function fetchChartStats(
 }
 
 function formatDateLabel(dateStr: string, type: 'weekly' | 'monthly'): string {
-  const date = new Date(dateStr);
   if (type === 'weekly') {
+    // 주간: 일별 표시 (예: 12/10)
+    const date = new Date(dateStr);
     return `${date.getMonth() + 1}/${date.getDate()}`;
   } else {
-    return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+    // 월간: 주별 표시 (예: 12월 2주차)
+    // 백엔드에서 YYYY-MM-DD 형식의 날짜를 반환하므로 주차로 변환
+    const date = new Date(dateStr);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    
+    // 해당 날짜가 속한 주가 해당 월의 몇 번째 주인지 계산
+    const firstDayOfMonth = new Date(year, date.getMonth(), 1);
+    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0(일) ~ 6(토)
+    const dayOfMonth = date.getDate();
+    
+    // 주차 계산: (날짜 + 첫날의 요일 오프셋) / 7 올림
+    const weekOfMonth = Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+    
+    return `${month}월 ${weekOfMonth}주차`;
   }
 }
 
