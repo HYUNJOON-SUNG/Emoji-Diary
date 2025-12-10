@@ -69,8 +69,7 @@ public class AdminDashboardService {
 
     // 기본 metrics 목록
     private static final List<String> DEFAULT_METRICS = List.of(
-            METRIC_DAU, METRIC_WAU, METRIC_MAU, METRIC_NEW_USERS, METRIC_RETENTION_RATE
-    );
+            METRIC_DAU, METRIC_WAU, METRIC_MAU, METRIC_NEW_USERS, METRIC_RETENTION_RATE);
 
     // ActiveUserType 상수 (기본값)
     private static final String ACTIVE_USER_TYPE_DAU = "dau";
@@ -89,8 +88,7 @@ public class AdminDashboardService {
     public RiskLevelDistributionResponse getRiskLevelDistribution(
             String period,
             Integer year,
-            Integer month
-    ) {
+            Integer month) {
         // 기간 계산
         PeriodRange periodRange = calculatePeriodRange(period, year, month);
         LocalDateTime startDate = periodRange.getStartDate();
@@ -105,8 +103,7 @@ public class AdminDashboardService {
 
         // 비율 계산 및 Response 생성
         return buildRiskLevelDistributionResponse(
-                period, year, month, riskLevelCounts, totalUsers
-        );
+                period, year, month, riskLevelCounts, totalUsers);
     }
 
     /**
@@ -116,8 +113,7 @@ public class AdminDashboardService {
     public DiaryTrendResponse getDiaryTrend(
             String period,
             Integer year,
-            Integer month
-    ) {
+            Integer month) {
         // 기간 계산 (LocalDate 사용)
         DatePeriodRange datePeriodRange = calculateDatePeriodRange(period, year, month);
         LocalDate startDate = datePeriodRange.getStartDate();
@@ -147,29 +143,36 @@ public class AdminDashboardService {
      */
     @Transactional(readOnly = true)
     public DashboardStatsResponse getDashboardStats(
-            String period,
+            String totalUsersPeriod,
+            String averageDiariesPeriod,
             String activeUserType,
-            String newUserPeriod
-    ) {
+            String newUserPeriod) {
         // 기본값 설정
-        String resolvedPeriod = (period != null && !period.trim().isEmpty()) ? period.toLowerCase() : PERIOD_MONTHLY;
-        String resolvedActiveUserType = (activeUserType != null && !activeUserType.trim().isEmpty()) ? activeUserType.toLowerCase() : ACTIVE_USER_TYPE_DAU;
-        String resolvedNewUserPeriod = (newUserPeriod != null && !newUserPeriod.trim().isEmpty()) ? newUserPeriod.toLowerCase() : NEW_USER_PERIOD_DAILY;
+        String resolvedTotalUsersPeriod = (totalUsersPeriod != null && !totalUsersPeriod.trim().isEmpty())
+                ? totalUsersPeriod.toLowerCase()
+                : PERIOD_MONTHLY;
+        String resolvedAverageDiariesPeriod = (averageDiariesPeriod != null && !averageDiariesPeriod.trim().isEmpty())
+                ? averageDiariesPeriod.toLowerCase()
+                : PERIOD_MONTHLY;
+        String resolvedActiveUserType = (activeUserType != null && !activeUserType.trim().isEmpty())
+                ? activeUserType.toLowerCase()
+                : ACTIVE_USER_TYPE_DAU;
+        String resolvedNewUserPeriod = (newUserPeriod != null && !newUserPeriod.trim().isEmpty())
+                ? newUserPeriod.toLowerCase()
+                : NEW_USER_PERIOD_DAILY;
 
-        // 현재 기간 계산
-        PeriodRange currentPeriodRange = calculatePeriodRangeForStats(resolvedPeriod);
-        LocalDateTime currentStart = currentPeriodRange.getStartDate();
-        LocalDateTime currentEnd = currentPeriodRange.getEndDate();
+        // 1. 전체 사용자 수 및 증감 (totalUsersPeriod 사용)
+        PeriodRange totalUsersPeriodRange = calculatePeriodRangeForStats(resolvedTotalUsersPeriod);
+        LocalDateTime totalUsersCurrentStart = totalUsersPeriodRange.getStartDate();
+        LocalDateTime totalUsersCurrentEnd = totalUsersPeriodRange.getEndDate();
+        PeriodRange totalUsersPreviousPeriodRange = calculatePreviousPeriodRange(resolvedTotalUsersPeriod,
+                totalUsersCurrentStart);
+        LocalDateTime totalUsersPreviousStart = totalUsersPreviousPeriodRange.getStartDate();
+        LocalDateTime totalUsersPreviousEnd = totalUsersPreviousPeriodRange.getEndDate();
 
-        // 이전 기간 계산 (증감 계산용)
-        PeriodRange previousPeriodRange = calculatePreviousPeriodRange(resolvedPeriod, currentStart);
-        LocalDateTime previousStart = previousPeriodRange.getStartDate();
-        LocalDateTime previousEnd = previousPeriodRange.getEndDate();
-
-        // 1. 전체 사용자 수 및 증감
         DashboardStatsResponse.TotalUsersInfo totalUsers = calculateTotalUsersInfo(
-                resolvedPeriod, currentStart, currentEnd, previousStart, previousEnd
-        );
+                resolvedTotalUsersPeriod, totalUsersCurrentStart, totalUsersCurrentEnd,
+                totalUsersPreviousStart, totalUsersPreviousEnd);
 
         // 2. 활성 사용자 수 (DAU/WAU/MAU)
         DashboardStatsResponse.ActiveUsersInfo activeUsers = calculateActiveUsers(resolvedActiveUserType);
@@ -177,16 +180,21 @@ public class AdminDashboardService {
         // 3. 신규 가입자 수
         DashboardStatsResponse.NewUsersInfo newUsers = calculateNewUsers(resolvedNewUserPeriod);
 
-        // 4. 총 일지 작성 수 및 증감
+        // 4. 총 일지 작성 수 및 증감 (totalUsersPeriod 사용 - 전체 사용자와 같은 기간)
         DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo(
-                currentStart, currentEnd, previousStart, previousEnd
-        );
+                totalUsersCurrentStart, totalUsersCurrentEnd, totalUsersPreviousStart, totalUsersPreviousEnd);
 
-        // 5. 일평균 일지 작성 수
-        DashboardStatsResponse.AverageDailyDiariesInfo averageDailyDiaries = calculateAverageDailyDiaries(resolvedPeriod, currentStart, currentEnd);
+        // 5. 일평균 일지 작성 수 (averageDiariesPeriod 사용)
+        PeriodRange avgDiariesPeriodRange = calculatePeriodRangeForStats(resolvedAverageDiariesPeriod);
+        LocalDateTime avgDiariesCurrentStart = avgDiariesPeriodRange.getStartDate();
+        LocalDateTime avgDiariesCurrentEnd = avgDiariesPeriodRange.getEndDate();
 
-        // 6. 위험 레벨별 사용자 수
-        DashboardStatsResponse.RiskLevelUsersInfo riskLevelUsers = calculateRiskLevelUsers(currentStart, currentEnd);
+        DashboardStatsResponse.AverageDailyDiariesInfo averageDailyDiaries = calculateAverageDailyDiaries(
+                resolvedAverageDiariesPeriod, avgDiariesCurrentStart, avgDiariesCurrentEnd);
+
+        // 6. 위험 레벨별 사용자 수 (totalUsersPeriod 사용 - 전체 사용자와 같은 기간)
+        DashboardStatsResponse.RiskLevelUsersInfo riskLevelUsers = calculateRiskLevelUsers(
+                totalUsersCurrentStart, totalUsersCurrentEnd);
 
         return DashboardStatsResponse.builder()
                 .totalUsers(totalUsers)
@@ -207,16 +215,14 @@ public class AdminDashboardService {
             LocalDateTime currentStart,
             LocalDateTime currentEnd,
             LocalDateTime previousStart,
-            LocalDateTime previousEnd
-    ) {
+            LocalDateTime previousEnd) {
         // 현재 시점의 전체 사용자 수
         long totalUsersCount = userRepository.countByDeletedAtIsNull();
-        
+
         // 이전 기간 종료 시점까지의 전체 사용자 수
         long previousTotalUsersCount = getLongValueOrZero(
-            userRepository.countByDeletedAtIsNullAndCreatedAtBefore(previousEnd)
-        );
-        
+                userRepository.countByDeletedAtIsNullAndCreatedAtBefore(previousEnd));
+
         // 전체 사용자 수 증감 = 현재 전체 사용자 수 - 이전 기간 종료 시점 전체 사용자 수
         long usersChange = totalUsersCount - previousTotalUsersCount;
 
@@ -234,15 +240,12 @@ public class AdminDashboardService {
             LocalDateTime currentStart,
             LocalDateTime currentEnd,
             LocalDateTime previousStart,
-            LocalDateTime previousEnd
-    ) {
+            LocalDateTime previousEnd) {
         long totalDiariesCount = getLongValueOrZero(adminDiaryRepository.countTotalDiaries());
         long currentDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
-                currentStart.toLocalDate(), currentEnd.toLocalDate()
-        ));
+                currentStart.toLocalDate(), currentEnd.toLocalDate()));
         long previousDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
-                previousStart.toLocalDate(), previousEnd.toLocalDate()
-        ));
+                previousStart.toLocalDate(), previousEnd.toLocalDate()));
         long diariesChange = currentDiariesCount - previousDiariesCount;
 
         return DashboardStatsResponse.TotalDiariesInfo.builder()
@@ -266,11 +269,10 @@ public class AdminDashboardService {
             String period,
             Integer year,
             Integer month,
-            String metrics
-    ) {
+            String metrics) {
         // metrics 파라미터 파싱
         List<String> metricsList = parseMetrics(metrics);
-        
+
         // 기간 계산 (LocalDate 사용)
         DatePeriodRange datePeriodRange = calculateDatePeriodRange(period, year, month);
         LocalDate startDate = datePeriodRange.getStartDate();
@@ -344,23 +346,22 @@ public class AdminDashboardService {
      */
     private Map<RiskDetectionSession.RiskLevel, Long> extractRiskLevelCounts(
             LocalDateTime startDate,
-            LocalDateTime endDate
-    ) {
+            LocalDateTime endDate) {
         List<Object[]> results = riskDetectionSessionRepository.countUsersByRiskLevelInPeriod(startDate, endDate);
         Map<RiskDetectionSession.RiskLevel, Long> riskLevelCounts = new HashMap<>();
-        
+
         // 초기화 (모든 레벨을 0으로)
         for (RiskDetectionSession.RiskLevel level : RiskDetectionSession.RiskLevel.values()) {
             riskLevelCounts.put(level, 0L);
         }
-        
+
         // 집계 결과 매핑
         for (Object[] result : results) {
             RiskDetectionSession.RiskLevel riskLevel = (RiskDetectionSession.RiskLevel) result[0];
             Long count = ((Number) result[1]).longValue();
             riskLevelCounts.put(riskLevel, count);
         }
-        
+
         return riskLevelCounts;
     }
 
@@ -404,9 +405,9 @@ public class AdminDashboardService {
             Integer year,
             Integer month,
             Map<RiskDetectionSession.RiskLevel, Long> riskLevelCounts,
-            long totalUsers
-    ) {
-        RiskLevelDistributionResponse.RiskLevelDistribution distribution = buildDistribution(riskLevelCounts, totalUsers);
+            long totalUsers) {
+        RiskLevelDistributionResponse.RiskLevelDistribution distribution = buildDistribution(riskLevelCounts,
+                totalUsers);
 
         return RiskLevelDistributionResponse.builder()
                 .period(period)
@@ -422,13 +423,16 @@ public class AdminDashboardService {
      */
     private RiskLevelDistributionResponse.RiskLevelDistribution buildDistribution(
             Map<RiskDetectionSession.RiskLevel, Long> riskLevelCounts,
-            long totalUsers
-    ) {
+            long totalUsers) {
         return RiskLevelDistributionResponse.RiskLevelDistribution.builder()
-                .high(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.HIGH, 0L), totalUsers))
-                .medium(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.MEDIUM, 0L), totalUsers))
-                .low(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.LOW, 0L), totalUsers))
-                .none(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.NONE, 0L), totalUsers))
+                .high(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.HIGH, 0L),
+                        totalUsers))
+                .medium(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.MEDIUM, 0L),
+                        totalUsers))
+                .low(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.LOW, 0L),
+                        totalUsers))
+                .none(createDistributionItem(riskLevelCounts.getOrDefault(RiskDetectionSession.RiskLevel.NONE, 0L),
+                        totalUsers))
                 .build();
     }
 
@@ -505,13 +509,12 @@ public class AdminDashboardService {
      */
     private List<DiaryTrendItem> buildDailyTrend(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = adminDiaryRepository.countDiariesByDateInPeriod(startDate, endDate);
-        
+
         // 결과를 Map으로 변환 (빠른 조회를 위해)
         Map<LocalDate, Long> countMap = results.stream()
                 .collect(Collectors.toMap(
                         result -> (LocalDate) result[0],
-                        result -> ((Number) result[1]).longValue()
-                ));
+                        result -> ((Number) result[1]).longValue()));
 
         // 기간 내 모든 날짜에 대해 데이터 생성 (0인 날짜도 포함)
         List<DiaryTrendItem> trend = new ArrayList<>();
@@ -530,7 +533,7 @@ public class AdminDashboardService {
      */
     private List<DiaryTrendItem> buildMonthlyTrend(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = adminDiaryRepository.countDiariesByMonthInPeriod(startDate, endDate);
-        
+
         return results.stream()
                 .map(this::convertMonthlyResultToTrendItem)
                 .collect(Collectors.toList());
@@ -543,7 +546,7 @@ public class AdminDashboardService {
         Integer year = extractYearFromResult(result);
         Integer month = extractMonthFromResult(result);
         Long count = extractCountFromResult(result);
-        
+
         LocalDate monthDate = LocalDate.of(year, month, FIRST_DAY_OF_MONTH);
         return createDiaryTrendItem(monthDate.format(MONTH_FORMATTER), count);
     }
@@ -599,17 +602,16 @@ public class AdminDashboardService {
     private List<UserActivityStatsItem> buildDailyUserActivityTrend(
             LocalDate startDate,
             LocalDate endDate,
-            List<String> metricsList
-    ) {
+            List<String> metricsList) {
         List<UserActivityStatsItem> trend = new ArrayList<>();
         LocalDate currentDate = startDate;
-        
+
         while (currentDate.isBefore(endDate)) {
             UserActivityStatsItem item = buildUserActivityItemForDate(currentDate, metricsList);
             trend.add(item);
             currentDate = currentDate.plusDays(DAYS_INCREMENT);
         }
-        
+
         return trend;
     }
 
@@ -619,22 +621,21 @@ public class AdminDashboardService {
     private List<UserActivityStatsItem> buildMonthlyUserActivityTrend(
             LocalDate startDate,
             LocalDate endDate,
-            List<String> metricsList
-    ) {
+            List<String> metricsList) {
         List<UserActivityStatsItem> trend = new ArrayList<>();
         LocalDate currentDate = startDate;
-        
+
         while (currentDate.isBefore(endDate)) {
             YearMonth yearMonth = YearMonth.from(currentDate);
             LocalDate monthStart = yearMonth.atDay(FIRST_DAY_OF_MONTH);
             LocalDate monthEnd = yearMonth.atEndOfMonth();
-            
+
             UserActivityStatsItem item = buildUserActivityItemForMonth(monthStart, monthEnd, metricsList);
             trend.add(item);
-            
+
             currentDate = yearMonth.plusMonths(1).atDay(FIRST_DAY_OF_MONTH);
         }
-        
+
         return trend;
     }
 
@@ -643,8 +644,7 @@ public class AdminDashboardService {
      */
     private UserActivityStatsItem buildUserActivityItemForDate(
             LocalDate date,
-            List<String> metricsList
-    ) {
+            List<String> metricsList) {
         UserActivityStatsItem.UserActivityStatsItemBuilder builder = UserActivityStatsItem.builder()
                 .date(date.format(DATE_FORMATTER));
 
@@ -689,14 +689,14 @@ public class AdminDashboardService {
     private UserActivityStatsItem buildUserActivityItemForMonth(
             LocalDate monthStart,
             LocalDate monthEnd,
-            List<String> metricsList
-    ) {
+            List<String> metricsList) {
         UserActivityStatsItem.UserActivityStatsItemBuilder builder = UserActivityStatsItem.builder()
                 .date(YearMonth.from(monthStart).format(MONTH_FORMATTER));
 
         // DAU: 월 평균 (월 내 일별 DAU의 평균)
         if (metricsList.contains(METRIC_DAU)) {
-            List<Object[]> dailyDauResults = adminDiaryRepository.countDistinctUsersByDateInPeriod(monthStart, monthEnd);
+            List<Object[]> dailyDauResults = adminDiaryRepository.countDistinctUsersByDateInPeriod(monthStart,
+                    monthEnd);
             double avgDau = dailyDauResults.stream()
                     .mapToLong(result -> ((Number) result[1]).longValue())
                     .average()
@@ -749,7 +749,7 @@ public class AdminDashboardService {
         LocalDateTime dayStart = date.atStartOfDay();
         LocalDateTime dayEnd = date.plusDays(DAYS_INCREMENT).atStartOfDay();
         List<Object[]> results = userRepository.countNewUsersByDateInPeriod(dayStart, dayEnd);
-        
+
         long newUsers = results.stream()
                 .filter(result -> {
                     java.sql.Date sqlDate = (java.sql.Date) result[0];
@@ -759,7 +759,7 @@ public class AdminDashboardService {
                 .mapToLong(result -> ((Number) result[1]).longValue())
                 .findFirst()
                 .orElse(0L);
-        
+
         return (int) newUsers;
     }
 
@@ -770,7 +770,7 @@ public class AdminDashboardService {
         LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
         LocalDateTime monthEndDateTime = monthEnd.atStartOfDay();
         List<Object[]> results = userRepository.countNewUsersByMonthInPeriod(monthStartDateTime, monthEndDateTime);
-        
+
         long newUsers = results.stream()
                 .filter(result -> {
                     Integer resultYear = (Integer) result[0];
@@ -780,7 +780,7 @@ public class AdminDashboardService {
                 .mapToLong(result -> ((Number) result[2]).longValue())
                 .findFirst()
                 .orElse(0L);
-        
+
         return (int) newUsers;
     }
 
@@ -790,21 +790,21 @@ public class AdminDashboardService {
      */
     private Double calculateRetentionRateForDate(LocalDate date) {
         LocalDate previousDate = date.minusDays(DAYS_INCREMENT);
-        
+
         // 이전 날짜에 활동한 사용자 ID 목록
         List<Long> previousUserIds = adminDiaryRepository.findDistinctUserIdsByDate(previousDate);
         if (previousUserIds.isEmpty()) {
             return 0.0;
         }
-        
+
         // 현재 날짜에 활동한 사용자 ID 목록
         List<Long> currentUserIds = adminDiaryRepository.findDistinctUserIdsByDate(date);
-        
+
         // 교집합 계산
         long retainedUsers = currentUserIds.stream()
                 .filter(previousUserIds::contains)
                 .count();
-        
+
         return calculatePercentage(retainedUsers, previousUserIds.size());
     }
 
@@ -815,24 +815,25 @@ public class AdminDashboardService {
     private Double calculateRetentionRateForMonth(LocalDate monthStart, LocalDate monthEnd) {
         YearMonth currentMonth = YearMonth.from(monthStart);
         YearMonth previousMonth = currentMonth.minusMonths(1);
-        
+
         LocalDate previousMonthStart = previousMonth.atDay(FIRST_DAY_OF_MONTH);
         LocalDate previousMonthEnd = previousMonth.atEndOfMonth().plusDays(DAYS_INCREMENT);
-        
+
         // 이전 월에 활동한 사용자 ID 목록
-        List<Long> previousUserIds = adminDiaryRepository.findDistinctUserIdsInPeriod(previousMonthStart, previousMonthEnd);
+        List<Long> previousUserIds = adminDiaryRepository.findDistinctUserIdsInPeriod(previousMonthStart,
+                previousMonthEnd);
         if (previousUserIds.isEmpty()) {
             return 0.0;
         }
-        
+
         // 현재 월에 활동한 사용자 ID 목록
         List<Long> currentUserIds = adminDiaryRepository.findDistinctUserIdsInPeriod(monthStart, monthEnd);
-        
+
         // 교집합 계산
         long retainedUsers = currentUserIds.stream()
                 .filter(previousUserIds::contains)
                 .count();
-        
+
         return calculatePercentage(retainedUsers, previousUserIds.size());
     }
 
@@ -894,13 +895,11 @@ public class AdminDashboardService {
 
         LocalDate wauStart = today.minusDays(WEEKLY_DAYS - 1);
         long wau = getLongValueOrZero(adminDiaryRepository.countDistinctUsersInPeriod(
-                wauStart, today.plusDays(DAYS_INCREMENT)
-        ));
+                wauStart, today.plusDays(DAYS_INCREMENT)));
 
         LocalDate mauStart = today.minusDays(MONTHLY_DAYS - 1);
         long mau = getLongValueOrZero(adminDiaryRepository.countDistinctUsersInPeriod(
-                mauStart, today.plusDays(DAYS_INCREMENT)
-        ));
+                mauStart, today.plusDays(DAYS_INCREMENT)));
 
         return DashboardStatsResponse.ActiveUsersInfo.builder()
                 .dau(dau)
@@ -959,8 +958,7 @@ public class AdminDashboardService {
     private DashboardStatsResponse.AverageDailyDiariesInfo calculateAverageDailyDiaries(
             String period,
             LocalDateTime startDateTime,
-            LocalDateTime endDateTime
-    ) {
+            LocalDateTime endDateTime) {
         LocalDate startDate = startDateTime.toLocalDate();
         LocalDate endDate = endDateTime.toLocalDate();
 
@@ -1008,10 +1006,10 @@ public class AdminDashboardService {
     /**
      * 위험 레벨별 사용자 수 계산
      */
-    private DashboardStatsResponse.RiskLevelUsersInfo calculateRiskLevelUsers(LocalDateTime startDateTime, LocalDateTime endDateTime) {
+    private DashboardStatsResponse.RiskLevelUsersInfo calculateRiskLevelUsers(LocalDateTime startDateTime,
+            LocalDateTime endDateTime) {
         List<Object[]> riskLevelCounts = riskDetectionSessionRepository.countUsersByRiskLevelInPeriod(
-                startDateTime, endDateTime
-        );
+                startDateTime, endDateTime);
 
         Map<RiskDetectionSession.RiskLevel, Long> riskLevelMap = new HashMap<>();
         for (Object[] result : riskLevelCounts) {
@@ -1070,4 +1068,3 @@ public class AdminDashboardService {
         }
     }
 }
-
