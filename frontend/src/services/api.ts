@@ -185,8 +185,22 @@ apiClient.interceptors.response.use(
     }
 
     // 기타 에러 처리
-    const errorData = error.response.data as { error?: { message?: string; code?: string } };
-    const errorMessage = errorData?.error?.message || '요청 처리 중 오류가 발생했습니다.';
+    const errorData = error.response.data as { error?: { message?: string; code?: string }; message?: string };
+    
+    // 백엔드 에러 메시지 추출 (여러 형식 지원)
+    let errorMessage = '요청 처리 중 오류가 발생했습니다.';
+    
+    if (errorData?.error?.message) {
+      errorMessage = errorData.error.message;
+    } else if (errorData?.message) {
+      errorMessage = errorData.message;
+    }
+    
+    // "No static resource" 에러인 경우 더 명확한 메시지 제공
+    if (errorMessage.includes('No static resource') || errorMessage.includes('NoResourceFoundException')) {
+      errorMessage = '요청한 API 엔드포인트가 백엔드에 구현되지 않았습니다.';
+    }
+    
     throw new Error(errorMessage);
   }
 );

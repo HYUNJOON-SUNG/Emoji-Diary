@@ -147,7 +147,7 @@ interface DaySummaryPageProps {
   onEdit?: () => void; // 수정 버튼 클릭 콜백
   onStartWriting?: () => void; // "일기 작성하기" 버튼 클릭 콜백
   onBackToCalendar?: () => void; // 뒤로가기 콜백 (플로우 6.3: 이전 화면으로 복귀)
-  onMapRecommendation?: (emotion: string, emotionCategory: string) => void; // 장소 추천 콜백
+  onMapRecommendation?: (emotion: string, emotionCategory: string, diaryId?: string) => void; // 장소 추천 콜백 (diaryId 포함)
 }
 
 export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWriting, onBackToCalendar, onMapRecommendation }: DaySummaryPageProps) {
@@ -341,91 +341,16 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
     // 장소 추천 모드
     if (showMapRecommendation) {
       return (
-        <div className="h-full flex flex-col overflow-hidden">
-          {/* 좌우 페이지 레이아웃 */}
-          <div className="flex-1 grid grid-cols-2 gap-6 relative overflow-hidden">
-            {/* 왼쪽 페이지 - 지도만 크게 */}
-            <div className="relative bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-lg overflow-hidden shadow-sm">
-              {/* 지도 헤더 */}
-              <div className="absolute top-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-3 z-10">
-                <div className="flex items-center gap-2">
-                   <span className="text-2xl">{getEmotionEmoji(entry.emotion)}</span>
-                  <span className="text-xl">🗺️</span>
-                  <div className="flex-1">
-                    <p className="text-xs text-stone-700">주변 추천 장소</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 지도 영역 */}
-              <div className="absolute inset-0 pt-14">
-                <div className="relative w-full h-full">
-                  {/* Grid background */}
-                  <div className="absolute inset-0 opacity-20">
-                    <div className="grid grid-cols-8 grid-rows-8 h-full">
-                      {Array.from({ length: 64 }).map((_, i) => (
-                        <div key={i} className="border border-blue-200" />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Center location marker */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="relative">
-                      <div className="absolute -inset-4 bg-blue-500/20 rounded-full animate-ping" />
-                      <MapPin className="w-10 h-10 text-blue-600 fill-blue-200 relative z-10" />
-                    </div>
-                  </div>
-                  
-                  {/* Restaurant markers */}
-                  <div className="absolute top-1/4 left-1/3">
-                    <MapPin className="w-7 h-7 text-rose-600 fill-rose-200" />
-                  </div>
-                  <div className="absolute top-2/3 left-1/4">
-                    <MapPin className="w-7 h-7 text-rose-600 fill-rose-200" />
-                  </div>
-                  <div className="absolute top-1/3 right-1/4">
-                    <MapPin className="w-7 h-7 text-rose-600 fill-rose-200" />
-                  </div>
-                  <div className="absolute bottom-1/4 right-1/3">
-                    <MapPin className="w-7 h-7 text-rose-600 fill-rose-200" />
-                  </div>
-                  <div className="absolute top-1/2 right-1/5">
-                    <MapPin className="w-7 h-7 text-rose-600 fill-rose-200" />
-                  </div>
-                  
-                  {/* Info badge */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-white/90 backdrop-blur-sm border border-blue-200 rounded-lg px-3 py-1.5 shadow-lg">
-                      <p className="text-xs text-stone-700">
-                        카카오 지도 API 연동 시 실제 지도 표시
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Map controls */}
-                  <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-                    <div className="bg-white rounded-lg shadow-md px-2 py-1 text-xs text-stone-600 border border-stone-200">
-                      일반지도
-                    </div>
-                    <div className="bg-white rounded-lg shadow-md p-1.5 flex flex-col gap-1">
-                      <div className="w-5 h-5 bg-stone-100 rounded flex items-center justify-center text-xs font-medium">+</div>
-                      <div className="w-5 h-5 bg-stone-100 rounded flex items-center justify-center text-xs font-medium">-</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 오른쪽 페이지 - 장소 리스트만 */}
-            <KakaoMapRecommendation
-              isOpen={true}
-              onClose={() => setShowMapRecommendation(false)}
-              emotion={entry.emotion}
-               emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
-              isInline={true}
-            />
-          </div>
+        <div className="h-full w-full flex flex-col">
+          <KakaoMapRecommendation
+            isOpen={true}
+            onClose={() => setShowMapRecommendation(false)}
+            diaryId={entry.id} // 일기 ID 전달 (장소 추천 API 호출에 사용)
+            emotion={entry.emotion}
+            emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
+            isInline={true}
+            hideFoodRecommendation={true} // 일기 상세 조회에서는 AI 음식 추천 숨김 (중복 방지)
+          />
         </div>
       );
     }
@@ -674,10 +599,15 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           */}
           <button
             onClick={() => {
+              // 장소 추천 화면 표시
+              setShowMapRecommendation(true);
+              
+              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우)
               if (onMapRecommendation) {
                  // emotionCategory가 없으면 계산
                  const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
-                 onMapRecommendation(entry.emotion, emotionCategory);
+                 // 일기 ID 전달 (장소 추천 API 호출에 사용)
+                 onMapRecommendation(entry.emotion, emotionCategory, entry.id);
               }
             }}
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
@@ -756,6 +686,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             diaryId={entry.id} // 일기 ID 전달 (권장 방식)
             emotion={entry.emotion} // 하위 호환성 (diaryId가 없을 때 사용)
             emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)} // 하위 호환성
+            hideFoodRecommendation={true} // 일기 상세 조회에서는 AI 음식 추천 숨김 (중복 방지)
           />
         )}
       </div>

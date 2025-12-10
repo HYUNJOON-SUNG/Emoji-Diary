@@ -4,6 +4,7 @@ import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, Diary
 import { uploadImage, deleteImage } from '../../services/uploadApi';
 import { BASE_URL } from '../../services/api';
 import { theme } from '../../styles/theme';
+import { apiClient } from '../../services/api';
 
 /**
  * KoBERT 감정 분석 결과 매핑 (플로우 3.3, 3.4)
@@ -63,6 +64,7 @@ interface DiaryWritingPageProps {
     emotionCategory: string;
     aiComment?: string;
     date: Date;
+    diaryId?: string; // 일기 ID (장소 추천 기능에서 사용)
   }) => void;
   /** 취소 버튼 클릭 시 콜백 (캘린더로 돌아가기 또는 상세보기로) */
   onCancel: () => void;
@@ -413,6 +415,36 @@ export function DiaryWritingPage({
   };
   
   /**
+   * 위험 신호 분석 및 세션 저장
+   * 
+   * [백엔드 API 사용]
+   * - 백엔드에 이미 위험 신호 분석 API가 구현되어 있음
+   * - POST /api/risk-detection/mark-shown: 세션 저장 (markShown 메서드가 내부적으로 analyze를 호출하여 최신 위험 레벨로 세션 저장)
+   * 
+   * [백엔드 구현 확인]
+   * - RiskDetectionService.markShown(): 내부적으로 analyze()를 호출하여 최신 위험 레벨을 계산한 후 세션 저장
+   *   - 같은 날짜의 세션이 있으면 업데이트, 없으면 새로 생성
+   *   - 세션은 Risk_Detection_Sessions 테이블에 저장되며, 관리자 대시보드의 위험 레벨 분포 통계에 사용됨
+   * 
+   * [주의사항]
+   * - markShown()이 내부적으로 analyze()를 호출하므로, analyze()를 별도로 호출할 필요 없음
+   * - 일기 작성/수정 후 위험 신호를 계산하여 세션에 저장하면, 관리자 대시보드에서 위험 레벨 분포 통계를 조회할 수 있음
+   */
+  const calculateAndSaveRiskSignals = async () => {
+    try {
+      // 백엔드의 markShown API를 호출하여 위험 신호 분석 및 세션 저장 수행
+      // markShown()이 내부적으로 analyze()를 호출하여 최신 위험 레벨을 계산한 후 세션 저장
+      // 세션은 Risk_Detection_Sessions 테이블에 저장되며, 관리자 대시보드의 위험 레벨 분포 통계에 사용됨
+      await apiClient.post('/risk-detection/mark-shown');
+      console.log('위험 신호 분석 및 세션 저장 완료');
+    } catch (error: any) {
+      // 위험 신호 분석 실패는 일기 저장에 영향을 주지 않음
+      console.error('위험 신호 분석 및 세션 저장 실패:', error);
+      // 에러를 throw하지 않음 (일기 저장은 성공한 것으로 처리)
+    }
+  };
+
+  /**
    * 일기 저장 핸들러 (플로우 3.3, 4.3)
    * 
    * ===== 새 작성 모드 (플로우 3.3) =====
@@ -546,6 +578,15 @@ export function DiaryWritingPage({
         onWritingComplete(selectedDate);
       }
       
+      // 6. 위험 신호 점수 계산 및 백엔드 전송 (비동기 처리, 에러 발생해도 일기 저장은 성공)
+      // [프론트엔드 구현] 일기 작성/수정 후 위험 신호 점수 계산
+      try {
+        await calculateAndSaveRiskSignals();
+      } catch (riskError) {
+        console.error('위험 신호 점수 계산 실패:', riskError);
+        // 위험 신호 점수 계산 실패해도 일기 저장은 성공한 것으로 처리
+      }
+      
       if (isEditMode && onSaveSuccess) {
         // 수정 모드: 바로 상세보기로 이동 (플로우 4.3)
         onSaveSuccess(dateKey);
@@ -559,6 +600,7 @@ export function DiaryWritingPage({
           emotionCategory: savedDiary.emotionCategory || 'neutral', // 백엔드 응답의 감정 카테고리
           aiComment: savedDiary.aiComment || '', // AI 코멘트 전달
           date: selectedDate,
+          diaryId: savedDiary.id, // 일기 ID 전달 (장소 추천 기능에서 사용)
         });
       }
       

@@ -92,6 +92,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   const [showMapRecommendation, setShowMapRecommendation] = useState(false);
   const [mapEmotion, setMapEmotion] = useState('');
   const [mapEmotionCategory, setMapEmotionCategory] = useState('');
+  const [mapDiaryId, setMapDiaryId] = useState<string | undefined>(undefined); // 일기 ID (장소 추천 API 호출에 사용)
   
   // 수정 모드 상태
   const [isEditMode, setIsEditMode] = useState(false);
@@ -180,6 +181,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     emotionCategory: string;
     aiComment?: string;
     date: Date;
+    diaryId?: string; // 일기 ID (장소 추천 기능에서 사용)
   }) => {
     const emotionCategoryMapping: { [key: string]: string } = {
       'positive': 'happy',
@@ -197,6 +199,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setAnalysisEmotionCategory(mappedEmotionCategory);
     setAnalysisComment(emotionData.aiComment || '오늘 하루도 수고 많았어요!');
     setAnalysisDate(emotionData.date);
+    
+    // 일기 ID 저장 (장소 추천 기능에서 사용)
+    setMapDiaryId(emotionData.diaryId);
     
     setShowEmotionAnalysis(true);
     handleDataChange();
@@ -233,11 +238,12 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     }
   };
 
-  // 감정 분석 모달에서 장소 추천
+  // 감정 분석 모달에서 장소 추천 (플로우 8.1 경로 A: 일기 저장 후 감정 분석 모달에서)
   const handleEmotionAnalysisMapRecommendation = () => {
     setShowEmotionAnalysis(false);
     setMapEmotion(analysisEmotion);
     setMapEmotionCategory(analysisEmotionCategory);
+    // mapDiaryId는 이미 handleFinishWriting에서 설정됨
     
     if (analysisDate) {
       setSelectedDate(analysisDate);
@@ -594,6 +600,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                   <KakaoMapRecommendation
                     isOpen={true}
                     onClose={() => setShowMapRecommendation(false)}
+                    diaryId={mapDiaryId} // 일기 ID 전달 (장소 추천 API 호출에 사용)
                     emotion={mapEmotion || (selectedDate ? 'neutral' : '')}
                     emotionCategory={mapEmotionCategory || 'neutral'}
                     isInline={true}
@@ -605,9 +612,10 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                     onEdit={handleEdit}
                     onStartWriting={() => handleStartWriting(selectedDate!)}
                     onBackToCalendar={handleBackToCalendar}
-                    onMapRecommendation={(emotion, emotionCategory) => {
+                    onMapRecommendation={(emotion, emotionCategory, diaryId) => {
                       setMapEmotion(emotion);
                       setMapEmotionCategory(emotionCategory);
+                      setMapDiaryId(diaryId); // 일기 ID 저장 (장소 추천 API 호출에 사용)
                       setShowMapRecommendation(true);
                     }}
                   />

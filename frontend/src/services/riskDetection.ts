@@ -176,3 +176,17 @@ export async function markRiskAlertShown(): Promise<{ message: string }> {
     throw new Error(response.data.error?.message || '위험 알림 표시 완료 기록에 실패했습니다.');
   }
 }
+
+/**
+ * [참고] 위험 신호 점수 계산은 백엔드에서 자동으로 수행됩니다.
+ * 
+ * [API 명세서 Section 6.1]
+ * - GET /api/risk-detection/analyze: 백엔드에서 위험 신호 분석 및 세션 저장
+ * - POST /api/risk-detection/mark-shown: 세션에 알림 표시 완료 기록
+ * 
+ * [백엔드 구현]
+ * - RiskDetectionService.analyze(): 위험 신호 분석 및 세션 생성/업데이트
+ * - RiskDetectionService.markShown(): 세션에 shownAt 기록 (내부적으로 analyze 호출)
+ * 
+ * 프론트엔드에서는 위험 신호 점수를 계산하지 않으며, 백엔드 API를 호출하여 결과를 받습니다.
+ */

@@ -899,19 +899,24 @@ export async function updatePassword(data: {
  * PUT /users/me/notification
  * 알림 설정 변경
  * 
- * [API 명세서 - 사용자 API 참고]
- * [플로우 9: 마이페이지 - 알림 설정]
+ * [주의사항]
+ * - 현재 API 명세서(API_명세서.md)에 이 엔드포인트가 명시되어 있지 않습니다.
+ * - ERD 설계서에도 Users 테이블에 notification_enabled 컬럼이 없습니다.
+ * - 사용자 명세서에도 "위험 알림 받기" 설정에 대한 명시적인 언급이 없습니다.
+ * - 하지만 프론트엔드에서는 이 기능이 구현되어 있으며, 사용자 피드백에 따라 필요합니다.
  * 
- * 동작:
- * 1. 알림 켜기/끄기 토글
- * 2. 사용자 설정 업데이트
- * 3. localStorage 동기화
- * 
- * [백엔드 연동 완료]
- * - PUT /api/users/me/notification
- * - Headers: { Authorization: 'Bearer {accessToken}' } (apiClient interceptor에서 자동 추가)
+ * [백엔드 구현 필요]
+ * - PUT /api/users/me/notification 엔드포인트 구현 필요
+ * - Users 테이블에 notification_enabled 컬럼 추가 필요 (또는 다른 방식으로 구현)
  * - Request: { enabled: boolean }
  * - Response: { success: true, data: { message: string, enabled: boolean } }
+ * 
+ * [임시 처리]
+ * - 현재는 API 호출을 시도하지만, 백엔드에 구현되지 않은 경우 에러가 발생할 수 있습니다.
+ * - 에러 발생 시 사용자에게 적절한 메시지를 표시합니다.
+ * 
+ * [플로우 9: 마이페이지 - 알림 설정]
+ * - 위험 신호 알림을 받을지 말지를 설정하는 기능
  */
 export async function updateNotificationSettings(enabled: boolean): Promise<{ message: string; enabled: boolean }> {
   try {

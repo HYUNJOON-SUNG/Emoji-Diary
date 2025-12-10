@@ -4,10 +4,15 @@
 
 ### 1. 보안 정보 (Critical!)
 다음 파일들은 **절대 Git에 올리지 않습니다**:
-- ✅ `.env`, `.env.local`, `.env.*` (환경 변수)
+- ✅ `.env`, `.env.local`, `.env.*` (환경 변수) - **카카오 REST API 키 포함!**
 - ✅ `application.yml`, `application.properties` (백엔드 설정)
 - ✅ `*.secret`, `*.key`, `*.pem`, `*.cert` (인증서 및 키)
 - ✅ `config.json`, `secrets.json` (설정 파일)
+
+**⚠️ 카카오 REST API 키 주의사항:**
+- `.env` 파일에 `VITE_KAKAO_REST_API_KEY`가 포함되어 있습니다
+- 이 파일이 GitHub에 업로드되면 누구나 API 키를 볼 수 있습니다
+- API 키가 노출되면 즉시 카카오 개발자 콘솔에서 재발급 받으세요
 
 **확인 방법:**
 ```bash
@@ -88,9 +93,10 @@ git diff --cached --name-only
 ## ⚠️ 주의사항
 
 1. **API 키 관리**
-   - 현재 카카오맵 API 키가 `index.html`에 하드코딩되어 있음
+   - 카카오 REST API 키는 `.env` 파일에 `VITE_KAKAO_REST_API_KEY`로 관리됨
+   - `.env` 파일은 절대 GitHub에 업로드하지 않음
    - 프로덕션 배포 시 카카오 개발자 콘솔에서 도메인 제한 필수
-   - 필요시 환경 변수로 전환 고려
+   - 팀원은 `.env.example` 파일을 참고하여 자신의 `.env` 파일 생성
 
 2. **대용량 파일**
    - AI 모델 파일은 수백 MB ~ 수 GB까지 가능

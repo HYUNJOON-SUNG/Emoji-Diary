@@ -344,8 +344,9 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       // [API 명세서 Section 2.2.2] POST /api/auth/send-verification-code
       const response = await sendVerificationCodeForSignup({ email });
       setSuccess(response.message);
-      setCodeSentAt(response.sentAt);
-      setTimeRemaining(300); // 5분 = 300초
+      // API 응답에는 expiresIn만 반환되므로 현재 시간을 기준으로 계산
+      setCodeSentAt(Date.now());
+      setTimeRemaining(response.expiresIn || 300); // API에서 반환된 expiresIn 사용 (기본값 300초)
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);

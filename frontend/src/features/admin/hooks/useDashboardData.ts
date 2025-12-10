@@ -88,11 +88,22 @@ export function useDashboardData(
       const stats = statsRes.data;
       const trend = Array.isArray(trendRes.data.trend) ? trendRes.data.trend : [];
       const activity = Array.isArray(activityRes.data.trend) ? activityRes.data.trend : [];
-      const risk = riskRes.data.distribution;
+      
+      // 위험 레벨 분포 데이터 파싱
+      // 백엔드 응답 구조: { success: true, data: { period, year, month, distribution: {...}, total } }
+      // riskRes.data는 { success: true, data: RiskLevelDistributionResponse } 구조
+      const riskData = riskRes.data?.data || riskRes.data;
+      const risk = riskData?.distribution || {};
       
       // 디버깅: 위험 레벨 분포 데이터 확인
-      console.log('위험 레벨 분포 API 응답:', riskRes.data);
+      console.log('위험 레벨 분포 API 전체 응답:', riskRes.data);
+      console.log('위험 레벨 분포 data:', riskData);
       console.log('위험 레벨 분포 distribution:', risk);
+      console.log('위험 레벨 분포 total:', riskData?.total);
+      console.log('위험 레벨 분포 high:', risk?.high);
+      console.log('위험 레벨 분포 medium:', risk?.medium);
+      console.log('위험 레벨 분포 low:', risk?.low);
+      console.log('위험 레벨 분포 none:', risk?.none);
 
       // API 응답의 date 필드를 day로 변환
       // weekly, monthly: date는 "YYYY-MM-DD" 형식 (일별)
@@ -129,11 +140,30 @@ export function useDashboardData(
         retentionRate: item?.retentionRate ?? 0
       }));
 
+      // 위험 레벨 분포 데이터 매핑
+      // 백엔드 응답: distribution.high.count, distribution.high.percentage 등
+      // null 체크 및 기본값 처리
       const riskDistributionData = [
-        { level: 'High', count: risk?.high?.count ?? 0, percentage: risk?.high?.percentage ?? 0 },
-        { level: 'Medium', count: risk?.medium?.count ?? 0, percentage: risk?.medium?.percentage ?? 0 },
-        { level: 'Low', count: risk?.low?.count ?? 0, percentage: risk?.low?.percentage ?? 0 },
-        { level: 'None', count: risk?.none?.count ?? 0, percentage: risk?.none?.percentage ?? 0 }
+        { 
+          level: 'High', 
+          count: (risk?.high?.count !== undefined && risk?.high?.count !== null) ? Number(risk.high.count) : 0, 
+          percentage: (risk?.high?.percentage !== undefined && risk?.high?.percentage !== null) ? Number(risk.high.percentage) : 0 
+        },
+        { 
+          level: 'Medium', 
+          count: (risk?.medium?.count !== undefined && risk?.medium?.count !== null) ? Number(risk.medium.count) : 0, 
+          percentage: (risk?.medium?.percentage !== undefined && risk?.medium?.percentage !== null) ? Number(risk.medium.percentage) : 0 
+        },
+        { 
+          level: 'Low', 
+          count: (risk?.low?.count !== undefined && risk?.low?.count !== null) ? Number(risk.low.count) : 0, 
+          percentage: (risk?.low?.percentage !== undefined && risk?.low?.percentage !== null) ? Number(risk.low.percentage) : 0 
+        },
+        { 
+          level: 'None', 
+          count: (risk?.none?.count !== undefined && risk?.none?.count !== null) ? Number(risk.none.count) : 0, 
+          percentage: (risk?.none?.percentage !== undefined && risk?.none?.percentage !== null) ? Number(risk.none.percentage) : 0 
+        }
       ];
 
       return {
