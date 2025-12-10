@@ -33,6 +33,7 @@ import { analyzeRiskSignals, RiskAnalysis } from '../../services/riskDetection';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 import { getCurrentUser, User as UserType } from '../../services/authApi';
 import { Plus, Wifi, Battery } from 'lucide-react';
+import { MobileLayout } from '../../components/MobileLayout';
 
 /**
  * 뷰 모드 타입 정의
@@ -471,72 +472,80 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     return 'home';
   };
 
-  return (
-    <div className="relative w-full h-screen overflow-hidden bg-white flex flex-col">
-      {/* 상단 상태바 영역 (모바일 앱 스타일) */}
-      <div className="w-full h-9 sm:h-10 bg-white flex items-center justify-between px-4 text-xs sm:text-sm text-gray-900 z-40 border-b border-gray-100">
-        {/* 왼쪽: 시간 */}
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{formatTime(currentTime)}</span>
-        </div>
-        
-        {/* 오른쪽: 신호, 와이파이, 배터리 */}
-        <div className="flex items-center gap-2">
-          {/* 신호 강도 (4단계) */}
-          <div className="flex items-end gap-0.5 h-3">
-            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '3px' }}></div>
-            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '5px' }}></div>
-            <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '7px' }}></div>
-            <div className="w-1 bg-gray-400 rounded-t-sm" style={{ height: '9px' }}></div>
-          </div>
-          
-          {/* 와이파이 */}
-          <Wifi className="w-4 h-4 text-gray-900" strokeWidth={2} />
-          
-          {/* 배터리 */}
-          <div className="flex items-center">
-            <Battery className="w-5 h-5 text-gray-900" strokeWidth={2} />
-            <span className="text-[10px] font-medium text-gray-900 ml-0.5">85%</span>
-          </div>
-        </div>
+  // Header 컴포넌트 (상단 상태바)
+  const header = (
+    <div className="w-full h-9 bg-white flex items-center justify-between px-4 text-xs text-gray-900 border-b border-gray-100">
+      {/* 왼쪽: 시간 */}
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-sm">{formatTime(currentTime)}</span>
       </div>
       
-      {/* 메인 콘텐츠 영역 */}
-      <div className="flex-1 overflow-hidden relative">
-      {/* Navigation Warning Modal */}
-      {showNavigationWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-                <span className="text-3xl">⚠️</span>
+      {/* 오른쪽: 신호, 와이파이, 배터리 */}
+      <div className="flex items-center gap-2">
+        {/* 신호 강도 (4단계) */}
+        <div className="flex items-end gap-0.5 h-3">
+          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '3px' }}></div>
+          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '5px' }}></div>
+          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '7px' }}></div>
+          <div className="w-1 bg-gray-400 rounded-t-sm" style={{ height: '9px' }}></div>
+        </div>
+        
+        {/* 와이파이 */}
+        <Wifi className="w-4 h-4 text-gray-900" strokeWidth={2} />
+        
+        {/* 배터리 */}
+        <div className="flex items-center">
+          <Battery className="w-5 h-5 text-gray-900" strokeWidth={2} />
+          <span className="text-[10px] font-medium text-gray-900 ml-0.5">85%</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Footer 컴포넌트 (하단 탭바)
+  const footer = viewMode !== 'writing' && viewMode !== 'reading' ? (
+    <BottomTabBar 
+      activeTab={getCurrentTab()}
+      onTabChange={handleTabChange}
+    />
+  ) : null;
+
+  return (
+    <MobileLayout header={header} footer={footer}>
+      <div className="relative w-full h-full">
+        {/* Navigation Warning Modal */}
+        {showNavigationWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                  <span className="text-3xl">⚠️</span>
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-lg text-stone-800">작성 중인 내용이 사라집니다</h3>
+                <p className="text-sm text-stone-600">정말 이동하시겠습니까?</p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={handleContinueWritingFromNav} 
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm min-h-[44px]"
+                >
+                  계속 작성
+                </button>
+                <button 
+                  onClick={handleConfirmNavigation} 
+                  className="flex-1 px-4 py-3 bg-stone-200 text-stone-700 rounded-xl hover:bg-stone-300 transition-colors min-h-[44px]"
+                >
+                  이동하기
+                </button>
               </div>
             </div>
-            <div className="text-center space-y-2">
-              <h3 className="text-lg text-stone-800">작성 중인 내용이 사라집니다</h3>
-              <p className="text-sm text-stone-600">정말 이동하시겠습니까?</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button 
-                onClick={handleContinueWritingFromNav} 
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm min-h-[44px]"
-              >
-                계속 작성
-              </button>
-              <button 
-                onClick={handleConfirmNavigation} 
-                className="flex-1 px-4 py-3 bg-stone-200 text-stone-700 rounded-xl hover:bg-stone-300 transition-colors min-h-[44px]"
-              >
-                이동하기
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Main Content - 하단 탭 바를 위한 패딩 추가 */}
-      <div className="relative pb-20 h-full overflow-y-auto w-full" style={{ minHeight: 'calc(100vh - 8rem)' }}> {/* 하단 탭 바 높이만큼 패딩 */}
-        <div className="w-full max-w-2xl mx-auto px-4" style={{ minHeight: '100%' }}>
+        {/* Main Content */}
+        <div className="w-full max-w-2xl mx-auto px-4 py-4">
           {/* Home View - 캘린더 + 일기 요약 */}
           {viewMode === 'home' && (
             <div className="w-full px-4 py-2">
@@ -665,53 +674,44 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
             </div>
           )}
         </div>
-      </div>
-      </div>
 
-      {/* Bottom Tab Bar - viewMode가 writing이 아닐 때만 표시 */}
-      {viewMode !== 'writing' && viewMode !== 'reading' && (
-        <BottomTabBar 
-          activeTab={getCurrentTab()}
-          onTabChange={handleTabChange}
-        />
-      )}
-
-      {/* Floating Action Button - 홈 화면에서만 표시 */}
-      {viewMode === 'home' && (
-        <button
-          onClick={() => handleStartWriting(selectedDate || new Date())}
-          className="absolute bottom-24 right-4 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center active:bg-blue-600 transition-all active:scale-95 z-30 touch-manipulation"
-          title="일기 작성하기"
-          aria-label="일기 작성하기"
-        >
-          <Plus className="w-7 h-7" strokeWidth={2.5} />
-        </button>
-      )}
-
-      {/* Modals */}
-      <AnimatePresence>
-        {showRiskAlert && riskAnalysis && (
-          <RiskAlertModal 
-            isOpen={showRiskAlert}
-            riskLevel={riskAnalysis.riskLevel}
-            reasons={riskAnalysis.reasons}
-            urgentCounselingPhones={riskAnalysis.urgentCounselingPhones}
-            onClose={() => setShowRiskAlert(false)}
-            onViewResources={handleViewResources}
-          />
+        {/* Floating Action Button - 홈 화면에서만 표시 */}
+        {viewMode === 'home' && (
+          <button
+            onClick={() => handleStartWriting(selectedDate || new Date())}
+            className="fixed bottom-24 right-4 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center active:bg-blue-600 transition-all active:scale-95 z-30 touch-manipulation"
+            title="일기 작성하기"
+            aria-label="일기 작성하기"
+          >
+            <Plus className="w-7 h-7" strokeWidth={2.5} />
+          </button>
         )}
-        {showEmotionAnalysis && (
-          <EmotionAnalysisModal 
-            isOpen={showEmotionAnalysis}
-            onClose={handleCloseEmotionAnalysis}
-            emotion={analysisEmotion}
-            emotionName={analysisEmotionName}
-            emotionCategory={analysisEmotionCategory}
-            comment={analysisComment}
-            onMapRecommendation={handleEmotionAnalysisMapRecommendation}
-          />
-        )}
-      </AnimatePresence>
-    </div>
+
+        {/* Modals */}
+        <AnimatePresence>
+          {showRiskAlert && riskAnalysis && (
+            <RiskAlertModal 
+              isOpen={showRiskAlert}
+              riskLevel={riskAnalysis.riskLevel}
+              reasons={riskAnalysis.reasons}
+              urgentCounselingPhones={riskAnalysis.urgentCounselingPhones}
+              onClose={() => setShowRiskAlert(false)}
+              onViewResources={handleViewResources}
+            />
+          )}
+          {showEmotionAnalysis && (
+            <EmotionAnalysisModal 
+              isOpen={showEmotionAnalysis}
+              onClose={handleCloseEmotionAnalysis}
+              emotion={analysisEmotion}
+              emotionName={analysisEmotionName}
+              emotionCategory={analysisEmotionCategory}
+              comment={analysisComment}
+              onMapRecommendation={handleEmotionAnalysisMapRecommendation}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </MobileLayout>
   );
 }
