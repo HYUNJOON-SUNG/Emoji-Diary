@@ -145,6 +145,8 @@ public class AdminDashboardService {
     public DashboardStatsResponse getDashboardStats(
             String totalUsersPeriod,
             String averageDiariesPeriod,
+            String totalDiariesPeriod,
+            String riskLevelPeriod,
             String activeUserType,
             String newUserPeriod) {
         // 기본값 설정
@@ -153,6 +155,12 @@ public class AdminDashboardService {
                 : PERIOD_MONTHLY;
         String resolvedAverageDiariesPeriod = (averageDiariesPeriod != null && !averageDiariesPeriod.trim().isEmpty())
                 ? averageDiariesPeriod.toLowerCase()
+                : PERIOD_MONTHLY;
+        String resolvedTotalDiariesPeriod = (totalDiariesPeriod != null && !totalDiariesPeriod.trim().isEmpty())
+                ? totalDiariesPeriod.toLowerCase()
+                : PERIOD_MONTHLY;
+        String resolvedRiskLevelPeriod = (riskLevelPeriod != null && !riskLevelPeriod.trim().isEmpty())
+                ? riskLevelPeriod.toLowerCase()
                 : PERIOD_MONTHLY;
         String resolvedActiveUserType = (activeUserType != null && !activeUserType.trim().isEmpty())
                 ? activeUserType.toLowerCase()
@@ -180,9 +188,18 @@ public class AdminDashboardService {
         // 3. 신규 가입자 수
         DashboardStatsResponse.NewUsersInfo newUsers = calculateNewUsers(resolvedNewUserPeriod);
 
-        // 4. 총 일지 작성 수 및 증감 (totalUsersPeriod 사용 - 전체 사용자와 같은 기간)
+        // 4. 총 일지 작성 수 및 증감 (totalDiariesPeriod 사용 - 독립 파라미터)
+        PeriodRange totalDiariesPeriodRange = calculatePeriodRangeForStats(resolvedTotalDiariesPeriod);
+        LocalDateTime totalDiariesCurrentStart = totalDiariesPeriodRange.getStartDate();
+        LocalDateTime totalDiariesCurrentEnd = totalDiariesPeriodRange.getEndDate();
+        PeriodRange totalDiariesPreviousPeriodRange = calculatePreviousPeriodRange(resolvedTotalDiariesPeriod,
+                totalDiariesCurrentStart);
+        LocalDateTime totalDiariesPreviousStart = totalDiariesPreviousPeriodRange.getStartDate();
+        LocalDateTime totalDiariesPreviousEnd = totalDiariesPreviousPeriodRange.getEndDate();
+
         DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo(
-                totalUsersCurrentStart, totalUsersCurrentEnd, totalUsersPreviousStart, totalUsersPreviousEnd);
+                resolvedTotalDiariesPeriod, totalDiariesCurrentStart, totalDiariesCurrentEnd, totalDiariesPreviousStart,
+                totalDiariesPreviousEnd);
 
         // 5. 일평균 일지 작성 수 (averageDiariesPeriod 사용)
         PeriodRange avgDiariesPeriodRange = calculatePeriodRangeForStats(resolvedAverageDiariesPeriod);
@@ -192,9 +209,13 @@ public class AdminDashboardService {
         DashboardStatsResponse.AverageDailyDiariesInfo averageDailyDiaries = calculateAverageDailyDiaries(
                 resolvedAverageDiariesPeriod, avgDiariesCurrentStart, avgDiariesCurrentEnd);
 
-        // 6. 위험 레벨별 사용자 수 (totalUsersPeriod 사용 - 전체 사용자와 같은 기간)
+        // 6. 위험 레벨별 사용자 수 (riskLevelPeriod 사용 - 독립 파라미터)
+        PeriodRange riskLevelPeriodRange = calculatePeriodRangeForStats(resolvedRiskLevelPeriod);
+        LocalDateTime riskLevelCurrentStart = riskLevelPeriodRange.getStartDate();
+        LocalDateTime riskLevelCurrentEnd = riskLevelPeriodRange.getEndDate();
+
         DashboardStatsResponse.RiskLevelUsersInfo riskLevelUsers = calculateRiskLevelUsers(
-                totalUsersCurrentStart, totalUsersCurrentEnd);
+                resolvedRiskLevelPeriod, riskLevelCurrentStart, riskLevelCurrentEnd);
 
         return DashboardStatsResponse.builder()
                 .totalUsers(totalUsers)
@@ -237,6 +258,7 @@ public class AdminDashboardService {
      * 총 일지 작성 수 정보 계산
      */
     private DashboardStatsResponse.TotalDiariesInfo calculateTotalDiariesInfo(
+            String period,
             LocalDateTime currentStart,
             LocalDateTime currentEnd,
             LocalDateTime previousStart,
@@ -251,6 +273,7 @@ public class AdminDashboardService {
         return DashboardStatsResponse.TotalDiariesInfo.builder()
                 .count(totalDiariesCount)
                 .change(diariesChange)
+                .period(period)
                 .build();
     }
 
@@ -1006,7 +1029,9 @@ public class AdminDashboardService {
     /**
      * 위험 레벨별 사용자 수 계산
      */
-    private DashboardStatsResponse.RiskLevelUsersInfo calculateRiskLevelUsers(LocalDateTime startDateTime,
+    private DashboardStatsResponse.RiskLevelUsersInfo calculateRiskLevelUsers(
+            String period,
+            LocalDateTime startDateTime,
             LocalDateTime endDateTime) {
         List<Object[]> riskLevelCounts = riskDetectionSessionRepository.countUsersByRiskLevelInPeriod(
                 startDateTime, endDateTime);
@@ -1023,6 +1048,7 @@ public class AdminDashboardService {
                 .medium(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.MEDIUM, 0L))
                 .low(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.LOW, 0L))
                 .none(riskLevelMap.getOrDefault(RiskDetectionSession.RiskLevel.NONE, 0L))
+                .period(period)
                 .build();
     }
 

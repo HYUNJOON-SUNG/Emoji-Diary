@@ -47,6 +47,8 @@ interface DashboardStats {
 export function useDashboardData(
   totalUsersPeriod: 'week' | 'month' | 'year',
   avgDiariesPeriod: 'week' | 'month' | 'year',
+  totalDiariesPeriod: 'week' | 'month' | 'year',
+  riskLevelPeriod: 'week' | 'month' | 'year',
   diaryTrendPeriod: 'week' | 'month' | 'year',
   userActivityPeriod: 'week' | 'month' | 'year',
   riskDistributionPeriod: 'week' | 'month' | 'year',
@@ -62,6 +64,8 @@ export function useDashboardData(
   const fetchDashboardData = useCallback(async (
     totalUsersPeriod: 'week' | 'month' | 'year',
     avgDiariesPeriod: 'week' | 'month' | 'year',
+    totalDiariesPeriod: 'week' | 'month' | 'year',
+    riskLevelPeriod: 'week' | 'month' | 'year',
     diaryTrendPeriod: 'week' | 'month' | 'year',
     userActivityPeriod: 'week' | 'month' | 'year',
     riskDistributionPeriod: 'week' | 'month' | 'year',
@@ -72,6 +76,8 @@ export function useDashboardData(
     try {
       const totalUsersPeriodParam = totalUsersPeriod === 'week' ? 'weekly' : totalUsersPeriod === 'month' ? 'monthly' : 'yearly';
       const avgDiariesPeriodParam = avgDiariesPeriod === 'week' ? 'weekly' : avgDiariesPeriod === 'month' ? 'monthly' : 'yearly';
+      const totalDiariesPeriodParam = totalDiariesPeriod === 'week' ? 'weekly' : totalDiariesPeriod === 'month' ? 'monthly' : 'yearly';
+      const riskLevelPeriodParam = riskLevelPeriod === 'week' ? 'weekly' : riskLevelPeriod === 'month' ? 'monthly' : 'yearly';
       const diaryTrendPeriodParam = diaryTrendPeriod === 'week' ? 'weekly' : diaryTrendPeriod === 'month' ? 'monthly' : 'yearly';
       const userActivityPeriodParam = userActivityPeriod === 'week' ? 'weekly' : userActivityPeriod === 'month' ? 'monthly' : 'yearly';
       const riskDistributionPeriodParam = riskDistributionPeriod === 'week' ? 'weekly' : riskDistributionPeriod === 'month' ? 'monthly' : 'yearly';
@@ -84,6 +90,8 @@ export function useDashboardData(
         getDashboardStats({
           totalUsersPeriod: totalUsersPeriodParam,
           averageDiariesPeriod: avgDiariesPeriodParam,
+          totalDiariesPeriod: totalDiariesPeriodParam,
+          riskLevelPeriod: riskLevelPeriodParam,
           activeUserType: activeUserType || 'dau',
           newUserPeriod: newUserPeriod || 'daily'
         }),
@@ -217,6 +225,8 @@ export function useDashboardData(
         const data = await fetchDashboardData(
           totalUsersPeriod,
           avgDiariesPeriod,
+          totalDiariesPeriod,
+          riskLevelPeriod,
           diaryTrendPeriod,
           userActivityPeriod,
           riskDistributionPeriod,
@@ -251,7 +261,7 @@ export function useDashboardData(
 
     loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalUsersPeriod, avgDiariesPeriod, diaryTrendPeriod, userActivityPeriod, riskDistributionPeriod, selectedMetrics, activeUserType, newUserPeriod, fetchDashboardData]);
+  }, [totalUsersPeriod, avgDiariesPeriod, totalDiariesPeriod, riskLevelPeriod, diaryTrendPeriod, userActivityPeriod, riskDistributionPeriod, selectedMetrics, activeUserType, newUserPeriod, fetchDashboardData]);
 
   return { stats, isLoading, isRefreshing, error };
 }

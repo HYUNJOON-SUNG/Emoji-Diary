@@ -151,6 +151,8 @@ export async function adminLogout(): Promise<{ success: true; data: { message: s
 export interface DashboardStatsRequest {
   totalUsersPeriod?: 'weekly' | 'monthly' | 'yearly';
   averageDiariesPeriod?: 'weekly' | 'monthly' | 'yearly';
+  totalDiariesPeriod?: 'weekly' | 'monthly' | 'yearly';
+  riskLevelPeriod?: 'weekly' | 'monthly' | 'yearly';
   activeUserType?: 'dau' | 'wau' | 'mau';
   newUserPeriod?: 'daily' | 'weekly' | 'monthly';
 }
@@ -178,6 +180,7 @@ export interface DashboardStatsResponse {
     totalDiaries: {
       count: number;
       change: number;
+      period: string;
     };
     averageDailyDiaries: {
       count: number;
@@ -188,6 +191,7 @@ export interface DashboardStatsResponse {
       medium: number;
       low: number;
       none: number;
+      period: string;
     };
   };
 }
@@ -202,6 +206,8 @@ export async function getDashboardStats(params?: DashboardStatsRequest): Promise
   const queryParams: Record<string, string> = {};
   if (params?.totalUsersPeriod) queryParams.totalUsersPeriod = params.totalUsersPeriod;
   if (params?.averageDiariesPeriod) queryParams.averageDiariesPeriod = params.averageDiariesPeriod;
+  if (params?.totalDiariesPeriod) queryParams.totalDiariesPeriod = params.totalDiariesPeriod;
+  if (params?.riskLevelPeriod) queryParams.riskLevelPeriod = params.riskLevelPeriod;
   if (params?.activeUserType) queryParams.activeUserType = params.activeUserType;
   if (params?.newUserPeriod) queryParams.newUserPeriod = params.newUserPeriod;
 

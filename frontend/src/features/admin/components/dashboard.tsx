@@ -90,6 +90,8 @@ export function Dashboard() {
   // 카드별 독립 필터
   const [totalUsersPeriod, setTotalUsersPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드1: 전체 사용자 수
   const [avgDiariesPeriod, setAvgDiariesPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드5: 일평균 일지 작성 수
+  const [totalDiariesPeriod, setTotalDiariesPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드4: 총 일지 작성 수 (신규)
+  const [riskLevelPeriod, setRiskLevelPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드6: 위험 레벨별 사용자 수 (신규)
   const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau'); // 카드2: 활성 사용자 수
   const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today'); // 카드3: 신규 가입자 수
 
@@ -109,6 +111,8 @@ export function Dashboard() {
   const { stats, isLoading, isRefreshing: _isRefreshing, error } = useDashboardData(
     totalUsersPeriod,
     avgDiariesPeriod,
+    totalDiariesPeriod,
+    riskLevelPeriod,
     diaryTrendPeriod,
     userActivityPeriod,
     riskDistributionPeriod,
@@ -244,7 +248,20 @@ export function Dashboard() {
       trend: (stats.totalDiariesChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
       icon: BookOpen,
       color: 'orange' as const,
-      description: '전체 누적 일지 작성 개수'
+      description: '선택한 기간의 일지 작성 개수',
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['week', 'month', 'year'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={(e) => { e.stopPropagation(); setTotalDiariesPeriod(p); }}
+              className={`px-2 py-1 text-xs rounded ${totalDiariesPeriod === p ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-700'}`}
+            >
+              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+            </button>
+          ))}
+        </div>
+      )
     },
     {
       title: '일평균 일지 작성 수',
@@ -275,7 +292,20 @@ export function Dashboard() {
       trend: 'down' as const,
       icon: AlertTriangle,
       color: 'red' as const,
-      description: `High: ${stats.riskLevelUsers?.high ?? 0}명, Medium: ${stats.riskLevelUsers?.medium ?? 0}명, Low: ${stats.riskLevelUsers?.low ?? 0}명, None: ${stats.riskLevelUsers?.none ?? 0}명`
+      description: `High: ${stats.riskLevelUsers?.high ?? 0}명, Medium: ${stats.riskLevelUsers?.medium ?? 0}명, Low: ${stats.riskLevelUsers?.low ?? 0}명, None: ${stats.riskLevelUsers?.none ?? 0}명`,
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['week', 'month', 'year'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={(e) => { e.stopPropagation(); setRiskLevelPeriod(p); }}
+              className={`px-2 py-1 text-xs rounded ${riskLevelPeriod === p ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
+            >
+              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+            </button>
+          ))}
+        </div>
+      )
     },
     // 기존 카드들 (제거됨 - API 명세서에 해당 필드 없음)
     // todayDiaries, weeklyDiaries, monthlyDiaries는 API 응답에 포함되지 않으므로 제거

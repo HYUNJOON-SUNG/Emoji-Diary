@@ -71,6 +71,7 @@ public class DashboardStatsResponse {
     public static class TotalDiariesInfo {
         private Long count;
         private Long change;
+        private String period;
     }
 
     /**
@@ -97,6 +98,6 @@ public class DashboardStatsResponse {
         private Long medium;
         private Long low;
         private Long none;
+        private String period;
     }
 }
-
