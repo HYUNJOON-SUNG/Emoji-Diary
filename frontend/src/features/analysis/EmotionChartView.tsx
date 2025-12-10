@@ -61,40 +61,38 @@ type PeriodType = 'weekly' | 'monthly';
 /**
  * 감정 차트 색상 팔레트 (파란색 톤온톤)
  * 
+ * [ERD 설계서 참고 - KoBERT 감정 7가지]
+ * - 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ * 
  * 디자인 가이드:
  * - 파란색 계열로 통일
  * - 각 감정별로 구분 가능한 색상
  */
 const emotionChartColors: { [key: string]: string } = {
-  happy: '#38bdf8', // sky
-  love: '#3b82f6', // blue
-  excited: '#6366f1', // indigo
-  calm: '#06b6d4', // cyan
-  grateful: '#14b8a6', // teal
-  hopeful: '#0ea5e9', // sky
-  tired: '#64748b', // slate
-  sad: '#3b82f6', // blue
-  angry: '#6366f1', // indigo
-  anxious: '#22d3ee', // cyan
-  neutral: '#78716c', // stone
+  happy: '#38bdf8',    // 행복 - sky
+  neutral: '#94a3b8',  // 중립 - slate
+  surprised: '#60a5fa', // 당황 - blue
+  sad: '#3b82f6',      // 슬픔 - blue
+  angry: '#ef4444',     // 분노 - red
+  anxious: '#f59e0b',  // 불안 - amber
+  disgust: '#8b5cf6',  // 혐오 - violet
 };
 
 /**
  * 감정 라벨 매핑 (한글)
  * - 영문 키 → 한글 라벨 변환
+ * 
+ * [ERD 설계서 참고 - KoBERT 감정 7가지]
+ * - 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
  */
 const emotionLabels: { [key: string]: string } = {
   happy: '행복',
-  love: '사랑',
-  excited: '설렘',
-  calm: '평온',
-  grateful: '감사',
-  hopeful: '희망',
-  tired: '피곤',
+  neutral: '중립',
+  surprised: '당황',
   sad: '슬픔',
-  angry: '화남',
+  angry: '분노',
   anxious: '불안',
-  neutral: '평온',
+  disgust: '혐오',
 };
 
 export function EmotionChartView() {

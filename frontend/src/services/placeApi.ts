@@ -184,12 +184,37 @@ export async function getPlaceRecommendations(
   if (params.lng) queryParams.append('lng', params.lng.toString());
   if (params.radius) queryParams.append('radius', params.radius.toString());
 
-  const response = await apiClient.get(`/places/recommendations?${queryParams.toString()}`);
-  
-  if (response.data.success) {
-    return response.data.data;
-  } else {
-    throw new Error(response.data.error?.message || '장소 추천에 실패했습니다.');
+  try {
+    // [백엔드 구현 필요] GET /api/places/recommendations 엔드포인트가 구현되어야 합니다.
+    // 현재 백엔드에서 "No static resource api/places/recommendations" 에러가 발생하는 경우,
+    // 해당 엔드포인트가 아직 구현되지 않았거나 컨트롤러가 등록되지 않은 상태입니다.
+    
+    const response = await apiClient.get(`/places/recommendations?${queryParams.toString()}`);
+    
+    if (response.data.success) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data.error?.message || '장소 추천에 실패했습니다.');
+    }
+  } catch (error: any) {
+    // 500 에러 처리 (백엔드에서 "No static resource" 에러가 발생하는 경우)
+    if (error.response?.status === 500) {
+      const errorMessage = error.response?.data?.error?.message || '';
+      if (errorMessage.includes('No static resource') || errorMessage.includes('NoResourceFoundException')) {
+        throw new Error('장소 추천 API가 아직 구현되지 않았습니다. 백엔드 팀에서 GET /api/places/recommendations 엔드포인트를 구현해주세요.');
+      }
+      throw new Error('서버 오류가 발생했습니다. 백엔드 서버 로그를 확인해주세요.');
+    }
+    // 404 에러 처리
+    if (error.response?.status === 404) {
+      throw new Error('장소 추천 API를 찾을 수 없습니다. 백엔드에서 GET /api/places/recommendations 엔드포인트가 구현되었는지 확인해주세요.');
+    }
+    // 네트워크 에러 처리
+    if (error.isNetworkError || !error.response) {
+      throw new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
+    }
+    // 기타 에러
+    throw error;
   }
 }
 

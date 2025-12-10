@@ -247,6 +247,52 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
 }
 
 /**
+ * GET /api/diaries/{diaryId}
+ * 일기 조회 API (ID 기준)
+ * 
+ * [API 명세서 참고]
+ * - 엔드포인트: GET /api/diaries/{diaryId}
+ * - URL Parameters: diaryId (일기 ID)
+ * - Response 200: DiaryDetail
+ * - Response 404: 일기 없음 (DIARY_NOT_FOUND)
+ * 
+ * @param diaryId - 일기 ID
+ * @returns 일기 상세 정보 또는 null
+ */
+export async function fetchDiaryById(diaryId: string): Promise<DiaryDetail | null> {
+  try {
+    const response = await apiClient.get(`/diaries/${diaryId}`);
+
+    if (response.data.success) {
+      const diary = response.data.data;
+      return {
+        ...diary,
+        id: diary.id != null ? String(diary.id) : '',
+        activities: diary.activities || [],
+        images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
+        imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
+        aiComment: diary.aiComment || diary.ai_comment,
+        recommendedFood: diary.recommendedFood || diary.recommended_food,
+        createdAt: diary.createdAt || diary.created_at,
+        updatedAt: diary.updatedAt || diary.updated_at,
+        emotionCategory: getEmotionCategory(diary.emotion),
+      };
+    } else {
+      return null;
+    }
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null;
+    }
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      throw new Error('로그인이 필요합니다.');
+    }
+    throw error;
+  }
+}
+
+/**
  * GET /api/diaries/date/{date}
  * 일기 조회 API (날짜 기준)
  * 
@@ -573,21 +619,83 @@ export async function fetchDailyStats(yearMonth: string): Promise<DailyStats[]> 
  * 차트 데이터 포인트 인터페이스
  * - 감정 통계 페이지의 선 그래프에 사용
  */
+/**
+ * 차트 데이터 포인트 인터페이스
+ * 
+ * [ERD 설계서 참고 - Diaries 테이블]
+ * - KoBERT 감정 7가지: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+ * - emotion: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
+ * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
+ * 
+ * [API 명세서 Section 5.2.2]
+ * - GET /api/statistics/emotion-trend 응답을 차트 형식으로 변환
+ * - 각 날짜별로 7가지 KoBERT 감정의 빈도를 집계
+ */
 export interface ChartDataPoint {
-  date: string; // 날짜 (YYYY-MM-DD)
+  date: string; // 날짜 (YYYY-MM-DD 또는 "MM월 N주차" 형식)
   displayLabel: string; // 차트 표시용 레이블 (예: "11월 1주차", "11월")
+  // KoBERT 감정 7가지 (ERD: Diaries.emotion, ENUM)
   happy: number; // 행복 감정 카운트
-  love: number; // 사랑 감정 카운트
-  excited: number; // 설렘 감정 카운트
-  calm: number; // 평온 감정 카운트
-  grateful: number; // 감사 감정 카운트
-  hopeful: number; // 희망 감정 카운트
-  tired: number; // 피곤 감정 카운트
-  sad: number; // 슬픔 감정 카운트
-  angry: number; // 화남 감정 카운트
-  anxious: number; // 불안 감정 카운트
   neutral: number; // 중립 감정 카운트
+  surprised: number; // 당황 감정 카운트 (surprised로 매핑)
+  sad: number; // 슬픔 감정 카운트
+  angry: number; // 분노 감정 카운트
+  anxious: number; // 불안 감정 카운트
+  disgust: number; // 혐오 감정 카운트
   total: number; // 전체 일기 개수
+}
+
+/**
+ * GET /api/diaries?startDate={YYYY-MM-DD}&endDate={YYYY-MM-DD}
+ * 최근 모니터링 기간 일기 데이터 조회
+ * 
+ * [위험 신호 감지 기능]
+ * - 일기 작성/수정 후 위험 신호 점수 계산을 위해 최근 모니터링 기간 일기 데이터 조회
+ * 
+ * @param startDate - 시작 날짜 (YYYY-MM-DD 형식)
+ * @param endDate - 종료 날짜 (YYYY-MM-DD 형식)
+ * @returns 일기 목록 (날짜순 정렬, 최신순)
+ */
+export async function fetchRecentDiaries(startDate: string, endDate: string): Promise<DiaryDetail[]> {
+  try {
+    const response = await apiClient.get('/diaries/search', {
+      params: {
+        startDate,
+        endDate,
+        limit: 100, // 모니터링 기간 내 일기 개수 제한 (최대 365일)
+      },
+    });
+
+    if (response.data.success) {
+      const diaries = response.data.data.diaries || [];
+      // 날짜순 정렬 (최신순)
+      return diaries
+        .map((diary: DiaryDetail) => ({
+          ...diary,
+          id: diary.id != null ? String(diary.id) : '',
+          activities: diary.activities || [],
+          images: (diary.images || []).map((imgUrl: string) => getImageUrl(imgUrl) || imgUrl),
+          imageUrl: getImageUrl(diary.imageUrl || diary.image_url),
+          aiComment: diary.aiComment || diary.ai_comment,
+          recommendedFood: diary.recommendedFood || diary.recommended_food,
+          createdAt: diary.createdAt || diary.created_at,
+          updatedAt: diary.updatedAt || diary.updated_at,
+          emotionCategory: getEmotionCategory(diary.emotion),
+        }))
+        .sort((a: DiaryDetail, b: DiaryDetail) => {
+          // 날짜순 정렬 (최신순)
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+    } else {
+      throw new Error(response.data.error?.message || '일기 데이터 조회에 실패했습니다.');
+    }
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+      throw new Error('로그인이 필요합니다.');
+    }
+    throw error;
+  }
 }
 
 /**
@@ -659,18 +767,15 @@ export async function fetchChartStats(
       console.log('API 응답 emotions 데이터:', data.emotions);
       data.emotions.forEach((item: { date: string; emotion: string }) => {
         if (!dateEmotionMap[item.date]) {
+          // KoBERT 감정 7가지에 맞게 초기화
           dateEmotionMap[item.date] = {
-            happy: 0,
-            love: 0,
-            excited: 0,
-            calm: 0,
-            grateful: 0,
-            hopeful: 0,
-            tired: 0,
-            sad: 0,
-            angry: 0,
-            anxious: 0,
-            neutral: 0,
+            happy: 0,      // 행복
+            neutral: 0,   // 중립
+            surprised: 0, // 당황
+            sad: 0,       // 슬픔
+            angry: 0,     // 분노
+            anxious: 0,   // 불안
+            disgust: 0,   // 혐오
             total: 0,
           };
         }
@@ -680,6 +785,10 @@ export async function fetchChartStats(
         const emotion = item.emotion;
         if (emotion === '행복') {
           dateEmotionMap[item.date].happy++;
+        } else if (emotion === '중립') {
+          dateEmotionMap[item.date].neutral++;
+        } else if (emotion === '당황') {
+          dateEmotionMap[item.date].surprised++;
         } else if (emotion === '슬픔') {
           dateEmotionMap[item.date].sad++;
         } else if (emotion === '분노') {
@@ -687,11 +796,7 @@ export async function fetchChartStats(
         } else if (emotion === '불안') {
           dateEmotionMap[item.date].anxious++;
         } else if (emotion === '혐오') {
-          // 혐오 감정은 anxious에 포함 (부정 감정이므로)
-          // 또는 별도 필드가 필요하면 추가 가능
-          dateEmotionMap[item.date].anxious++; // 임시로 불안과 함께 처리
-        } else if (emotion === '중립' || emotion === '당황') {
-          dateEmotionMap[item.date].neutral++;
+          dateEmotionMap[item.date].disgust++;
         } else {
           // 알 수 없는 감정은 로그로 기록
           console.warn('알 수 없는 감정:', emotion, 'date:', item.date);
@@ -707,9 +812,16 @@ export async function fetchChartStats(
       // dates 배열을 기준으로 ChartDataPoint 배열 생성
       // 월간일 때는 주별로 그룹화된 데이터가 올 수 있음
       const chartData = data.dates.map((date: string) => {
+        // KoBERT 감정 7가지에 맞게 초기화
         const emotionData = dateEmotionMap[date] || {
-          happy: 0, love: 0, excited: 0, calm: 0, grateful: 0, hopeful: 0,
-          tired: 0, sad: 0, angry: 0, anxious: 0, neutral: 0, total: 0,
+          happy: 0,      // 행복
+          neutral: 0,   // 중립
+          surprised: 0, // 당황
+          sad: 0,       // 슬픔
+          angry: 0,     // 분노
+          anxious: 0,   // 불안
+          disgust: 0,   // 혐오
+          total: 0,
         };
         
         const point = {
