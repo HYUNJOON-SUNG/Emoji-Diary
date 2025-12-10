@@ -37,7 +37,7 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
   // 단계 1: 환영 화면
   if (step === 1) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6">
+      <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6 overflow-y-auto">
         <div className="w-full max-w-lg space-y-8 text-center">
           {/* 아이콘 */}
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl">
@@ -100,7 +100,7 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
 
   // 단계 2: 페르소나 선택
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 p-6">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-700 mb-2">

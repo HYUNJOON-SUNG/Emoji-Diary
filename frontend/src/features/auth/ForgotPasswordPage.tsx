@@ -414,8 +414,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-lg">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="w-full">
         {/* Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-lg">
           <div className="space-y-6">

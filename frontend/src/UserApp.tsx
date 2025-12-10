@@ -47,7 +47,11 @@ export default function UserApp() {
    * - "일기장 열기" 버튼 표시
    */
   if (appState === 'landing') {
-    return <LandingPage onOpenBook={handleOpenBook} />;
+    return (
+      <MobileFrame>
+        <LandingPage onOpenBook={handleOpenBook} />
+      </MobileFrame>
+    );
   }
 
   /**
@@ -60,12 +64,14 @@ export default function UserApp() {
    */
   if (appState === 'login') {
     return (
-      <LoginPage 
-        onLoginSuccess={handleLoginSuccess} 
-        onBack={handleBackToLanding}
-        onSignup={handleGoToSignup}
-        onForgotPassword={handleGoToForgotPassword}
-      />
+      <MobileFrame>
+        <LoginPage 
+          onLoginSuccess={handleLoginSuccess} 
+          onBack={handleBackToLanding}
+          onSignup={handleGoToSignup}
+          onForgotPassword={handleGoToForgotPassword}
+        />
+      </MobileFrame>
     );
   }
 
@@ -78,10 +84,12 @@ export default function UserApp() {
    */
   if (appState === 'signup') {
     return (
-      <SignupPage 
-        onSignupSuccess={handleSignupSuccess}
-        onBackToLogin={handleBackToLogin}
-      />
+      <MobileFrame>
+        <SignupPage 
+          onSignupSuccess={handleSignupSuccess}
+          onBackToLogin={handleBackToLogin}
+        />
+      </MobileFrame>
     );
   }
 
@@ -93,9 +101,11 @@ export default function UserApp() {
    */
   if (appState === 'forgot-password') {
     return (
-      <ForgotPasswordPage 
-        onBackToLogin={handleBackToLogin}
-      />
+      <MobileFrame>
+        <ForgotPasswordPage 
+          onBackToLogin={handleBackToLogin}
+        />
+      </MobileFrame>
     );
   }
 
@@ -138,9 +148,11 @@ export default function UserApp() {
    */
   if (appState === 'persona-setup') {
     return (
-      <InitialPersonaSetup 
-        onComplete={handlePersonaComplete}
-      />
+      <MobileFrame>
+        <InitialPersonaSetup 
+          onComplete={handlePersonaComplete}
+        />
+      </MobileFrame>
     );
   }
 

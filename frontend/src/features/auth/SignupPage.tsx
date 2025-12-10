@@ -770,11 +770,11 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 sm:p-6 py-8">
-      <div className="w-full max-w-lg">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 py-8 overflow-y-auto">
+      <div className="w-full">
         {/* Signup Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg overflow-hidden">
-          <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto space-y-6">
+          <div className="p-6 max-h-[85vh] overflow-y-auto space-y-6">
             {/* Header */}
             <div className="text-center space-y-3">
               <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
