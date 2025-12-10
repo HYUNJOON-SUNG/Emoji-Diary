@@ -149,7 +149,8 @@ export async function adminLogout(): Promise<{ success: true; data: { message: s
  * GET /api/admin/dashboard/stats
  */
 export interface DashboardStatsRequest {
-  period?: 'weekly' | 'monthly' | 'yearly';
+  totalUsersPeriod?: 'weekly' | 'monthly' | 'yearly';
+  averageDiariesPeriod?: 'weekly' | 'monthly' | 'yearly';
   activeUserType?: 'dau' | 'wau' | 'mau';
   newUserPeriod?: 'daily' | 'weekly' | 'monthly';
 }
@@ -199,7 +200,8 @@ export interface DashboardStatsResponse {
  */
 export async function getDashboardStats(params?: DashboardStatsRequest): Promise<DashboardStatsResponse> {
   const queryParams: Record<string, string> = {};
-  if (params?.period) queryParams.period = params.period;
+  if (params?.totalUsersPeriod) queryParams.totalUsersPeriod = params.totalUsersPeriod;
+  if (params?.averageDiariesPeriod) queryParams.averageDiariesPeriod = params.averageDiariesPeriod;
   if (params?.activeUserType) queryParams.activeUserType = params.activeUserType;
   if (params?.newUserPeriod) queryParams.newUserPeriod = params.newUserPeriod;
 

@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  getDashboardStats, 
-  getDiaryTrend, 
-  getUserActivityStats, 
+import {
+  getDashboardStats,
+  getDiaryTrend,
+  getUserActivityStats,
   getRiskLevelDistribution
 } from '../../../services/adminApi';
 
@@ -45,40 +45,51 @@ interface DashboardStats {
 }
 
 export function useDashboardData(
-  period: 'week' | 'month' | 'year',
+  totalUsersPeriod: 'week' | 'month' | 'year',
+  avgDiariesPeriod: 'week' | 'month' | 'year',
+  diaryTrendPeriod: 'week' | 'month' | 'year',
+  userActivityPeriod: 'week' | 'month' | 'year',
+  riskDistributionPeriod: 'week' | 'month' | 'year',
   selectedMetrics: string[],
   activeUserType?: 'dau' | 'wau' | 'mau',
   newUserPeriod?: 'daily' | 'weekly' | 'monthly'
 ) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중 상태 (기존 데이터 유지)
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async (
-    period: 'week' | 'month' | 'year',
+    totalUsersPeriod: 'week' | 'month' | 'year',
+    avgDiariesPeriod: 'week' | 'month' | 'year',
+    diaryTrendPeriod: 'week' | 'month' | 'year',
+    userActivityPeriod: 'week' | 'month' | 'year',
+    riskDistributionPeriod: 'week' | 'month' | 'year',
     selectedMetrics: string[],
     activeUserType?: 'dau' | 'wau' | 'mau',
     newUserPeriod?: 'daily' | 'weekly' | 'monthly'
   ) => {
     try {
-      const periodParam = period === 'week' ? 'weekly' : period === 'month' ? 'monthly' : 'yearly';
+      const totalUsersPeriodParam = totalUsersPeriod === 'week' ? 'weekly' : totalUsersPeriod === 'month' ? 'monthly' : 'yearly';
+      const avgDiariesPeriodParam = avgDiariesPeriod === 'week' ? 'weekly' : avgDiariesPeriod === 'month' ? 'monthly' : 'yearly';
+      const diaryTrendPeriodParam = diaryTrendPeriod === 'week' ? 'weekly' : diaryTrendPeriod === 'month' ? 'monthly' : 'yearly';
+      const userActivityPeriodParam = userActivityPeriod === 'week' ? 'weekly' : userActivityPeriod === 'month' ? 'monthly' : 'yearly';
+      const riskDistributionPeriodParam = riskDistributionPeriod === 'week' ? 'weekly' : riskDistributionPeriod === 'month' ? 'monthly' : 'yearly';
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
-      // [API 명세서 Section 10.2.1]
-      // GET /api/admin/dashboard/stats
-      // - period: 기간 (weekly, monthly, yearly) - 전체 사용자 수, 일평균 일지 작성 수에 적용
-      // - activeUserType: 활성 사용자 타입 (dau, wau, mau) - 활성 사용자 수에 적용
-      // - newUserPeriod: 신규 가입자 기간 (daily, weekly, monthly) - 신규 가입자 수에 적용
+      // [API 명세서 Section 10.2.1-10.2.4]
+      // 각 영역별 독립적인 period 파라미터 전달
       const [statsRes, trendRes, activityRes, riskRes] = await Promise.all([
-        getDashboardStats({ 
-          period: periodParam,
-          activeUserType: activeUserType || 'dau', // 대시보드에서 필터로 변경 가능
-          newUserPeriod: newUserPeriod || 'daily' // 대시보드에서 필터로 변경 가능
+        getDashboardStats({
+          totalUsersPeriod: totalUsersPeriodParam,
+          averageDiariesPeriod: avgDiariesPeriodParam,
+          activeUserType: activeUserType || 'dau',
+          newUserPeriod: newUserPeriod || 'daily'
         }),
-        getDiaryTrend({ period: periodParam, year: currentYear, month: currentMonth }),
-        getUserActivityStats({ period: periodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') }),
-        getRiskLevelDistribution({ period: periodParam, year: currentYear, month: currentMonth })
+        getDiaryTrend({ period: diaryTrendPeriodParam, year: currentYear, month: currentMonth }),
+        getUserActivityStats({ period: userActivityPeriodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') }),
+        getRiskLevelDistribution({ period: riskDistributionPeriodParam, year: currentYear, month: currentMonth })
       ]);
 
       if (!statsRes?.data || !trendRes?.data || !activityRes?.data || !riskRes?.data) {
@@ -88,13 +99,13 @@ export function useDashboardData(
       const stats = statsRes.data;
       const trend = Array.isArray(trendRes.data.trend) ? trendRes.data.trend : [];
       const activity = Array.isArray(activityRes.data.trend) ? activityRes.data.trend : [];
-      
+
       // 위험 레벨 분포 데이터 파싱
       // 백엔드 응답 구조: { success: true, data: { period, year, month, distribution: {...}, total } }
       // riskRes.data는 { success: true, data: RiskLevelDistributionResponse } 구조
-      const riskData = riskRes.data?.data || riskRes.data;
+      const riskData = (riskRes.data as any)?.data || riskRes.data;
       const risk = riskData?.distribution || {};
-      
+
       // 디버깅: 위험 레벨 분포 데이터 확인
       console.log('위험 레벨 분포 API 전체 응답:', riskRes.data);
       console.log('위험 레벨 분포 data:', riskData);
@@ -111,8 +122,8 @@ export function useDashboardData(
       const weeklyData = trend.map((item: any) => {
         const dateStr = item?.date || '';
         let day = dateStr;
-        
-        if (period === 'week' || period === 'month') {
+
+        if (totalUsersPeriod === 'week' || totalUsersPeriod === 'month') {
           // "YYYY-MM-DD" 형식에서 일자만 추출
           if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const date = new Date(dateStr);
@@ -120,14 +131,14 @@ export function useDashboardData(
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             day = `${date.getMonth() + 1}/${date.getDate()}(${days[dayOfWeek]})`;
           }
-        } else if (period === 'year') {
+        } else if (totalUsersPeriod === 'year') {
           // "YYYY-MM" 형식에서 월만 추출
           if (dateStr.match(/^\d{4}-\d{2}$/)) {
             const month = parseInt(dateStr.split('-')[1], 10);
             day = `${month}월`;
           }
         }
-        
+
         return { day: day || dateStr, diaries: item?.count || 0 };
       });
 
@@ -144,25 +155,25 @@ export function useDashboardData(
       // 백엔드 응답: distribution.high.count, distribution.high.percentage 등
       // null 체크 및 기본값 처리
       const riskDistributionData = [
-        { 
-          level: 'High', 
-          count: (risk?.high?.count !== undefined && risk?.high?.count !== null) ? Number(risk.high.count) : 0, 
-          percentage: (risk?.high?.percentage !== undefined && risk?.high?.percentage !== null) ? Number(risk.high.percentage) : 0 
+        {
+          level: 'High',
+          count: (risk?.high?.count !== undefined && risk?.high?.count !== null) ? Number(risk.high.count) : 0,
+          percentage: (risk?.high?.percentage !== undefined && risk?.high?.percentage !== null) ? Number(risk.high.percentage) : 0
         },
-        { 
-          level: 'Medium', 
-          count: (risk?.medium?.count !== undefined && risk?.medium?.count !== null) ? Number(risk.medium.count) : 0, 
-          percentage: (risk?.medium?.percentage !== undefined && risk?.medium?.percentage !== null) ? Number(risk.medium.percentage) : 0 
+        {
+          level: 'Medium',
+          count: (risk?.medium?.count !== undefined && risk?.medium?.count !== null) ? Number(risk.medium.count) : 0,
+          percentage: (risk?.medium?.percentage !== undefined && risk?.medium?.percentage !== null) ? Number(risk.medium.percentage) : 0
         },
-        { 
-          level: 'Low', 
-          count: (risk?.low?.count !== undefined && risk?.low?.count !== null) ? Number(risk.low.count) : 0, 
-          percentage: (risk?.low?.percentage !== undefined && risk?.low?.percentage !== null) ? Number(risk.low.percentage) : 0 
+        {
+          level: 'Low',
+          count: (risk?.low?.count !== undefined && risk?.low?.count !== null) ? Number(risk.low.count) : 0,
+          percentage: (risk?.low?.percentage !== undefined && risk?.low?.percentage !== null) ? Number(risk.low.percentage) : 0
         },
-        { 
-          level: 'None', 
-          count: (risk?.none?.count !== undefined && risk?.none?.count !== null) ? Number(risk.none.count) : 0, 
-          percentage: (risk?.none?.percentage !== undefined && risk?.none?.percentage !== null) ? Number(risk.none.percentage) : 0 
+        {
+          level: 'None',
+          count: (risk?.none?.count !== undefined && risk?.none?.count !== null) ? Number(risk.none.count) : 0,
+          percentage: (risk?.none?.percentage !== undefined && risk?.none?.percentage !== null) ? Number(risk.none.percentage) : 0
         }
       ];
 
@@ -195,34 +206,53 @@ export function useDashboardData(
 
   useEffect(() => {
     const loadStats = async () => {
-      setIsLoading(true);
+      // 기존 데이터가 있으면 isRefreshing, 없으면 isLoading
+      if (stats) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
       try {
-        const data = await fetchDashboardData(period, selectedMetrics, activeUserType, newUserPeriod);
+        const data = await fetchDashboardData(
+          totalUsersPeriod,
+          avgDiariesPeriod,
+          diaryTrendPeriod,
+          userActivityPeriod,
+          riskDistributionPeriod,
+          selectedMetrics,
+          activeUserType,
+          newUserPeriod
+        );
         setStats(data);
       } catch (error: any) {
         setError(error?.message || '데이터를 불러오는 중 오류가 발생했습니다.');
-        setStats({
-          totalUsers: 0,
-          totalUsersChange: 0,
-          activeUsers: { dau: 0, wau: 0, mau: 0 },
-          newUsers: { today: 0, thisWeek: 0, thisMonth: 0 },
-          totalDiaries: 0,
-          totalDiariesChange: 0,
-          avgDailyDiaries: 0,
-          riskLevelUsers: { high: 0, medium: 0, low: 0, none: 0 },
-          weeklyData: [],
-          userActivityData: [],
-          riskDistributionData: []
-        });
+        // 기존 데이터가 있으면 유지, 없으면 기본값 설정
+        if (!stats) {
+          setStats({
+            totalUsers: 0,
+            totalUsersChange: 0,
+            activeUsers: { dau: 0, wau: 0, mau: 0 },
+            newUsers: { today: 0, thisWeek: 0, thisMonth: 0 },
+            totalDiaries: 0,
+            totalDiariesChange: 0,
+            avgDailyDiaries: 0,
+            riskLevelUsers: { high: 0, medium: 0, low: 0, none: 0 },
+            weeklyData: [],
+            userActivityData: [],
+            riskDistributionData: []
+          });
+        }
       } finally {
         setIsLoading(false);
+        setIsRefreshing(false);
       }
     };
 
     loadStats();
-  }, [period, selectedMetrics, activeUserType, newUserPeriod, fetchDashboardData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalUsersPeriod, avgDiariesPeriod, diaryTrendPeriod, userActivityPeriod, riskDistributionPeriod, selectedMetrics, activeUserType, newUserPeriod, fetchDashboardData]);
 
-  return { stats, isLoading, error };
+  return { stats, isLoading, isRefreshing, error };
 }
 

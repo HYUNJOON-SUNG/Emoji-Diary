@@ -86,23 +86,41 @@ export function Dashboard() {
   // ========================================
   // State 관리 (2.1-2.5)
   // ========================================
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-  const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau');
-  const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today');
+  // [명세서 2.2] 각 카드의 기간 필터는 독립적으로 동작
+  // 카드별 독립 필터
+  const [totalUsersPeriod, setTotalUsersPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드1: 전체 사용자 수
+  const [avgDiariesPeriod, setAvgDiariesPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드5: 일평균 일지 작성 수
+  const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau'); // 카드2: 활성 사용자 수
+  const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today'); // 카드3: 신규 가입자 수
+
+  // 차트별 독립 필터
+  const [diaryTrendPeriod, setDiaryTrendPeriod] = useState<'week' | 'month' | 'year'>('month'); // 일지 작성 추이 차트
+  const [userActivityPeriod, setUserActivityPeriod] = useState<'week' | 'month' | 'year'>('month'); // 사용자 활동 통계 차트
+  const [riskDistributionPeriod, setRiskDistributionPeriod] = useState<'week' | 'month' | 'year'>('month'); // 위험 레벨 분포 차트
+
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['dau', 'newUsers']);
   const [riskChartType, setRiskChartType] = useState<'pie' | 'bar'>('pie');
 
   // Custom hook으로 데이터 로딩 로직 분리
   // [API 명세서 Section 10.2.1]
-  // activeUserType과 newUserPeriod 파라미터를 전달하여 필터 변경 시 API 재호출
+  // 각 영역별 독립적인 period 전달
   const activeUserTypeParam = activeUserFilter === 'dau' ? 'dau' : activeUserFilter === 'wau' ? 'wau' : 'mau';
   const newUserPeriodParam = newUserFilter === 'today' ? 'daily' : newUserFilter === 'thisWeek' ? 'weekly' : 'monthly';
-  const { stats, isLoading, error } = useDashboardData(period, selectedMetrics, activeUserTypeParam, newUserPeriodParam);
+  const { stats, isLoading, isRefreshing: _isRefreshing, error } = useDashboardData(
+    totalUsersPeriod,
+    avgDiariesPeriod,
+    diaryTrendPeriod,
+    userActivityPeriod,
+    riskDistributionPeriod,
+    selectedMetrics,
+    activeUserTypeParam,
+    newUserPeriodParam
+  );
 
   // ========================================
-  // 로딩 상태 UI
+  // 로딩 상태 UI (초기 로딩 시에만 표시)
   // ========================================
-  if (isLoading) {
+  if (isLoading && !stats) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -144,19 +162,32 @@ export function Dashboard() {
       trend: (stats.totalUsersChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
       icon: Users,
       color: 'blue' as const,
-      description: '등록된 전체 사용자'
+      description: '등록된 전체 사용자',
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['week', 'month', 'year'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={(e) => { e.stopPropagation(); setTotalUsersPeriod(p); }}
+              className={`px-2 py-1 text-xs rounded ${totalUsersPeriod === p ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}
+            >
+              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+            </button>
+          ))}
+        </div>
+      )
     },
     {
       title: '활성 사용자 수',
-      value: activeUserFilter === 'dau' 
-        ? (stats.activeUsers?.dau ?? 0).toLocaleString() 
+      value: activeUserFilter === 'dau'
+        ? (stats.activeUsers?.dau ?? 0).toLocaleString()
         : activeUserFilter === 'wau'
-        ? (stats.activeUsers?.wau ?? 0).toLocaleString()
-        : (stats.activeUsers?.mau ?? 0).toLocaleString(),
+          ? (stats.activeUsers?.wau ?? 0).toLocaleString()
+          : (stats.activeUsers?.mau ?? 0).toLocaleString(),
       change: '-', // 활성 사용자 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: Activity,
-      color: 'green' as const,
+      color: 'emerald' as const,
       description: activeUserFilter === 'dau' ? '일일 활성 사용자 (DAU)' : activeUserFilter === 'wau' ? '주간 활성 사용자 (WAU)' : '월간 활성 사용자 (MAU)',
       filter: (
         <div className="flex gap-1 mt-2">
@@ -164,7 +195,11 @@ export function Dashboard() {
             <button
               key={filter}
               onClick={(e) => { e.stopPropagation(); setActiveUserFilter(filter); }}
-              className={`px-2 py-1 text-xs rounded ${activeUserFilter === filter ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700'}`}
+              className="px-2 py-1 text-xs rounded"
+              style={{
+                backgroundColor: activeUserFilter === filter ? '#065f46' : '#d1fae5',
+                color: activeUserFilter === filter ? 'white' : '#047857'
+              }}
             >
               {filter.toUpperCase()}
             </button>
@@ -177,12 +212,12 @@ export function Dashboard() {
       value: newUserFilter === 'today'
         ? (stats.newUsers?.today ?? 0).toLocaleString()
         : newUserFilter === 'thisWeek'
-        ? (stats.newUsers?.thisWeek ?? 0).toLocaleString()
-        : (stats.newUsers?.thisMonth ?? 0).toLocaleString(),
+          ? (stats.newUsers?.thisWeek ?? 0).toLocaleString()
+          : (stats.newUsers?.thisMonth ?? 0).toLocaleString(),
       change: '-', // 신규 가입자 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: UserPlus,
-      color: 'purple' as const,
+      color: 'indigo' as const,
       description: newUserFilter === 'today' ? '오늘 신규 가입자' : newUserFilter === 'thisWeek' ? '이번 주 신규 가입자' : '이번 달 신규 가입자',
       filter: (
         <div className="flex gap-1 mt-2">
@@ -190,7 +225,11 @@ export function Dashboard() {
             <button
               key={filter}
               onClick={(e) => { e.stopPropagation(); setNewUserFilter(filter); }}
-              className={`px-2 py-1 text-xs rounded ${newUserFilter === filter ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700'}`}
+              className="px-2 py-1 text-xs rounded"
+              style={{
+                backgroundColor: newUserFilter === filter ? '#3730a3' : '#e0e7ff',
+                color: newUserFilter === filter ? 'white' : '#4338ca'
+              }}
             >
               {filter === 'today' ? '일' : filter === 'thisWeek' ? '주' : '월'}
             </button>
@@ -213,8 +252,21 @@ export function Dashboard() {
       change: '-', // 일평균 일지 작성 수는 change 필드가 API 응답에 없음
       trend: 'up' as const,
       icon: TrendingUp,
-      color: 'green' as const,
-      description: '선택한 기간의 일평균 일지 작성 개수'
+      color: 'cyan' as const,
+      description: '선택한 기간의 일평균 일지 작성 개수',
+      filter: (
+        <div className="flex gap-1 mt-2">
+          {(['week', 'month', 'year'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={(e) => { e.stopPropagation(); setAvgDiariesPeriod(p); }}
+              className={`px-2 py-1 text-xs rounded ${avgDiariesPeriod === p ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700'}`}
+            >
+              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+            </button>
+          ))}
+        </div>
+      )
     },
     {
       title: '위험 레벨별 사용자 수',
@@ -235,48 +287,11 @@ export function Dashboard() {
           헤더 영역
           ======================================== */}
       <div className="mb-6 sm:mb-8 pb-4 sm:pb-6 border-b-2 border-slate-300">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight break-words">대시보드 (핵심 지표)</h1>
-            <p className="text-slate-600 mt-1 text-sm sm:text-base break-words">전체 사용자, 일지 작성 현황을 한눈에 확인하세요</p>
-            <p className="text-slate-500 text-xs sm:text-sm mt-2">마지막 업데이트: {new Date().toLocaleString('ko-KR')}</p>
-          </div>
-          
-          {/* ========================================
-              기간 필터 (주간/월간/연간) - 오른쪽 고정
-              ======================================== */}
-          <div className="flex items-center gap-1 sm:gap-2 bg-white border-2 border-slate-300 rounded-lg p-1 flex-shrink-0">
-            <button
-              onClick={() => setPeriod('week')}
-              className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
-                period === 'week' 
-                  ? 'bg-slate-700 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              주간
-            </button>
-            <button
-              onClick={() => setPeriod('month')}
-              className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
-                period === 'month' 
-                  ? 'bg-slate-700 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              월간
-            </button>
-            <button
-              onClick={() => setPeriod('year')}
-              className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
-                period === 'year' 
-                  ? 'bg-slate-700 text-white shadow-md' 
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              연간
-            </button>
-          </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight break-words">대시보드 (핵심 지표)</h1>
+          <p className="text-slate-600 mt-1 text-sm sm:text-base break-words">전체 사용자, 일지 작성 현황을 한눈에 확인하세요</p>
+          <p className="text-slate-500 text-xs sm:text-sm mt-2">마지막 업데이트: {new Date().toLocaleString('ko-KR')}</p>
+          <p className="text-slate-400 text-xs mt-1">각 카드와 차트의 기간 필터를 개별적으로 설정할 수 있습니다.</p>
         </div>
       </div>
 
@@ -297,7 +312,19 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
             <div className="flex items-center">
               <Calendar className="w-5 h-5 text-slate-700 mr-2" />
-              <h2 className="text-slate-800">일지 작성 추이 ({period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'})</h2>
+              <h2 className="text-slate-800">일지 작성 추이 ({diaryTrendPeriod === 'week' ? '주간' : diaryTrendPeriod === 'month' ? '월간' : '연간'})</h2>
+            </div>
+            {/* 일지 작성 추이 기간 필터 */}
+            <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-1">
+              {(['week', 'month', 'year'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setDiaryTrendPeriod(p)}
+                  className={`px-3 py-1 rounded text-xs transition-all ${diaryTrendPeriod === p ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {p === 'week' ? '주간' : p === 'month' ? '월간' : '연간'}
+                </button>
+              ))}
             </div>
           </div>
           <div className="min-w-[600px]">
@@ -314,33 +341,47 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
             <div className="flex items-center">
               <Activity className="w-5 h-5 text-slate-700 mr-2" />
-              <h2 className="text-slate-800">사용자 활동 통계 ({period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'})</h2>
+              <h2 className="text-slate-800">사용자 활동 통계 ({userActivityPeriod === 'week' ? '주간' : userActivityPeriod === 'month' ? '월간' : '연간'})</h2>
             </div>
-            {/* 지표 선택 (2.4) */}
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: 'dau', label: 'DAU' },
-                { key: 'wau', label: 'WAU' },
-                { key: 'mau', label: 'MAU' },
-                { key: 'newUsers', label: '신규 가입자' },
-                { key: 'retentionRate', label: '유지율' }
-              ].map((metric) => (
-                <label key={metric.key} className="flex items-center gap-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedMetrics.includes(metric.key)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedMetrics([...selectedMetrics, metric.key]);
-                      } else {
-                        setSelectedMetrics(selectedMetrics.filter(m => m !== metric.key));
-                      }
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-slate-700">{metric.label}</span>
-                </label>
-              ))}
+            <div className="flex items-center gap-4">
+              {/* 기간 필터 */}
+              <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-1">
+                {(['week', 'month', 'year'] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setUserActivityPeriod(p)}
+                    className={`px-3 py-1 rounded text-xs transition-all ${userActivityPeriod === p ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    {p === 'week' ? '주간' : p === 'month' ? '월간' : '연간'}
+                  </button>
+                ))}
+              </div>
+              {/* 지표 선택 (2.4) */}
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { key: 'dau', label: 'DAU' },
+                  { key: 'wau', label: 'WAU' },
+                  { key: 'mau', label: 'MAU' },
+                  { key: 'newUsers', label: '신규 가입자' },
+                  { key: 'retentionRate', label: '유지율' }
+                ].map((metric) => (
+                  <label key={metric.key} className="flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedMetrics.includes(metric.key)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedMetrics([...selectedMetrics, metric.key]);
+                        } else {
+                          setSelectedMetrics(selectedMetrics.filter(m => m !== metric.key));
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-slate-700">{metric.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <div className="min-w-[600px]">
@@ -387,33 +428,45 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
             <div className="flex items-center">
               <AlertTriangle className="w-5 h-5 text-slate-700 mr-2" />
-              <h2 className="text-slate-800">위험 레벨 분포 통계 ({period === 'week' ? '주간' : period === 'month' ? '월간' : '연간'})</h2>
+              <h2 className="text-slate-800">위험 레벨 분포 통계 ({riskDistributionPeriod === 'week' ? '주간' : riskDistributionPeriod === 'month' ? '월간' : '연간'})</h2>
             </div>
-            {/* 차트 타입 선택 버튼 (2.5) */}
-            <div className="flex items-center gap-1 sm:gap-2 bg-white border-2 border-slate-300 rounded-lg p-1 flex-shrink-0">
-              <button
-                onClick={() => setRiskChartType('pie')}
-                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
-                  riskChartType === 'pie' 
-                    ? 'bg-slate-700 text-white shadow-md' 
+            <div className="flex items-center gap-4">
+              {/* 기간 필터 */}
+              <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg p-1">
+                {(['week', 'month', 'year'] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setRiskDistributionPeriod(p)}
+                    className={`px-3 py-1 rounded text-xs transition-all ${riskDistributionPeriod === p ? 'bg-slate-700 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    {p === 'week' ? '주간' : p === 'month' ? '월간' : '연간'}
+                  </button>
+                ))}
+              </div>
+              {/* 차트 타입 선택 버튼 (2.5) */}
+              <div className="flex items-center gap-1 sm:gap-2 bg-white border-2 border-slate-300 rounded-lg p-1 flex-shrink-0">
+                <button
+                  onClick={() => setRiskChartType('pie')}
+                  className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${riskChartType === 'pie'
+                    ? 'bg-slate-700 text-white shadow-md'
                     : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                파이 차트
-              </button>
-              <button
-                onClick={() => setRiskChartType('bar')}
-                className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${
-                  riskChartType === 'bar' 
-                    ? 'bg-slate-700 text-white shadow-md' 
+                    }`}
+                >
+                  파이 차트
+                </button>
+                <button
+                  onClick={() => setRiskChartType('bar')}
+                  className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm ${riskChartType === 'bar'
+                    ? 'bg-slate-700 text-white shadow-md'
                     : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                막대 그래프
-              </button>
+                    }`}
+                >
+                  막대 그래프
+                </button>
+              </div>
             </div>
           </div>
-          
+
           {/* 파이 차트 또는 막대 그래프 (선택에 따라 표시) */}
           <div className="flex justify-center">
             {riskChartType === 'pie' ? (
@@ -502,7 +555,7 @@ export function Dashboard() {
               </div>
             )}
           </div>
-          
+
           {/* 범례 (2.5) */}
           <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.riskDistributionData.map((entry: any, index: number) => {
