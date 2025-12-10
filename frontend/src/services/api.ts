@@ -212,7 +212,8 @@ export const adminApiClient: AxiosInstance = axios.create({
  */
 adminApiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const adminToken = localStorage.getItem('admin_jwt_token');
+    // [명세서 1.1] 관리자 Access Token 가져오기
+    const adminToken = localStorage.getItem('admin_access_token');
     if (adminToken && config.headers) {
       config.headers.Authorization = `Bearer ${adminToken}`;
     }
@@ -235,8 +236,12 @@ adminApiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // 401 에러 (인증 실패) 처리
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    // 401 또는 403 에러 (인증 실패) 처리
+    const isTokenError = error.response?.status === 401 || error.response?.status === 403;
+    const isAuthEndpoint = originalRequest?.url?.includes('/admin/auth/login') || 
+                          originalRequest?.url?.includes('/admin/auth/refresh');
+    
+    if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
@@ -246,14 +251,21 @@ adminApiClient.interceptors.response.use(
         }
 
         // 토큰 재발급 시도
-        const refreshResponse = await axios.post(`${BASE_URL}/admin/auth/refresh`, {
+        console.log('관리자 토큰이 만료되어 자동으로 재발급을 시도합니다...');
+        const refreshAxios = axios.create({
+          baseURL: BASE_URL,
+          timeout: 10000,
+        });
+        const refreshResponse = await refreshAxios.post('/admin/auth/refresh', {
           refreshToken,
         });
 
         if (refreshResponse.data.success) {
           const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
-          localStorage.setItem('admin_jwt_token', accessToken);
+          // [명세서 1.1] 관리자 Access Token 및 Refresh Token 저장
+          localStorage.setItem('admin_access_token', accessToken);
           localStorage.setItem('admin_refresh_token', newRefreshToken);
+          console.log('관리자 토큰 재발급 성공. 원래 요청을 재시도합니다.');
 
           // 원래 요청 재시도
           if (originalRequest.headers) {
@@ -263,18 +275,31 @@ adminApiClient.interceptors.response.use(
         } else {
           throw new Error('토큰 재발급에 실패했습니다.');
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         // 토큰 재발급 실패 시 관리자 로그인 페이지로 리다이렉트
-        localStorage.removeItem('admin_jwt_token');
+        console.error('관리자 토큰 재발급 실패:', refreshError);
+        // [명세서 1.1] 관리자 Access Token 및 Refresh Token 삭제
+        localStorage.removeItem('admin_access_token');
         localStorage.removeItem('admin_refresh_token');
+        
+        // 사용자에게 피드백 제공
+        if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+          // Refresh token도 만료된 경우
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else {
+          // 네트워크 오류 등 기타 오류
+          alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
+        }
+        
         window.location.href = '/admin/login';
         return Promise.reject(refreshError);
       }
     }
 
     // 기타 에러 처리
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_jwt_token');
+    if (isTokenError && !originalRequest?._retry) {
+      // [명세서 1.1] 관리자 Access Token 및 Refresh Token 제거
+      localStorage.removeItem('admin_access_token');
       localStorage.removeItem('admin_refresh_token');
       window.location.href = '/admin/login';
     }

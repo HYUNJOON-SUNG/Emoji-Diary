@@ -57,8 +57,9 @@ export function handleApiError(error: any, context?: string): string {
 
     // 401 Unauthorized - 로그인 페이지로 리다이렉트 (8.3)
     if (apiError.status === 401) {
-      // Remove JWT token
-      localStorage.removeItem('admin_jwt_token');
+      // [명세서 1.1] 관리자 Access Token 및 Refresh Token 제거
+      localStorage.removeItem('admin_access_token');
+      localStorage.removeItem('admin_refresh_token');
       
       // 페이지 리로드 (로그인 페이지로 이동)
       window.location.reload();

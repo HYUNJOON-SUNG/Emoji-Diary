@@ -31,9 +31,11 @@
  * 3. "로그인" 버튼 클릭 - 클라이언트 검증 없이 즉시 API 호출
  * 4. 로딩 상태 표시 ("로그인 중...")
  * 5-1. 로그인 성공 시:
- *      - 관리자 JWT 토큰 생성 및 localStorage 저장 (admin_jwt_token)
+ *      - 관리자 Access Token 및 Refresh Token 생성 및 localStorage 저장 (명세서 1.1)
+ *        - admin_access_token: 관리자 Access Token
+ *        - admin_refresh_token: 관리자 Refresh Token
  *      - 관리자 정보 저장
- *      - 관리자 대시보드 화면으로 이동
+ *      - 서비스 통계 화면으로 이동 (명세서 1.1)
  * 5-2. 로그인 실패 시:
  *      - 서버 검증 (이메일 형식, 빈 필드, 비밀번호 불일치, 관리자 권한 등)
  *      - 하단에 통합 에러 메시지 표시
@@ -305,7 +307,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
  * 
  *     if (response.data.success) {
  *       // JWT 토큰 저장
- *       localStorage.setItem('admin_jwt_token', response.data.token);
+ *       localStorage.setItem('admin_access_token', response.data.accessToken);
+ *       localStorage.setItem('admin_refresh_token', response.data.refreshToken);
  *       
  *       // 사용자 정보 저장
  *       localStorage.setItem('admin_user', JSON.stringify(response.data.user));
@@ -335,7 +338,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
  * 
  * axios.interceptors.request.use(
  *   (config) => {
- *     const token = localStorage.getItem('admin_jwt_token');
+ *     const token = localStorage.getItem('admin_access_token');
  *     if (token) {
  *       config.headers.Authorization = `Bearer ${token}`;
  *     }

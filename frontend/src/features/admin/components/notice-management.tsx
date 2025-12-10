@@ -5,8 +5,16 @@
  * 
  * @description
  * 관리자가 사용자에게 전달할 공지사항을 작성하고 관리하는 페이지
- * - 유스케이스: 4.1-4.6 공지사항 관리 플로우
+ * - 유스케이스: 명세서 3.1-3.6 공지사항 관리 플로우
  * - 플로우: 공지사항 관리 플로우
+ * 
+ * [명세서 참고]
+ * - 3.1: 공지사항 목록 조회
+ * - 3.2: 공지사항 작성
+ * - 3.3: 공지사항 조회
+ * - 3.4: 공지사항 수정
+ * - 3.5: 공지사항 삭제
+ * - 3.6: 공지사항 고정
  * 
  * @features
  * 1. 공지사항 목록 조회 (4.1):
@@ -62,9 +70,9 @@
  * ====================================================================================================
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin } from 'lucide-react';
-import { getNoticeList, createNotice, updateNotice, deleteNotice, pinNotice } from '../../../services/adminApi';
+import { getNoticeList, getNoticeById, createNotice, updateNotice, deleteNotice, pinNotice } from '../../../services/adminApi';
 import type { Notice } from '../types';
 import { getAdminInfo } from '../utils/session-manager';
 
@@ -137,23 +145,40 @@ export function NoticeManagement() {
   };
 
   // ========================================
-  // 공지사항 수정 (4.4)
+  // 공지사항 수정 (3.4)
   // ========================================
   /**
-   * 플로우: 4.4 공지사항 수정
+   * 플로우: 3.4 공지사항 수정
    * 
    * 1. 공지사항 목록에서 수정 버튼 (✏️) 클릭
-   * 2. 공지사항 수정 모달 표시
-   *    - 4.2와 동일한 구조
+   * 2. API 호출: GET /api/admin/notices/{noticeId}
+   * 3. content를 포함한 전체 데이터 가져오기
+   * 4. 공지사항 수정 모달 표시
+   *    - 3.2와 동일한 구조
    *    - 기존 공지사항 내용 자동 로드 (제목, HTML 내용, 공개 상태, 상단 고정 여부)
-   * 3. 내용 수정 후 "수정 완료" 버튼 클릭
-   * 4. 검증 통과 → PUT API 호출
-   * 5. 성공 시: 성공 메시지, 목록 갱신, 모달 닫기
-   * 6. 수정한 내용 있을 시 X 버튼 클릭 → 확인 다이얼로그
+   * 5. 내용 수정 후 "수정 완료" 버튼 클릭
+   * 6. 검증 통과 → PUT API 호출
+   * 7. 성공 시: 성공 메시지, 목록 갱신, 모달 닫기
+   * 8. 수정한 내용 있을 시 X 버튼 클릭 → 확인 다이얼로그
+   * 
+   * [API 명세서 Section 10.3.2, 10.3.4]
+   * - 수정 시 content를 포함한 전체 데이터를 가져와야 합니다.
    */
-  const handleEdit = (notice: Notice) => {
-    setEditingNotice({ ...notice });
-    setShowModal(true);
+  const handleEdit = async (notice: Notice) => {
+    try {
+      // [API 명세서 Section 10.3.2] GET /api/admin/notices/{noticeId}
+      // content를 포함한 전체 데이터 가져오기
+      const response = await getNoticeById(notice.id);
+      if (response.success && response.data) {
+        setEditingNotice(response.data);
+        setShowModal(true);
+      } else {
+        alert('공지사항을 불러올 수 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('공지사항 상세 조회 실패:', error);
+      alert(error.message || '공지사항을 불러올 수 없습니다.');
+    }
   };
 
   // ========================================
@@ -225,12 +250,34 @@ export function NoticeManagement() {
   };
 
   // ========================================
-  // 공지사항 조회
+  // 공지사항 조회 (3.3)
   // ========================================
+  /**
+   * 플로우: 3.3 공지사항 조회
+   * 
+   * 1. 공지사항 목록에서 조회 버튼 (👁️) 클릭
+   * 2. API 호출: GET /api/admin/notices/{noticeId}
+   * 3. content를 포함한 전체 데이터 가져오기
+   * 4. 조회 모달 표시
+   * 
+   * [API 명세서 Section 10.3.2]
+   * - 관리자가 조회하는 경우 조회수는 증가하지 않습니다.
+   * - content 필드가 포함된 전체 데이터를 반환합니다.
+   */
   const handleView = async (notice: Notice) => {
-    // [API 명세서 Section 7.2]
-    // 관리자가 조회하는 경우 조회수는 증가하지 않습니다.
-    setSelectedNotice(notice);
+    try {
+      // [API 명세서 Section 10.3.2] GET /api/admin/notices/{noticeId}
+      // content를 포함한 전체 데이터 가져오기
+      const response = await getNoticeById(notice.id);
+      if (response.success && response.data) {
+        setSelectedNotice(response.data);
+      } else {
+        alert('공지사항을 불러올 수 없습니다.');
+      }
+    } catch (error: any) {
+      console.error('공지사항 상세 조회 실패:', error);
+      alert(error.message || '공지사항을 불러올 수 없습니다.');
+    }
   };
 
   // ========================================
@@ -417,9 +464,19 @@ export function NoticeManagement() {
                       {notice.author.split('@')[0]}
                     </td>
                     
-                    {/* 작성일 */}
+                    {/* 작성일 (명세서 3.1: YYYY-MM-DD 형식) */}
                     <td className="px-6 py-4 text-slate-600 text-sm border-r border-slate-100">
-                      {notice.createdAt}
+                      {notice.createdAt ? (() => {
+                        // YYYY-MM-DD 형식으로 변환 (명세서 3.1)
+                        const date = new Date(notice.createdAt);
+                        if (isNaN(date.getTime())) {
+                          return notice.createdAt; // 파싱 실패 시 원본 반환
+                        }
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      })() : '-'}
                     </td>
                     
                     {/* 조회수 */}
@@ -521,9 +578,12 @@ export function NoticeManagement() {
         <NoticeViewModal
           notice={selectedNotice}
           onClose={() => setSelectedNotice(null)}
-          onEdit={() => {
-            setSelectedNotice(null);
-            handleEdit(selectedNotice);
+          onEdit={async () => {
+            if (selectedNotice) {
+              const noticeToEdit = selectedNotice;
+              setSelectedNotice(null);
+              await handleEdit(noticeToEdit);
+            }
           }}
         />
       )}
@@ -557,11 +617,75 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
   const [formData, setFormData] = useState<Notice>(notice);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit'); // 편집/미리보기 탭
   const [hasChanges, setHasChanges] = useState(false); // 변경사항 추적
+  const textareaRef = useRef<HTMLTextAreaElement>(null); // textarea 참조 (선택한 텍스트 가져오기용)
+  const [showLinkModal, setShowLinkModal] = useState(false); // 링크 입력 모달
+  const [showImageModal, setShowImageModal] = useState(false); // 이미지 입력 모달
+  const [linkUrl, setLinkUrl] = useState(''); // 링크 URL
+  const [linkText, setLinkText] = useState(''); // 링크 텍스트
+  const [imageUrl, setImageUrl] = useState(''); // 이미지 URL
+  const [imageAlt, setImageAlt] = useState(''); // 이미지 alt 텍스트
 
   // 폼 데이터 변경 시 hasChanges 업데이트
   const updateFormData = (updates: Partial<Notice>) => {
     setFormData({ ...formData, ...updates });
     setHasChanges(true);
+  };
+
+  /**
+   * textarea에서 선택한 텍스트 가져오기
+   * @returns 선택한 텍스트와 시작/끝 위치
+   */
+  const getSelectedText = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return { text: '', start: 0, end: 0 };
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    
+    return { text: selectedText, start, end };
+  };
+
+  /**
+   * 선택한 텍스트를 HTML 태그로 감싸기
+   * @param openTag - 시작 태그 (예: '<h1>')
+   * @param closeTag - 종료 태그 (예: '</h1>')
+   */
+  const wrapSelectedText = (openTag: string, closeTag: string) => {
+    const { text, start, end } = getSelectedText();
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    // 현재 textarea의 실제 값 사용 (formData.content와 동기화)
+    const currentContent = textarea.value;
+    
+    let newContent: string;
+    if (text) {
+      // 선택한 텍스트가 있으면 태그로 감싸기
+      const before = currentContent.substring(0, start);
+      const after = currentContent.substring(end);
+      newContent = before + openTag + text + closeTag + after;
+    } else {
+      // 선택한 텍스트가 없으면 커서 위치에 태그 삽입
+      const before = currentContent.substring(0, start);
+      const after = currentContent.substring(start);
+      newContent = before + openTag + closeTag + after;
+    }
+    
+    // formData 업데이트
+    updateFormData({ content: newContent });
+    
+    // textarea의 value 직접 업데이트 (즉시 반영)
+    textarea.value = newContent;
+    
+    // 커서 위치 조정 (태그 삽입 후)
+    setTimeout(() => {
+      if (textarea) {
+        const newPosition = text ? start + openTag.length + text.length + closeTag.length : start + openTag.length;
+        textarea.setSelectionRange(newPosition, newPosition);
+        textarea.focus();
+      }
+    }, 0);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -667,25 +791,25 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
                     <div className="flex gap-0.5 flex-shrink-0">
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<h1>제목 1</h1>' })}
+                        onClick={() => wrapSelectedText('<h1>', '</h1>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 1"
+                        title="제목 1 (선택한 텍스트에 적용)"
                       >
                         H1
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<h2>제목 2</h2>' })}
+                        onClick={() => wrapSelectedText('<h2>', '</h2>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 2"
+                        title="제목 2 (선택한 텍스트에 적용)"
                       >
                         H2
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<h3>제목 3</h3>' })}
+                        onClick={() => wrapSelectedText('<h3>', '</h3>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 3"
+                        title="제목 3 (선택한 텍스트에 적용)"
                       >
                         H3
                       </button>
@@ -697,25 +821,25 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
                     <div className="flex gap-0.5 flex-shrink-0">
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<strong>굵게</strong>' })}
+                        onClick={() => wrapSelectedText('<strong>', '</strong>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-bold border border-slate-300 whitespace-nowrap"
-                        title="굵게"
+                        title="굵게 (선택한 텍스트에 적용)"
                       >
                         B
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<em>기울임</em>' })}
+                        onClick={() => wrapSelectedText('<em>', '</em>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs italic border border-slate-300 whitespace-nowrap"
-                        title="기울임"
+                        title="기울임 (선택한 텍스트에 적용)"
                       >
                         I
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<u>밑줄</u>' })}
+                        onClick={() => wrapSelectedText('<u>', '</u>')}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs underline border border-slate-300 whitespace-nowrap"
-                        title="밑줄"
+                        title="밑줄 (선택한 텍스트에 적용)"
                       >
                         U
                       </button>
@@ -749,15 +873,24 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
                     <div className="flex gap-0.5 flex-shrink-0">
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<a href="https://example.com">링크 텍스트</a>' })}
+                        onClick={() => {
+                          const { text } = getSelectedText();
+                          setLinkText(text || ''); // 선택한 텍스트가 있으면 링크 텍스트로 사용
+                          setLinkUrl('');
+                          setShowLinkModal(true);
+                        }}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
-                        title="링크 삽입"
+                        title="링크 삽입 (선택한 텍스트에 링크 적용)"
                       >
                         🔗 링크
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<img src="https://via.placeholder.com/300x200" alt="이미지 설명" />' })}
+                        onClick={() => {
+                          setImageUrl('');
+                          setImageAlt('');
+                          setShowImageModal(true);
+                        }}
                         className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
                         title="이미지 삽입"
                       >
@@ -779,6 +912,7 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
                   </div>
                   
                   <textarea
+                    ref={textareaRef}
                     required
                     value={formData.content}
                     onChange={(e) => updateFormData({ content: e.target.value })}
@@ -793,7 +927,7 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
                       width: '100%'
                     }}
                     rows={8}
-                    placeholder="HTML 형식으로 내용을 입력하거나 위 도구를 사용하세요."
+                    placeholder="HTML 형식으로 내용을 입력하거나 위 도구를 사용하세요. 텍스트를 선택한 후 버튼을 클릭하면 선택한 텍스트에 태그가 적용됩니다."
                   />
                 </div>
               ) : (
@@ -896,6 +1030,158 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
             </button>
           </div>
         </form>
+
+        {/* 링크 입력 모달 */}
+        {showLinkModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-800">링크 삽입</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    링크 URL <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    링크 텍스트 <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={linkText}
+                    onChange={(e) => setLinkText(e.target.value)}
+                    placeholder="클릭할 텍스트"
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLinkModal(false);
+                    setLinkUrl('');
+                    setLinkText('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!linkUrl || !linkText) {
+                      alert('URL과 링크 텍스트를 모두 입력해주세요.');
+                      return;
+                    }
+                    const { start, end } = getSelectedText();
+                    const before = formData.content.substring(0, start);
+                    const after = formData.content.substring(end);
+                    const linkHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+                    updateFormData({ content: before + linkHtml + after });
+                    setShowLinkModal(false);
+                    setLinkUrl('');
+                    setLinkText('');
+                    // 커서 위치 조정
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        const newPosition = start + linkHtml.length;
+                        textareaRef.current.setSelectionRange(newPosition, newPosition);
+                        textareaRef.current.focus();
+                      }
+                    }, 0);
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  삽입
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 이미지 입력 모달 */}
+        {showImageModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-slate-800">이미지 삽입</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    이미지 URL <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    이미지 설명 (alt 텍스트)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageAlt}
+                    onChange={(e) => setImageAlt(e.target.value)}
+                    placeholder="이미지에 대한 설명"
+                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImageModal(false);
+                    setImageUrl('');
+                    setImageAlt('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!imageUrl) {
+                      alert('이미지 URL을 입력해주세요.');
+                      return;
+                    }
+                    const { start } = getSelectedText();
+                    const before = formData.content.substring(0, start);
+                    const after = formData.content.substring(start);
+                    const imageHtml = `<img src="${imageUrl}" alt="${imageAlt || '이미지'}" style="max-width: 100%; height: auto;" />`;
+                    updateFormData({ content: before + imageHtml + after });
+                    setShowImageModal(false);
+                    setImageUrl('');
+                    setImageAlt('');
+                    // 커서 위치 조정
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        const newPosition = start + imageHtml.length;
+                        textareaRef.current.setSelectionRange(newPosition, newPosition);
+                        textareaRef.current.focus();
+                      }
+                    }, 0);
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  삽입
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -967,7 +1253,17 @@ function NoticeViewModal({ notice, onClose, onEdit }: NoticeViewModalProps) {
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {notice.createdAt}
+                {notice.createdAt ? (() => {
+                  // YYYY-MM-DD 형식으로 변환 (명세서 3.3)
+                  const date = new Date(notice.createdAt);
+                  if (isNaN(date.getTime())) {
+                    return notice.createdAt; // 파싱 실패 시 원본 반환
+                  }
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                })() : '-'}
               </span>
               <span className="flex items-center gap-1">
                 <Eye className="w-4 h-4" />

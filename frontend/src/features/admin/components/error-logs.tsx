@@ -5,8 +5,13 @@
  * 
  * @description
  * 시스템 에러 로그를 조회하고 관리하는 페이지
- * - 유스케이스: 6.1-6.3 에러 로그 조회 플로우
+ * - 유스케이스: 명세서 5.1-5.3 에러 로그 조회 플로우
  * - 플로우: 에러 로그 조회 플로우
+ * 
+ * [명세서 참고]
+ * - 5.1: 에러 로그 목록 조회
+ * - 5.2: 에러 로그 필터링 및 검색
+ * - 5.3: 에러 로그 상세 조회
  * 
  * @features
  * 1. 에러 로그 목록 조회 (6.1):
@@ -89,10 +94,18 @@ export function ErrorLogs() {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // ========================================
+  // 페이지네이션 State
+  // ========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 20; // 한 페이지당 표시할 로그 개수
+
+  // ========================================
   // 페이지 진입 시 자동 로드 (6.1)
   // ========================================
   useEffect(() => {
-    loadErrorLogs();
+    loadErrorLogs(1);
   }, []);
 
   // ========================================
@@ -102,22 +115,27 @@ export function ErrorLogs() {
   // loadErrorLogs 함수 내부에서 필터 파라미터를 전달하여 서버 측 필터링 수행
   // 클라이언트 측 필터링은 제거됨 (서버에서 필터링된 결과를 받음)
   useEffect(() => {
-    // 필터가 변경되면 서버에서 다시 조회
-    loadErrorLogs();
+    // 필터가 변경되면 첫 페이지로 리셋하고 서버에서 다시 조회
+    setCurrentPage(1);
+    loadErrorLogs(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [levelFilter, startDate, endDate, searchQuery]);
+  }, [levelFilter, startDate, endDate]);
 
   /**
    * 에러 로그 목록 로드 (6.1)
    * - Database (MariaDB)에서 조회
    * - 타임스탬프 최신순 정렬
+   * - 페이지네이션 지원
    */
-  const loadErrorLogs = async () => {
+  const loadErrorLogs = async (page: number = currentPage) => {
     setIsLoading(true);
 
     try {
       // GET /api/admin/error-logs
-      const params: any = {};
+      const params: any = {
+        page: page,
+        limit: itemsPerPage
+      };
       if (levelFilter !== 'ALL') params.level = levelFilter;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
@@ -125,25 +143,42 @@ export function ErrorLogs() {
       
       const response = await getErrorLogList(params);
       
-      if (response.success && response.data) {
-        const logsData = response.data.logs;
+      // API 응답 구조 확인 및 처리
+      if (response.success) {
+        // response.data가 객체이고, 그 안에 logs 배열이 있는지 확인
+        const logsData = response.data?.logs || [];
+        const total = response.data?.total || 0;
+        const summary = response.data?.summary || { error: 0, warn: 0, info: 0 };
         
-        // Calculate statistics
+        // 페이지네이션 계산
+        const pages = Math.ceil(total / itemsPerPage);
+        setTotalPages(pages > 0 ? pages : 1);
+        setTotalCount(total);
+        setCurrentPage(page);
+        
         const statistics: LogStats = {
-          total: response.data.total,
-          error: response.data.summary.error,
-          warn: response.data.summary.warn,
-          info: response.data.summary.info
+          total: total,
+          error: summary.error || 0,
+          warn: summary.warn || 0,
+          info: summary.info || 0
         };
 
         setAllLogs(logsData);
         setStats(statistics);
+      } else {
+        console.error('API 응답이 실패했습니다:', response);
+        setAllLogs([]);
+        setStats({ total: 0, error: 0, warn: 0, info: 0 });
+        setTotalPages(1);
+        setTotalCount(0);
       }
     } catch (error: any) {
       console.error('에러 로그 조회 실패:', error);
       alert(error.message || '에러 로그를 불러오는데 실패했습니다.');
       setAllLogs([]);
       setStats({ total: 0, error: 0, warn: 0, info: 0 });
+      setTotalPages(1);
+      setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
@@ -233,33 +268,127 @@ export function ErrorLogs() {
   }, [allLogs]);
 
   /**
-   * 빠른 날짜 선택 (6.2)
+   * 날짜를 YYYY-MM-DD 형식의 로컬 날짜 문자열로 변환
+   * (타임존 문제 방지를 위해 toISOString() 대신 직접 포맷팅)
    */
-  const setQuickDate = (type: 'today' | 'thisWeek' | 'thisMonth') => {
-    const today = new Date();
-    const start = new Date();
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  /**
+   * 빠른 날짜 선택 (6.2)
+   * 날짜를 설정한 후 즉시 로그를 다시 로드
+   */
+  const setQuickDate = async (type: 'today' | 'thisWeek' | 'thisMonth') => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(today);
 
     switch (type) {
       case 'today':
-        // 오늘
+        // 오늘 (오늘 00:00:00 ~ 오늘 23:59:59)
+        // start와 today 모두 오늘로 설정
         start.setHours(0, 0, 0, 0);
         today.setHours(23, 59, 59, 999);
         break;
       case 'thisWeek':
-        // 이번 주 (일요일부터)
-        const day = start.getDay();
-        start.setDate(start.getDate() - day);
+        // 이번 주 (일요일 00:00:00 ~ 오늘 23:59:59)
+        const dayOfWeek = now.getDay(); // 0(일요일) ~ 6(토요일)
+        start.setDate(now.getDate() - dayOfWeek);
         start.setHours(0, 0, 0, 0);
+        today.setHours(23, 59, 59, 999);
         break;
       case 'thisMonth':
-        // 이번 달
+        // 이번 달 (이번 달 1일 00:00:00 ~ 오늘 23:59:59)
         start.setDate(1);
         start.setHours(0, 0, 0, 0);
+        today.setHours(23, 59, 59, 999);
         break;
     }
 
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(today.toISOString().split('T')[0]);
+    // 로컬 날짜 문자열로 변환 (타임존 문제 방지)
+    const startDateStr = formatLocalDate(start);
+    const endDateStr = formatLocalDate(today);
+    
+    // 디버깅: 날짜 계산 결과 확인
+    console.log('빠른 날짜 선택:', { type, startDateStr, endDateStr, start, today, now });
+    
+    // 상태 업데이트
+    setStartDate(startDateStr);
+    setEndDate(endDateStr);
+    
+    // 계산된 날짜 값을 직접 사용하여 로그 로드
+    // (상태 업데이트가 비동기이므로, 계산된 값을 직접 전달)
+    setIsLoading(true);
+    try {
+      const params: any = {
+        page: 1, // 빠른 날짜 선택 시 첫 페이지로 리셋
+        limit: itemsPerPage
+      };
+      if (levelFilter !== 'ALL') params.level = levelFilter;
+      params.startDate = startDateStr;
+      params.endDate = endDateStr;
+      if (searchQuery) params.search = searchQuery;
+      
+      // 디버깅: API 호출 파라미터 확인
+      console.log('에러 로그 조회 API 호출 파라미터:', params);
+      
+      const response = await getErrorLogList(params);
+      
+      // 페이지네이션 리셋
+      setCurrentPage(1);
+      
+      // 디버깅: API 응답 확인
+      console.log('에러 로그 조회 API 응답:', response);
+      
+      // API 응답 구조 확인 및 처리
+      if (response.success) {
+        // response.data가 객체이고, 그 안에 logs 배열이 있는지 확인
+        const logsData = response.data?.logs || [];
+        const total = response.data?.total || 0;
+        const summary = response.data?.summary || { error: 0, warn: 0, info: 0 };
+        
+        // 페이지네이션 계산
+        const pages = Math.ceil(total / itemsPerPage);
+        setTotalPages(pages > 0 ? pages : 1);
+        setTotalCount(total);
+        
+        const statistics: LogStats = {
+          total: total,
+          error: summary.error || 0,
+          warn: summary.warn || 0,
+          info: summary.info || 0
+        };
+
+        setAllLogs(logsData);
+        setStats(statistics);
+        
+        // 디버깅: 로드된 로그 개수 확인
+        console.log('로드된 에러 로그 개수:', logsData.length, '전체:', total);
+        
+        // 빈 데이터인 경우 경고
+        if (logsData.length === 0 && total === 0) {
+          console.warn('필터링 결과: 해당 기간에 에러 로그가 없습니다.');
+        }
+      } else {
+        console.error('API 응답이 실패했습니다:', response);
+        setAllLogs([]);
+        setStats({ total: 0, error: 0, warn: 0, info: 0 });
+        setTotalPages(1);
+        setTotalCount(0);
+      }
+    } catch (error: any) {
+      console.error('에러 로그 조회 실패:', error);
+      console.error('에러 상세:', error.response?.data || error.message);
+      alert(error.message || '에러 로그를 불러오는데 실패했습니다.');
+      setAllLogs([]);
+      setStats({ total: 0, error: 0, warn: 0, info: 0 });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   /**
@@ -270,6 +399,11 @@ export function ErrorLogs() {
     setStartDate('');
     setEndDate('');
     setSearchQuery('');
+    setCurrentPage(1);
+    // 필터 초기화 후 첫 페이지로 로드
+    setTimeout(() => {
+      loadErrorLogs(1);
+    }, 0);
   };
 
   // ========================================
@@ -396,20 +530,30 @@ export function ErrorLogs() {
           {/* 검색창 */}
           <div>
             <label className="block text-slate-700 text-sm mb-2">검색</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="메시지, 엔드포인트, 로그 ID"
-                className="w-full pl-10 pr-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    loadErrorLogs();
-                  }
-                }}
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="relative flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="메시지, 엔드포인트, 에러 코드로 검색 (명세서 5.2)"
+                  className="w-full pl-10 pr-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      loadErrorLogs();
+                    }
+                  }}
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              </div>
+              <button
+                type="button"
+                onClick={() => loadErrorLogs()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+              >
+                <Search className="w-4 h-4" />
+                검색
+              </button>
             </div>
           </div>
         </div>
@@ -450,9 +594,10 @@ export function ErrorLogs() {
         {/* 필터 결과 표시 */}
         <div className="mt-4 pt-4 border-t-2 border-slate-200">
           <p className="text-slate-600 text-sm">
-            <span className="font-medium text-slate-800">{logs.length}개</span>의 로그가 표시되고 있습니다
-            {logs.length < allLogs.length && (
-              <span className="text-blue-600"> (전체 {allLogs.length}개 중)</span>
+            <span className="font-medium text-slate-800">전체 {totalCount}개</span>의 로그 중 
+            <span className="font-medium text-slate-800"> {logs.length}개</span>가 표시되고 있습니다
+            {totalCount > 0 && (
+              <span className="text-blue-600"> (페이지 {currentPage}/{totalPages})</span>
             )}
           </p>
         </div>
@@ -542,6 +687,78 @@ export function ErrorLogs() {
             </table>
           )}
         </div>
+        
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t-2 border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-600">
+                전체 {totalCount}개 중 {((currentPage - 1) * itemsPerPage) + 1}~{Math.min(currentPage * itemsPerPage, totalCount)}개 표시
+              </div>
+              <div className="flex items-center gap-2">
+                {/* 이전 페이지 버튼 */}
+                <button
+                  onClick={() => loadErrorLogs(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === 1
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  이전
+                </button>
+                
+                {/* 페이지 번호 버튼 */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      // 전체 페이지가 5개 이하인 경우 모두 표시
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      // 현재 페이지가 앞쪽인 경우: 1, 2, 3, 4, 5
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      // 현재 페이지가 뒤쪽인 경우: 마지막 5개
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      // 현재 페이지가 중간인 경우: 현재 페이지 기준 앞뒤 2개씩
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => loadErrorLogs(pageNum)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* 다음 페이지 버튼 */}
+                <button
+                  onClick={() => loadErrorLogs(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalPages
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  다음
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 상세보기 모달 (6.3) */}
@@ -569,8 +786,8 @@ export function ErrorLogs() {
               </button>
             </div>
 
-            {/* 모달 본문 */}
-            <div className="p-2 sm:p-3 md:p-4 lg:p-6 space-y-3 sm:space-y-4 md:space-y-6 overflow-y-auto flex-1 min-w-0">
+            {/* 모달 본문 - 스크롤 가능하도록 설정 */}
+            <div className="p-2 sm:p-3 md:p-4 lg:p-6 space-y-3 sm:space-y-4 md:space-y-6 overflow-y-auto flex-1 min-w-0" style={{ maxHeight: 'calc(100vh - 200px)' }}>
               {/* 기본 정보 (6.3) */}
               <div>
                 <h3 className="text-slate-800 font-medium mb-3 flex items-center gap-2">
@@ -605,7 +822,9 @@ export function ErrorLogs() {
                 <div className="bg-slate-50 rounded-lg p-4 space-y-3">
                   <div>
                     <span className="text-slate-600 font-medium block mb-2">메시지:</span>
-                    <p className="text-slate-800 whitespace-pre-wrap">{selectedLog.message}</p>
+                    <div className="bg-white rounded-lg border border-slate-200 p-3 max-h-[300px] overflow-y-auto overflow-x-auto">
+                      <p className="text-slate-800 whitespace-pre-wrap text-sm break-words">{selectedLog.message}</p>
+                    </div>
                   </div>
                   
                   {selectedLog.errorCode && (
@@ -639,9 +858,11 @@ export function ErrorLogs() {
                   {selectedLog.userAgent && (
                     <div>
                       <span className="text-slate-600 font-medium block mb-2">브라우저 정보:</span>
-                      <code className="text-xs bg-slate-200 px-3 py-2 rounded block font-mono text-slate-700">
-                        {selectedLog.userAgent}
-                      </code>
+                      <div className="bg-white rounded-lg border border-slate-200 p-3 max-h-32 overflow-y-auto">
+                        <code className="text-xs font-mono text-slate-700 whitespace-pre-wrap break-all">
+                          {selectedLog.userAgent}
+                        </code>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -654,8 +875,8 @@ export function ErrorLogs() {
                     <Code className="w-5 h-5" />
                     Stack Trace
                   </h3>
-                  <div className="bg-slate-900 rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-red-400 text-sm font-mono whitespace-pre-wrap">
+                  <div className="bg-slate-900 rounded-lg p-4 max-h-[400px] overflow-y-auto overflow-x-auto">
+                    <pre className="text-red-400 text-sm font-mono whitespace-pre-wrap break-words">
                       {selectedLog.stackTrace}
                     </pre>
                   </div>

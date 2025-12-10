@@ -106,7 +106,10 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
     try {
       // [API 명세서 Section 3.1] PUT /api/users/me/notification
       // updateNotification은 updateNotificationSettings의 alias로 enabled: boolean을 직접 받음
-      const result = await updateNotification(!user.notificationEnabled);
+      const newEnabled = !user.notificationEnabled;
+      console.log('위험 알림 설정 변경 시도:', { 현재값: user.notificationEnabled, 새값: newEnabled });
+      const result = await updateNotification(newEnabled);
+      console.log('위험 알림 설정 변경 결과:', result);
       // 사용자 정보 업데이트
       const updatedUser = { ...user, notificationEnabled: result.enabled };
       setUser(updatedUser);
@@ -114,8 +117,9 @@ export function MyPage({ onAccountDeleted, onGoToSupport, onModalStateChange, on
       setSuccess(result.enabled ? '알림이 켜졌습니다.' : '알림이 꺼졌습니다.');
       setTimeout(() => setSuccess(''), 2000);
     } catch (err: any) {
-      setError(err?.message || '설정 변경 실패');
       console.error('알림 설정 변경 실패:', err);
+      setError(err?.message || '설정 변경 실패');
+      setTimeout(() => setError(''), 3000);
     }
   };
 

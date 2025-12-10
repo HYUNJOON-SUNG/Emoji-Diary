@@ -162,9 +162,14 @@ export function EmotionChartView() {
    * - KoBERT가 일기 본문(content)만 분석하여 자동으로 저장
    * - 인덱스: idx_diaries_emotion_date (통계 조회 최적화)
    * 
+   * [사용자 명세서 플로우 7.5]
+   * - 주간 선택: 최근 7일의 감정 분포 표시 (일별)
+   * - 월간 선택: 선택한 월의 감정 분포 표시 (주별)
+   * - X축: 날짜 (주간 선택 시 일별, 월간 선택 시 주별)
+   * 
    * 기간 계산:
-   * - weekly: 최근 7일 (오늘 포함)
-   * - monthly: 최근 30일 (오늘 포함)
+   * - weekly: 최근 7일 (오늘 포함, 일별)
+   * - monthly: 현재 월의 감정 분포 (주별)
    */
   const loadChartData = async () => {
     setIsLoading(true);
@@ -172,7 +177,7 @@ export function EmotionChartView() {
     
     try {
       // [API 명세서 Section 5.2.2] GET /api/statistics/emotion-trend
-      // period: 'weekly' | 'monthly', year: number, month?: number (월간 조회 시 필수)
+      // period: 'weekly' | 'monthly', year: number, month: number (weekly와 monthly 모두 필수)
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1; // 1-12
@@ -183,20 +188,26 @@ export function EmotionChartView() {
       const startDate = new Date();
       
       if (periodType === 'weekly') {
-        startDate.setDate(endDate.getDate() - 7);
+        // 주간: 최근 7일 (오늘 포함, 일별)
+        startDate.setDate(endDate.getDate() - 6); // 오늘 포함하여 7일
       } else {
-        // 월간: 현재 월의 첫날부터 오늘까지
-        startDate.setDate(1);
+        // 월간: 현재 월의 첫날부터 오늘까지 (주별)
+        // API는 현재 월의 주별 데이터를 반환합니다
+        startDate.setDate(1); // 현재 월의 첫날
+        startDate.setMonth(now.getMonth());
+        startDate.setFullYear(year);
       }
       
       const startStr = formatDateString(startDate);
       const endStr = formatDateString(endDate);
       
+      console.log('감정 통계 차트 데이터 로드:', { periodType, year, month, startStr, endStr });
       const data = await fetchChartStats(startStr, endStr, periodType);
+      console.log('감정 통계 차트 데이터 응답:', data);
       setChartData(data);
     } catch (err) {
+      console.error('감정 통계 차트 데이터 로드 실패:', err);
       setError('통계 데이터를 불러오는 데 실패했습니다.');
-      console.error('Failed to load chart data:', err);
     } finally {
       setIsLoading(false);
     }

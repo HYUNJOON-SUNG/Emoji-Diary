@@ -1,3 +1,21 @@
+/**
+ * ====================================================================================================
+ * 시스템 설정 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 위험 신호 감지 기준 및 상담 기관 리소스를 관리하는 페이지
+ * - 유스케이스: 명세서 4.1-4.3 시스템 설정 플로우
+ * - 플로우: 시스템 설정 플로우
+ * 
+ * [명세서 참고]
+ * - 4.1: 시스템 설정 화면 진입
+ * - 4.2: 위험 신호 감지 기준 변경
+ * - 4.3: 상담 기관 리소스 관리
+ * 
+ * ====================================================================================================
+ */
+
 import { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Save, Plus, Edit2, Trash2, Phone, Globe, Building2, X, Check } from 'lucide-react';
 import { getRiskDetectionSettings, updateRiskDetectionSettings, getCounselingResources, createCounselingResource, updateCounselingResource, deleteCounselingResource } from '../../../services/adminApi';
@@ -10,15 +28,15 @@ export function SystemSettings() {
   const [activeTab, setActiveTab] = useState<'risk' | 'resources'>('risk'); // 5.1: 기본 선택 = 위험 신호 기준
   const [isLoading, setIsLoading] = useState(true);
   
-  // 위험 신호 기준 설정 (5.2 기본값)
+  // 위험 신호 기준 설정 (명세서 4.2 기본값)
   const [riskThreshold, setRiskThreshold] = useState<RiskThreshold>({
-    monitoringPeriodDays: 14,        // 모니터링 기간: 14일
-    highConsecutiveDays: 5,          // High: 연속 5일
-    highTotalDays: 8,                // High: 14일 중 8일
-    mediumConsecutiveDays: 3,        // Medium: 연속 3일
-    mediumTotalDays: 5,              // Medium: 14일 중 5일
-    lowConsecutiveDays: 2,           // Low: 연속 2일
-    lowTotalDays: 3                  // Low: 14일 중 3일
+    monitoringPeriodDays: 14,        // 모니터링 기간: 14일 (명세서 4.2)
+    highConsecutiveDays: 8,           // High: 연속 부정 감정 임계 점수 8점 (명세서 4.2)
+    highTotalDays: 12,                // High: 모니터링 기간 내 부정 감정 임계 점수 12점 (명세서 4.2)
+    mediumConsecutiveDays: 5,         // Medium: 연속 부정 감정 임계 점수 5점 (명세서 4.2)
+    mediumTotalDays: 8,               // Medium: 모니터링 기간 내 부정 감정 임계 점수 8점 (명세서 4.2)
+    lowConsecutiveDays: 2,            // Low: 연속 부정 감정 임계 점수 2점 (명세서 4.2)
+    lowTotalDays: 4                   // Low: 모니터링 기간 내 부정 감정 임계 점수 4점 (명세서 4.2)
   });
   const [originalThreshold, setOriginalThreshold] = useState<RiskThreshold>(riskThreshold);
   const [hasThresholdChanges, setHasThresholdChanges] = useState(false);

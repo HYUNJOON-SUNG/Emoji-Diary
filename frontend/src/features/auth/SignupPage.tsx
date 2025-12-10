@@ -788,7 +788,19 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
             </div>
 
             {/* Signup Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 
+              [플로우 1.3]
+              form의 onSubmit 이벤트는 회원가입 버튼 클릭 시에만 발생합니다.
+              약관 동의나 필수 사항 체크가 완료되어도 자동으로 form이 submit되지 않습니다.
+            */}
+            <form 
+              onSubmit={(e) => {
+                // form의 기본 submit 동작 방지
+                // 회원가입 버튼의 onClick 핸들러에서만 처리
+                e.preventDefault();
+              }} 
+              className="space-y-4"
+            >
               {/* Name */}
               <div>
                 <label className="text-xs text-stone-600 block mb-2">
@@ -1091,10 +1103,21 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
               )}
 
               {/* Submit Button (인증 완료 후에만 표시) */}
+              {/* 
+                [플로우 1.3 Step 8]
+                회원가입 버튼은 사용자가 직접 클릭해야만 회원가입이 진행됩니다.
+                약관 동의나 필수 사항 체크가 완료되어도 자동으로 회원가입이 진행되지 않습니다.
+              */}
               {codeVerified && (
                 <button
                   type="submit"
                   disabled={isLoading}
+                  onClick={(e) => {
+                    // 명시적으로 버튼 클릭 이벤트만 처리
+                    // 약관 동의나 다른 필수 사항 체크가 완료되어도 자동으로 실행되지 않도록 함
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
                 >
                   {isLoading ? (

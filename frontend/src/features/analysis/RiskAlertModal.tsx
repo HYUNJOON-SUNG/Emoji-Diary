@@ -71,9 +71,10 @@ interface RiskAlertModalProps {
   onViewResources: () => void; // "도움말 & 리소스 보기" 클릭 콜백 (지원센터로 이동)
   riskLevel: 'low' | 'medium' | 'high'; // 위험 레벨
   reasons: string[]; // 판정 근거 배열 (예: ["최근 5일 연속으로 부정적인 감정이 기록되었습니다."])
+  urgentCounselingPhones?: string[]; // 긴급 상담 전화번호 목록 (High 레벨인 경우, 관리자가 설정한 긴급 상담 기관의 전화번호)
 }
 
-export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, reasons }: RiskAlertModalProps) {
+export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, reasons, urgentCounselingPhones = [] }: RiskAlertModalProps) {
   /**
    * 위험 레벨별 색상 테마 (플로우 9.1)
    * 
@@ -223,17 +224,14 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                 
                 표시 조건:
                 - riskLevel === 'high' 일 때만 표시
-                
-                연락처 정보:
-                - 자살예방 상담전화: 1393 (24시간)
-                - 정신건강 위기상담: 1577-0199 (24시간)
+                - 관리자가 설정한 긴급 상담 기관의 전화번호 표시 (관리자 명세서 4.3의 "긴급 상담 기관으로 표시"로 설정된 기관의 전화번호)
                 
                 디자인:
                 - 흰색 배경 + 파란색 테두리
                 - 하트 아이콘 (따뜻함 표현)
                 - 전화번호 강조 (bold)
               */}
-              {riskLevel === 'high' && (
+              {riskLevel === 'high' && urgentCounselingPhones.length > 0 && (
                 <div className="p-4 bg-white border-2 border-blue-400 rounded-lg">
                   <div className="flex items-start gap-3">
                     <Heart className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -242,8 +240,9 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                         <strong>즉시 도움이 필요하시면:</strong>
                       </p>
                       <div className="space-y-1.5 text-xs text-blue-800">
-                        <p>• 자살예방 상담전화: <strong>1393</strong></p>
-                        <p>• 정신건강 위기상담: <strong>1577-0199</strong></p>
+                        {urgentCounselingPhones.map((phone, index) => (
+                          <p key={index}>• <strong>{phone}</strong></p>
+                        ))}
                         <p className="text-blue-600 mt-2">※ 24시간 상담 가능</p>
                       </div>
                     </div>
