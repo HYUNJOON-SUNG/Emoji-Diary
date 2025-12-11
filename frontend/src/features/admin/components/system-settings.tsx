@@ -27,7 +27,7 @@ export function SystemSettings() {
   // ========================================
   const [activeTab, setActiveTab] = useState<'risk' | 'resources'>('risk'); // 5.1: 기본 선택 = 위험 신호 기준
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // 위험 신호 기준 설정 (명세서 4.2 기본값)
   const [riskThreshold, setRiskThreshold] = useState<RiskThreshold>({
     monitoringPeriodDays: 14,        // 모니터링 기간: 14일 (명세서 4.2)
@@ -41,7 +41,7 @@ export function SystemSettings() {
   const [originalThreshold, setOriginalThreshold] = useState<RiskThreshold>(riskThreshold);
   const [hasThresholdChanges, setHasThresholdChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // 상담 기관 리소스
   const [resources, setResources] = useState<CounselingResource[]>([]);
   const [showResourceModal, setShowResourceModal] = useState(false);
@@ -56,7 +56,7 @@ export function SystemSettings() {
 
   useEffect(() => {
     // Check if threshold has changes
-    const hasChanges = 
+    const hasChanges =
       riskThreshold.monitoringPeriodDays !== originalThreshold.monitoringPeriodDays ||
       riskThreshold.highConsecutiveDays !== originalThreshold.highConsecutiveDays ||
       riskThreshold.highTotalDays !== originalThreshold.highTotalDays ||
@@ -64,13 +64,13 @@ export function SystemSettings() {
       riskThreshold.mediumTotalDays !== originalThreshold.mediumTotalDays ||
       riskThreshold.lowConsecutiveDays !== originalThreshold.lowConsecutiveDays ||
       riskThreshold.lowTotalDays !== originalThreshold.lowTotalDays;
-    
+
     setHasThresholdChanges(hasChanges);
   }, [riskThreshold, originalThreshold]);
 
   const loadSettings = async () => {
     setIsLoading(true);
-    
+
     try {
       // GET /api/admin/settings/risk-detection
       const riskResponse = await getRiskDetectionSettings();
@@ -88,7 +88,7 @@ export function SystemSettings() {
         setRiskThreshold(threshold);
         setOriginalThreshold(threshold);
       }
-      
+
       // GET /api/admin/settings/counseling-resources
       const resourcesResponse = await getCounselingResources();
       if (resourcesResponse.success && resourcesResponse.data) {
@@ -111,36 +111,36 @@ export function SystemSettings() {
 
     // 연속 부정 감정 임계 점수 검증 (1-100)
     if (riskThreshold.highConsecutiveDays < 1 || riskThreshold.highConsecutiveDays > 100 ||
-        riskThreshold.mediumConsecutiveDays < 1 || riskThreshold.mediumConsecutiveDays > 100 ||
-        riskThreshold.lowConsecutiveDays < 1 || riskThreshold.lowConsecutiveDays > 100) {
+      riskThreshold.mediumConsecutiveDays < 1 || riskThreshold.mediumConsecutiveDays > 100 ||
+      riskThreshold.lowConsecutiveDays < 1 || riskThreshold.lowConsecutiveDays > 100) {
       alert('연속 부정 감정 임계 점수는 1~100 사이의 값이어야 합니다.');
       return;
     }
 
     // 모니터링 기간 내 부정 감정 임계 점수 검증 (1-200)
     if (riskThreshold.highTotalDays < 1 || riskThreshold.highTotalDays > 200 ||
-        riskThreshold.mediumTotalDays < 1 || riskThreshold.mediumTotalDays > 200 ||
-        riskThreshold.lowTotalDays < 1 || riskThreshold.lowTotalDays > 200) {
+      riskThreshold.mediumTotalDays < 1 || riskThreshold.mediumTotalDays > 200 ||
+      riskThreshold.lowTotalDays < 1 || riskThreshold.lowTotalDays > 200) {
       alert('모니터링 기간 내 부정 감정 임계 점수는 1~200 사이의 값이어야 합니다.');
       return;
     }
 
     // 검증 규칙: High > Medium > Low (consecutiveScore)
     if (riskThreshold.highConsecutiveDays <= riskThreshold.mediumConsecutiveDays ||
-        riskThreshold.mediumConsecutiveDays <= riskThreshold.lowConsecutiveDays) {
+      riskThreshold.mediumConsecutiveDays <= riskThreshold.lowConsecutiveDays) {
       alert('연속 부정 감정 임계 점수는 High > Medium > Low 순서여야 합니다.');
       return;
     }
 
     // 검증 규칙: High > Medium > Low (scoreInPeriod)
     if (riskThreshold.highTotalDays <= riskThreshold.mediumTotalDays ||
-        riskThreshold.mediumTotalDays <= riskThreshold.lowTotalDays) {
+      riskThreshold.mediumTotalDays <= riskThreshold.lowTotalDays) {
       alert('모니터링 기간 내 부정 감정 임계 점수는 High > Medium > Low 순서여야 합니다.');
       return;
     }
 
     setIsSaving(true);
-    
+
     try {
       // PUT /api/admin/settings/risk-detection
       const settings = {
@@ -158,12 +158,12 @@ export function SystemSettings() {
           scoreInPeriod: riskThreshold.lowTotalDays
         }
       };
-      
+
       await updateRiskDetectionSettings(settings);
-      
+
       setOriginalThreshold(riskThreshold);
       setHasThresholdChanges(false);
-      
+
       alert('설정이 성공적으로 저장되었습니다.');
     } catch (error: any) {
       console.error('위험 신호 감지 기준 저장 실패:', error);
@@ -213,17 +213,7 @@ export function SystemSettings() {
   };
 
   const handleSaveResource = async (resource: CounselingResource) => {
-    // Validation
-    if (!resource.name || !resource.phone || !resource.description) {
-      alert('필수 항목을 모두 입력해주세요.');
-      return;
-    }
-
-    // Validate URL format
-    if (resource.website && !resource.website.match(/^https?:\/\/.+/)) {
-      alert('웹사이트 주소는 http:// 또는 https://로 시작해야 합니다.');
-      return;
-    }
+    // 검증은 모달 내부에서 수행됨
 
     try {
       if (resource.id && resource.id > 0) {
@@ -251,7 +241,7 @@ export function SystemSettings() {
         });
         alert('새 상담 기관이 추가되었습니다.');
       }
-      
+
       setShowResourceModal(false);
       setEditingResource(null);
       loadSettings(); // 목록 갱신
@@ -292,21 +282,19 @@ export function SystemSettings() {
       <div className="flex gap-1 sm:gap-2 border-b-2 border-slate-200 overflow-x-auto">
         <button
           onClick={() => setActiveTab('risk')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium transition-all text-sm sm:text-base whitespace-nowrap ${
-            activeTab === 'risk'
-              ? 'border-b-4 border-blue-600 text-blue-600 -mb-0.5'
-              : 'text-slate-600 hover:text-slate-800'
-          }`}
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium transition-all text-sm sm:text-base whitespace-nowrap ${activeTab === 'risk'
+            ? 'border-b-4 border-blue-600 text-blue-600 -mb-0.5'
+            : 'text-slate-600 hover:text-slate-800'
+            }`}
         >
           위험 신호 기준 변경
         </button>
         <button
           onClick={() => setActiveTab('resources')}
-          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium transition-all text-sm sm:text-base whitespace-nowrap ${
-            activeTab === 'resources'
-              ? 'border-b-4 border-blue-600 text-blue-600 -mb-0.5'
-              : 'text-slate-600 hover:text-slate-800'
-          }`}
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-medium transition-all text-sm sm:text-base whitespace-nowrap ${activeTab === 'resources'
+            ? 'border-b-4 border-blue-600 text-blue-600 -mb-0.5'
+            : 'text-slate-600 hover:text-slate-800'
+            }`}
         >
           상담 기관 리소스 관리
         </button>
@@ -331,19 +319,16 @@ export function SystemSettings() {
             {/* 부정 감정 기준 정보 (4.2 - 정보 표시, 수정 불가) */}
             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
               <label className="block text-slate-700 font-medium mb-2">
-                부정 감정 기준 (정보 표시, 수정 불가)
+                부정 감정 기준
               </label>
               <div className="space-y-2 text-sm text-slate-600">
                 <p>
-                  <span className="font-medium">KoBERT 감정 분석 기준:</span> 위험 신호 판정은 KoBERT가 분석한 감정(`emotion` 컬럼)을 기준으로 함
-                </p>
-                <p>
-                  <span className="font-medium">KoBERT 감정 종류:</span> 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오 (7가지)
+                  <span className="font-medium">KoBERT 감정 종류:</span> 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
                 </p>
                 <ul className="list-disc list-inside ml-2 space-y-1">
-                  <li>긍정: 행복 (1가지)</li>
-                  <li>중립: 중립, 당황 (2가지)</li>
-                  <li>부정: 슬픔, 분노, 불안, 혐오 (4가지)</li>
+                  <li>긍정: 행복</li>
+                  <li>중립: 중립, 당황</li>
+                  <li>부정: 슬픔, 분노, 불안, 혐오</li>
                 </ul>
                 <p className="mt-2">
                   <span className="font-medium">부정 감정 심각도별 분류:</span>
@@ -352,12 +337,6 @@ export function SystemSettings() {
                   <li><span className="font-medium">고위험 부정 감정 (2점):</span> 슬픔, 분노</li>
                   <li><span className="font-medium">중위험 부정 감정 (1점):</span> 불안, 혐오</li>
                 </ul>
-                <p className="mt-2">
-                  <span className="font-medium">계산 방식:</span> 각 감정의 가중치를 합산하여 점수로 계산 (예: 슬픔 2일 = 4점, 불안 3일 = 3점, 총 7점)
-                </p>
-                <p className="mt-2 text-slate-500 italic">
-                  참고: 중립(`중립`, `당황`)과 긍정(`행복`) 감정은 위험 신호 계산에 포함되지 않음
-                </p>
               </div>
             </div>
 
@@ -393,18 +372,12 @@ export function SystemSettings() {
               <label className="block text-slate-700 font-medium mb-2">
                 High 레벨 판정 기준
               </label>
-              <p className="text-slate-600 text-sm mb-4">
-                둘 중 하나라도 충족하면 High 레벨로 판정됩니다
-              </p>
-              
+
               {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
                   연속 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 High 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -423,20 +396,17 @@ export function SystemSettings() {
                   현재 설정: 연속 부정 감정 점수 {riskThreshold.highConsecutiveDays}점 이상 시 High 레벨
                 </div>
               </div>
-              
+
               {/* 또는 */}
               <div className="text-center text-slate-600 font-medium text-sm mb-4">
                 또는
               </div>
-              
+
               {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
                   모니터링 기간 내 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 High 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -462,18 +432,12 @@ export function SystemSettings() {
               <label className="block text-slate-700 font-medium mb-2">
                 Medium 레벨 판정 기준
               </label>
-              <p className="text-slate-600 text-sm mb-4">
-                둘 중 하나라도 충족하면 Medium 레벨로 판정됩니다 (단, High 레벨 기준을 충족하지 않은 경우)
-              </p>
-              
+
               {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
                   연속 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 Medium 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -492,20 +456,17 @@ export function SystemSettings() {
                   현재 설정: 연속 부정 감정 점수 {riskThreshold.mediumConsecutiveDays}점 이상 시 Medium 레벨
                 </div>
               </div>
-              
+
               {/* 또는 */}
               <div className="text-center text-slate-600 font-medium text-sm mb-4">
                 또는
               </div>
-              
+
               {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
                   모니터링 기간 내 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 Medium 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -531,18 +492,12 @@ export function SystemSettings() {
               <label className="block text-slate-700 font-medium mb-2">
                 Low 레벨 판정 기준
               </label>
-              <p className="text-slate-600 text-sm mb-4">
-                둘 중 하나라도 충족하면 Low 레벨로 판정됩니다 (단, High 또는 Medium 레벨 기준을 충족하지 않은 경우)
-              </p>
-              
+
               {/* 연속 부정 감정 임계 점수 */}
               <div className="mb-4">
                 <label className="block text-slate-600 text-sm mb-2">
                   연속 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수가 이 값 이상이면 Low 레벨로 판정됩니다 (연속이 끊기면 계산 종료, 고위험 감정 1일=2점, 중위험 감정 1일=1점)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -561,20 +516,17 @@ export function SystemSettings() {
                   현재 설정: 연속 부정 감정 점수 {riskThreshold.lowConsecutiveDays}점 이상 시 Low 레벨
                 </div>
               </div>
-              
+
               {/* 또는 */}
               <div className="text-center text-slate-600 font-medium text-sm mb-4">
                 또는
               </div>
-              
+
               {/* 모니터링 기간 내 부정 감정 임계 점수 */}
               <div>
                 <label className="block text-slate-600 text-sm mb-2">
                   모니터링 기간 내 부정 감정 임계 점수
                 </label>
-                <p className="text-slate-500 text-xs mb-2">
-                  모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계가 이 값 이상이면 Low 레벨로 판정됩니다 (연속 여부와 무관하게 기간 내 모든 부정 감정 합산)
-                </p>
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
@@ -594,14 +546,14 @@ export function SystemSettings() {
                 </div>
               </div>
             </div>
-            
+
             {/* None Level Description */}
             <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
               <label className="block text-slate-700 font-medium mb-2">
                 None 레벨
               </label>
               <p className="text-slate-600 text-sm">
-                위의 High/Medium/Low 기준을 모두 충족하지 않는 경우 자동으로 None 레벨로 판정됩니다 (별도 설정 불필요)
+                High/Medium/Low 기준을 모두 충족하지 않는 경우 자동으로 None 레벨로 판정됩니다
               </p>
             </div>
 
@@ -677,11 +629,10 @@ export function SystemSettings() {
                           <h3 className="text-slate-800 font-medium text-base sm:text-lg break-words">
                             {resource.name}
                           </h3>
-                          <span className={`px-2 sm:px-3 py-1 text-xs rounded-full whitespace-nowrap ${
-                            resource.isUrgent
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
+                          <span className={`px-2 sm:px-3 py-1 text-xs rounded-full whitespace-nowrap ${resource.isUrgent
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-blue-100 text-blue-700'
+                            }`}>
                             {resource.category}
                           </span>
                           {resource.isUrgent && (
@@ -691,11 +642,11 @@ export function SystemSettings() {
                             </span>
                           )}
                         </div>
-                        
+
                         {resource.description && (
                           <p className="text-slate-600 text-sm mb-3 break-words">{resource.description}</p>
                         )}
-                        
+
                         <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 text-sm">
                           {resource.phone && (
                             <div className="flex items-center gap-2 text-slate-600">
@@ -718,7 +669,7 @@ export function SystemSettings() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* 수정/삭제 버튼 - 오른쪽 고정 */}
                       <div className="flex gap-2 flex-shrink-0">
                         <button
@@ -769,10 +720,36 @@ interface ResourceModalProps {
 
 function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
   const [formData, setFormData] = useState<CounselingResource>(resource);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+
+    // 검증
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formData.name?.trim()) {
+      newErrors.name = '기관명을 입력해주세요';
+    }
+
+    if (!formData.category?.trim()) {
+      newErrors.category = '카테고리를 선택해주세요';
+    }
+
+    if (!formData.phone?.trim()) {
+      newErrors.phone = '전화번호를 입력해주세요';
+    }
+
+    if (!formData.description?.trim()) {
+      newErrors.description = '설명을 입력해주세요';
+    }
+
+    setErrors(newErrors);
+
+    // 에러가 없으면 저장
+    if (Object.keys(newErrors).length === 0) {
+      onSave(formData);
+    }
   };
 
   return (
@@ -803,12 +780,12 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
               </label>
               <input
                 type="text"
-                required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-words min-w-0"
-                placeholder="예: 자살예방 상담전화"
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors({ ...errors, name: '' }); }}
+                className={`w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 rounded-lg focus:outline-none break-words min-w-0 ${errors.name ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`}
+                placeholder="상담 기관 이름을 입력하세요"
               />
+              {errors.name && <p className="text-red-600 text-xs sm:text-sm mt-1">{errors.name}</p>}
             </div>
 
             {/* Category */}
@@ -817,30 +794,31 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
                 카테고리 <span className="text-red-600">*</span>
               </label>
               <select
-                required
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value as CounselingResource['category'] })}
-                className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 min-w-0"
+                onChange={(e) => { setFormData({ ...formData, category: e.target.value as CounselingResource['category'] }); setErrors({ ...errors, category: '' }); }}
+                className={`w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 rounded-lg focus:outline-none min-w-0 ${errors.category ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`}
               >
                 <option value="긴급상담">긴급 상담</option>
                 <option value="전문상담">전문 상담</option>
                 <option value="상담전화">상담 전화</option>
                 <option value="의료기관">의료 기관</option>
               </select>
+              {errors.category && <p className="text-red-600 text-xs sm:text-sm mt-1">{errors.category}</p>}
             </div>
 
             {/* Phone */}
             <div className="min-w-0">
               <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                전화번호
+                전화번호 <span className="text-red-600">*</span>
               </label>
               <input
                 type="tel"
                 value={formData.phone || ''}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value || undefined })}
-                className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-words min-w-0"
-                placeholder="예: 1393 (선택사항)"
+                onChange={(e) => { setFormData({ ...formData, phone: e.target.value || undefined }); setErrors({ ...errors, phone: '' }); }}
+                className={`w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 rounded-lg focus:outline-none break-words min-w-0 ${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`}
+                placeholder="전화번호를 입력하세요"
               />
+              {errors.phone && <p className="text-red-600 text-xs sm:text-sm mt-1">{errors.phone}</p>}
             </div>
 
             {/* Website */}
@@ -849,27 +827,28 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
                 웹사이트 주소
               </label>
               <input
-                type="url"
+                type="text"
                 value={formData.website}
                 onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-all min-w-0"
-                placeholder="https://example.com"
+                placeholder="웹사이트 주소를 입력하세요 (선택사항)"
               />
             </div>
 
             {/* Description */}
             <div className="min-w-0">
               <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                설명
+                설명 <span className="text-red-600">*</span>
               </label>
               <textarea
                 value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value || undefined })}
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 resize-none break-words overflow-x-auto"
+                onChange={(e) => { setFormData({ ...formData, description: e.target.value || undefined }); setErrors({ ...errors, description: '' }); }}
+                className={`w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 rounded-lg focus:outline-none resize-none break-words overflow-x-auto ${errors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`}
                 style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                 rows={3}
-                placeholder="상담 기관에 대한 간단한 설명을 입력하세요 (선택사항)"
+                placeholder="상담 기관에 대한 설명을 입력하세요"
               />
+              {errors.description && <p className="text-red-600 text-xs sm:text-sm mt-1">{errors.description}</p>}
             </div>
 
             {/* Availability */}
@@ -882,7 +861,7 @@ function ResourceModal({ resource, onSave, onClose }: ResourceModalProps) {
                 value={formData.operatingHours || ''}
                 onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
                 className="w-full px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-sm sm:text-base border-2 border-slate-300 rounded-lg focus:outline-none focus:border-green-500 break-words min-w-0"
-                placeholder="예: 24시간, 평일 09:00-18:00"
+                placeholder="운영 시간을 입력하세요 (예: 24시간, 평일 09:00-18:00)"
               />
             </div>
 
