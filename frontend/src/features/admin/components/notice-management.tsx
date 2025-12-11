@@ -71,7 +71,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin } from 'lucide-react';
+import { Megaphone, Plus, Edit2, Trash2, Eye, X, Save, Calendar, User, Pin, Search } from 'lucide-react';
 import { getNoticeList, getNoticeById, createNotice, updateNotice, deleteNotice, pinNotice } from '../../../services/adminApi';
 import type { Notice } from '../types';
 import { getAdminInfo } from '../utils/session-manager';
@@ -86,12 +86,24 @@ export function NoticeManagement() {
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
+  // 페이징, 검색, 필터 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPublic, setFilterPublic] = useState<'all' | 'public' | 'private'>('all');
+  const [filterPinned, setFilterPinned] = useState<'all' | 'pinned' | 'unpinned'>('all');
+
   // ========================================
   // 공지사항 목록 로드 (4.1)
   // ========================================
   useEffect(() => {
     loadNotices();
   }, []);
+
+  // 검색어나 필터 변경 시 첫 페이지로 이동
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterPublic, filterPinned]);
 
   /**
    * 플로우: 4.1 공지사항 목록 조회
@@ -103,7 +115,7 @@ export function NoticeManagement() {
    */
   const loadNotices = async () => {
     setIsLoading(true);
-    
+
     try {
       // GET /api/admin/notices
       const response = await getNoticeList({ page: 1, limit: 100 });
@@ -195,17 +207,27 @@ export function NoticeManagement() {
    * 4. "취소" → 다이얼로그 닫기
    */
   const handleDelete = async (id: number) => {
-    if (!confirm('이 공지사항을 삭제하시겠습니까?\n\n삭제된 공지사항은 복구할 수 없습니다.')) {
+    console.log('=== handleDelete 함수 호출됨 ===');
+    console.log('삭제할 공지사항 ID:', id);
+
+    const userConfirmed = confirm('이 공지사항을 삭제하시겠습니까?\n\n삭제된 공지사항은 복구할 수 없습니다.');
+    console.log('사용자 확인 결과:', userConfirmed);
+
+    if (!userConfirmed) {
+      console.log('삭제 취소됨');
       return;
     }
 
+    console.log('삭제 확인됨 - API 호출 시작');
     try {
       // DELETE /api/admin/notices/{id}
-      await deleteNotice(id);
+      const result = await deleteNotice(id);
+      console.log('deleteNotice API 응답:', result);
       alert('공지사항이 삭제되었습니다.');
       loadNotices(); // 목록 갱신
     } catch (error: any) {
       console.error('공지사항 삭제 실패:', error);
+      console.error('에러 상세:', error.response || error.message);
       alert(error.message || '삭제에 실패했습니다. 다시 시도해주세요.');
     }
   };
@@ -216,6 +238,14 @@ export function NoticeManagement() {
   const handleSave = async (notice: Notice) => {
     if (!notice.title || !notice.content) {
       alert('제목과 내용을 모두 입력해주세요.');
+      return;
+    }
+
+    // 내용 길이 체크 (TEXT 타입 제한: 65KB, 안전하게 60KB로 제한)
+    const contentBytes = new Blob([notice.content]).size;
+    const maxBytes = 60 * 1024; // 60KB
+    if (contentBytes > maxBytes) {
+      alert(`내용이 너무 깁니다.\n현재: ${(contentBytes / 1024).toFixed(1)}KB\n최대: ${maxBytes / 1024}KB\n\n내용을 줄여주세요.`);
       return;
     }
 
@@ -239,13 +269,15 @@ export function NoticeManagement() {
         });
         alert('공지사항이 등록되었습니다.');
       }
-      
+
       setShowModal(false);
       setEditingNotice(null);
       loadNotices(); // 목록 갱신
     } catch (error: any) {
       console.error('공지사항 저장 실패:', error);
-      alert(error.message || '저장에 실패했습니다. 다시 시도해주세요.');
+      console.error('에러 상세:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.error?.message || error.message || '저장에 실패했습니다. 다시 시도해주세요.';
+      alert(`저장 실패: ${errorMessage}`);
     }
   };
 
@@ -302,7 +334,7 @@ export function NoticeManagement() {
     try {
       const notice = notices.find(n => n.id === id);
       if (!notice) return;
-      
+
       // PUT /api/admin/notices/{id}/pin
       await pinNotice(id, !notice.isPinned);
       loadNotices(); // 목록 갱신
@@ -312,37 +344,56 @@ export function NoticeManagement() {
     }
   };
 
-  // ========================================
-  // 공개/비공개 토글
-  // ========================================
-  const togglePublic = async (id: number) => {
-    try {
-      const notice = notices.find(n => n.id === id);
-      if (!notice) return;
-      
-      // PUT /api/admin/notices/{id} - isPublic 필드 업데이트
-      await updateNotice(id, {
-        title: notice.title,
-        content: notice.content,
-        isPublic: !notice.isPublic,
-        isPinned: notice.isPinned
-      });
-      loadNotices(); // 목록 갱신
-    } catch (error: any) {
-      console.error('공지사항 공개 상태 변경 실패:', error);
-      alert(error.message || '상태 변경에 실패했습니다.');
-    }
-  };
 
   // ========================================
-  // 정렬: 고정 먼저, 최신순 (4.1)
+  // 필터링, 검색, 정렬, 페이징 로직
   // ========================================
-  const sortedNotices = [...notices].sort((a, b) => {
+
+  // 1. 검색 필터링
+  const searchFiltered = notices.filter(notice => {
+    const query = searchQuery.toLowerCase();
+    const titleMatch = notice.title.toLowerCase().includes(query);
+    const authorMatch = notice.author.toLowerCase().includes(query);
+    return titleMatch || authorMatch;
+  });
+
+  // 2. 공개 상태 필터링
+  const publicFiltered = searchFiltered.filter(notice => {
+    if (filterPublic === 'all') return true;
+    if (filterPublic === 'public') return notice.isPublic;
+    if (filterPublic === 'private') return !notice.isPublic;
+    return true;
+  });
+
+  // 3. 고정 여부 필터링
+  const pinnedFiltered = publicFiltered.filter(notice => {
+    if (filterPinned === 'all') return true;
+    if (filterPinned === 'pinned') return notice.isPinned;
+    if (filterPinned === 'unpinned') return !notice.isPinned;
+    return true;
+  });
+
+  // 4. 정렬: 고정 먼저, 최신순
+  const sortedNotices = [...pinnedFiltered].sort((a, b) => {
     if (a.isPinned !== b.isPinned) {
       return a.isPinned ? -1 : 1;
     }
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  // 5. 페이징 계산
+  const totalPages = Math.ceil(sortedNotices.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedNotices = sortedNotices.slice(startIndex, endIndex);
+
+  // 필터 초기화
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setFilterPublic('all');
+    setFilterPinned('all');
+    setCurrentPage(1);
+  };
 
   // ========================================
   // 로딩 상태 UI (4.1)
@@ -372,7 +423,7 @@ export function NoticeManagement() {
             </h1>
             <p className="text-slate-600 mt-1 text-sm sm:text-base break-words">사용자에게 전달할 공지사항을 작성하고 관리합니다</p>
           </div>
-          
+
           {/* ========================================
               "새 공지사항 작성" 버튼 (4.1) - 오른쪽 고정
               ======================================== */}
@@ -388,13 +439,94 @@ export function NoticeManagement() {
       </div>
 
       {/* ========================================
+          검색 및 필터 영역
+          ======================================== */}
+      <div className="mb-6 bg-white border-2 border-slate-300 rounded-lg p-4 shadow-sm">
+        {/* 검색 및 필터 - 가로 정렬 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          {/* 검색창 */}
+          <div>
+            <label className="block text-slate-700 font-medium mb-2 text-sm">
+              검색
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="제목 또는 작성자로 검색..."
+                className="w-full pl-10 pr-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* 공개 상태 필터 */}
+          <div>
+            <label className="block text-slate-700 font-medium mb-2 text-sm">
+              공개 상태
+            </label>
+            <select
+              value={filterPublic}
+              onChange={(e) => setFilterPublic(e.target.value as 'all' | 'public' | 'private')}
+              className="w-full px-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+            >
+              <option value="all">전체</option>
+              <option value="public">공개</option>
+              <option value="private">비공개</option>
+            </select>
+          </div>
+
+          {/* 고정 여부 필터 */}
+          <div>
+            <label className="block text-slate-700 font-medium mb-2 text-sm">
+              고정 여부
+            </label>
+            <select
+              value={filterPinned}
+              onChange={(e) => setFilterPinned(e.target.value as 'all' | 'pinned' | 'unpinned')}
+              className="w-full px-4 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+            >
+              <option value="all">전체</option>
+              <option value="pinned">고정됨</option>
+              <option value="unpinned">고정 안 됨</option>
+            </select>
+          </div>
+
+          {/* 초기화 버튼 */}
+          <div className="flex items-end">
+            <button
+              onClick={handleResetFilters}
+              className="w-full px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium text-sm"
+            >
+              필터 초기화
+            </button>
+          </div>
+        </div>
+
+        {/* 검색 결과 개수 표시 */}
+        <div className="text-sm text-slate-600 border-t border-slate-200 pt-3">
+          총 <span className="font-semibold text-slate-800">{sortedNotices.length}개</span>의 검색 결과
+          {notices.length !== sortedNotices.length && (
+            <span className="ml-2 text-slate-500">
+              (전체 {notices.length}개 중)
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================
           공지사항 목록 테이블 (4.1)
           ======================================== */}
       <div className="border-2 border-slate-300 rounded-lg overflow-hidden shadow-md bg-white">
-        {notices.length === 0 ? (
+        {sortedNotices.length === 0 ? (
           <div className="text-center py-12">
             <Megaphone className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-600">등록된 공지사항이 없습니다</p>
+            <p className="text-slate-600">
+              {notices.length === 0
+                ? '등록된 공지사항이 없습니다'
+                : '검색 결과가 없습니다. 다른 검색어나 필터를 시도해보세요.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto max-w-full">
@@ -430,8 +562,8 @@ export function NoticeManagement() {
                   테이블 본문
                   ======================================== */}
               <tbody>
-                {sortedNotices.map((notice, index) => (
-                  <tr 
+                {paginatedNotices.map((notice, index) => (
+                  <tr
                     key={notice.id}
                     className={`
                       border-b border-slate-200 transition-all duration-200
@@ -448,22 +580,23 @@ export function NoticeManagement() {
                         </span>
                       )}
                     </td>
-                    
+
                     {/* 제목 */}
-                    <td className="px-6 py-4 border-r border-slate-100">
+                    <td className="px-6 py-4 border-r border-slate-100" style={{ maxWidth: '300px' }}>
                       <button
                         onClick={() => handleView(notice)}
-                        className="text-slate-800 hover:text-blue-600 font-medium text-left transition-colors underline-offset-2 hover:underline"
+                        className="text-slate-800 hover:text-blue-600 font-medium text-left transition-colors underline-offset-2 hover:underline w-full block truncate"
+                        title={notice.title}
                       >
                         {notice.title}
                       </button>
                     </td>
-                    
+
                     {/* 작성자 */}
                     <td className="px-6 py-4 text-slate-600 text-sm border-r border-slate-100">
                       {notice.author.split('@')[0]}
                     </td>
-                    
+
                     {/* 작성일 (명세서 3.1: YYYY-MM-DD 형식) */}
                     <td className="px-6 py-4 text-slate-600 text-sm border-r border-slate-100">
                       {notice.createdAt ? (() => {
@@ -478,42 +611,39 @@ export function NoticeManagement() {
                         return `${year}-${month}-${day}`;
                       })() : '-'}
                     </td>
-                    
+
                     {/* 조회수 */}
                     <td className="px-6 py-4 text-center text-slate-600 text-sm border-r border-slate-100">
                       {notice.views.toLocaleString()}
                     </td>
-                    
+
                     {/* 공개 상태 배지 (4.1) */}
                     <td className="px-6 py-4 text-center border-r border-slate-100">
-                      <button
-                        onClick={() => togglePublic(notice.id)}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                          notice.isPublic
-                            ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
-                            : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                        }`}
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${notice.isPublic
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : 'bg-slate-100 text-slate-700 border-slate-300'
+                          }`}
                       >
                         {notice.isPublic ? '공개' : '비공개'}
-                      </button>
+                      </span>
                     </td>
-                    
+
                     {/* 액션 버튼 (4.1) */}
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
                         {/* 고정/고정 해제 버튼 (📌) */}
                         <button
                           onClick={() => togglePin(notice.id)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            notice.isPinned
-                              ? 'bg-red-100 hover:bg-red-200 text-red-700'
-                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                          }`}
+                          className={`p-2 rounded-lg transition-colors ${notice.isPinned
+                            ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
                           title={notice.isPinned ? '고정 해제' : '상단 고정'}
                         >
                           <Pin className="w-4 h-4" />
                         </button>
-                        
+
                         {/* 조회 버튼 (👁️) */}
                         <button
                           onClick={() => handleView(notice)}
@@ -522,7 +652,7 @@ export function NoticeManagement() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        
+
                         {/* 수정 버튼 (✏️) */}
                         <button
                           onClick={() => handleEdit(notice)}
@@ -531,7 +661,7 @@ export function NoticeManagement() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        
+
                         {/* 삭제 버튼 (🗑️) */}
                         <button
                           onClick={() => handleDelete(notice.id)}
@@ -550,10 +680,80 @@ export function NoticeManagement() {
         )}
 
         {/* 테이블 푸터 */}
-        <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-3 border-t-2 border-slate-300">
-          <p className="text-slate-600 text-sm">
-            총 <span className="font-semibold text-slate-800">{notices.length}개</span>의 공지사항
-          </p>
+        <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-t-2 border-slate-300">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* 페이지 정보 */}
+            <p className="text-slate-600 text-sm">
+              총 <span className="font-semibold text-slate-800">{sortedNotices.length}개</span>의 공지사항
+              {sortedNotices.length > 0 && (
+                <span className="ml-2">
+                  (페이지 {currentPage} / {totalPages})
+                </span>
+              )}
+            </p>
+
+            {/* 페이징 버튼 */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                {/* 이전 버튼 */}
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-white text-slate-700 hover:bg-blue-100 border border-slate-300'
+                    }`}
+                >
+                  이전
+                </button>
+
+                {/* 페이지 번호들 */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      // 현재 페이지 주변 2개씩만 표시
+                      if (totalPages <= 7) return true;
+                      if (page === 1 || page === totalPages) return true;
+                      return Math.abs(page - currentPage) <= 1;
+                    })
+                    .map((page, index, arr) => {
+                      // ... 표시
+                      if (index > 0 && arr[index - 1] !== page - 1) {
+                        return (
+                          <span key={`dot-${page}`} className="px-2 text-slate-500">
+                            ...
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`min-w-[32px] px-2 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-slate-700 hover:bg-blue-100 border border-slate-300'
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {/* 다음 버튼 */}
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-white text-slate-700 hover:bg-blue-100 border border-slate-300'
+                    }`}
+                >
+                  다음
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -638,11 +838,11 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
   const getSelectedText = () => {
     const textarea = textareaRef.current;
     if (!textarea) return { text: '', start: 0, end: 0 };
-    
+
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = textarea.value.substring(start, end);
-    
+
     return { text: selectedText, start, end };
   };
 
@@ -655,10 +855,10 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
     const { text, start, end } = getSelectedText();
     const textarea = textareaRef.current;
     if (!textarea) return;
-    
+
     // 현재 textarea의 실제 값 사용 (formData.content와 동기화)
     const currentContent = textarea.value;
-    
+
     let newContent: string;
     if (text) {
       // 선택한 텍스트가 있으면 태그로 감싸기
@@ -671,13 +871,13 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
       const after = currentContent.substring(start);
       newContent = before + openTag + closeTag + after;
     }
-    
+
     // formData 업데이트
     updateFormData({ content: newContent });
-    
+
     // textarea의 value 직접 업데이트 (즉시 반영)
     textarea.value = newContent;
-    
+
     // 커서 위치 조정 (태그 삽입 후)
     setTimeout(() => {
       if (textarea) {
@@ -706,484 +906,488 @@ function NoticeModal({ notice, onSave, onClose }: NoticeModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-1 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-h-[98vh] my-1 flex flex-col mx-1 min-w-0 overflow-hidden" style={{ maxWidth: 'min(calc(100vw - 0.5rem), 98vw, 800px)', width: 'min(calc(100vw - 0.5rem), 98vw, 800px)' }}>
-        <form onSubmit={handleSubmit}>
-          {/* 모달 헤더 */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-2 sm:px-3 py-2 flex items-center justify-between rounded-t-lg min-w-0 flex-shrink-0">
-            <h2 className="text-sm sm:text-base flex items-center gap-1 min-w-0 flex-1">
-              <Megaphone className="w-4 h-4 flex-shrink-0" />
-              <span className="break-words truncate">{notice.id ? '공지사항 수정' : '새 공지사항 작성'}</span>
-            </h2>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="p-1 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+    <>
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-1 sm:p-4">
+        <div className="bg-white rounded-lg shadow-2xl w-full max-h-[95vh] my-auto flex flex-col mx-1 min-w-0 overflow-hidden" style={{ maxWidth: 'min(calc(100vw - 0.5rem), 98vw, 800px)', width: 'min(calc(100vw - 0.5rem), 98vw, 800px)' }}>
+          <form onSubmit={handleSubmit}>
+            {/* 모달 헤더 */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-2 sm:px-3 py-2 flex items-center justify-between rounded-t-lg min-w-0 flex-shrink-0">
+              <h2 className="text-sm sm:text-base flex items-center gap-1 min-w-0 flex-1">
+                <Megaphone className="w-4 h-4 flex-shrink-0" />
+                <span className="break-words truncate">{notice.id ? '공지사항 수정' : '새 공지사항 작성'}</span>
+              </h2>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-          {/* 폼 영역 */}
-          <div className="p-2 sm:p-3 space-y-2 sm:space-y-3 overflow-y-auto flex-1 min-w-0">
-            {/* ========================================
+            {/* 폼 영역 */}
+            <div className="p-2 sm:p-3 space-y-2 sm:space-y-3 overflow-y-auto flex-1 min-w-0">
+              {/* ========================================
                 1. 제목 입력 (필수, 최대 200자)
-                ======================================== */}
-            <div className="min-w-0">
-              <label className="block text-slate-700 font-medium mb-1 text-xs sm:text-sm">
-                제목 <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                maxLength={200}
-                value={formData.title}
-                onChange={(e) => updateFormData({ title: e.target.value })}
-                className="w-full px-2 py-1.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm min-w-0"
-                placeholder="공지사항 제목을 입력하세요 (최대 200자)"
-              />
-              <p className="text-sm text-slate-500 mt-1 text-right">
-                {formData.title.length} / 200자
-              </p>
-            </div>
-
-            {/* ========================================
-                2. 내용 입력 (HTML 에디터)
-                ======================================== */}
-            <div className="min-w-0 max-w-full overflow-hidden">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-1 gap-1 min-w-0">
-                <label className="block text-slate-700 font-medium text-xs sm:text-sm min-w-0 flex-shrink">
-                  내용 <span className="text-red-600">*</span>
-                </label>
-                
-                {/* 편집/미리보기 탭 전환 (4.2) */}
-                <div className="flex gap-0.5 bg-slate-200 rounded-lg p-0.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('edit')}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                      activeTab === 'edit'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    편집
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('preview')}
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                      activeTab === 'preview'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    미리보기
-                  </button>
-                </div>
-              </div>
-              
-              {activeTab === 'edit' ? (
-                <div className="min-w-0 max-w-full overflow-hidden">
-                  {/* 기본 포맷팅 도구 (4.2) */}
-                  <div className="mb-1 flex flex-wrap gap-0.5 p-1 bg-slate-100 rounded-t-lg border-2 border-b-0 border-slate-300 min-w-0 max-w-full overflow-x-auto">
-                    {/* 제목 */}
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<h1>', '</h1>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 1 (선택한 텍스트에 적용)"
-                      >
-                        H1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<h2>', '</h2>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 2 (선택한 텍스트에 적용)"
-                      >
-                        H2
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<h3>', '</h3>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
-                        title="제목 3 (선택한 텍스트에 적용)"
-                      >
-                        H3
-                      </button>
-                    </div>
-
-                    <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
-
-                    {/* 텍스트 스타일 */}
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<strong>', '</strong>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-bold border border-slate-300 whitespace-nowrap"
-                        title="굵게 (선택한 텍스트에 적용)"
-                      >
-                        B
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<em>', '</em>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs italic border border-slate-300 whitespace-nowrap"
-                        title="기울임 (선택한 텍스트에 적용)"
-                      >
-                        I
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => wrapSelectedText('<u>', '</u>')}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs underline border border-slate-300 whitespace-nowrap"
-                        title="밑줄 (선택한 텍스트에 적용)"
-                      >
-                        U
-                      </button>
-                    </div>
-
-                    <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
-
-                    {/* 목록 */}
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<ul><li>항목 1</li><li>항목 2</li></ul>' })}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
-                        title="순서 없는 목록"
-                      >
-                        • 목록
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateFormData({ content: formData.content + '<ol><li>항목 1</li><li>항목 2</li></ol>' })}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
-                        title="순서 있는 목록"
-                      >
-                        1. 목록
-                      </button>
-                    </div>
-
-                    <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
-
-                    {/* 링크 & 이미지 */}
-                    <div className="flex gap-0.5 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const { text } = getSelectedText();
-                          setLinkText(text || ''); // 선택한 텍스트가 있으면 링크 텍스트로 사용
-                          setLinkUrl('');
-                          setShowLinkModal(true);
-                        }}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
-                        title="링크 삽입 (선택한 텍스트에 링크 적용)"
-                      >
-                        🔗 링크
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageUrl('');
-                          setImageAlt('');
-                          setShowImageModal(true);
-                        }}
-                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
-                        title="이미지 삽입"
-                      >
-                        🖼️ 이미지
-                      </button>
-                    </div>
-
-                    <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
-
-                    {/* 문단 */}
-                    <button
-                      type="button"
-                      onClick={() => updateFormData({ content: formData.content + '<p>내용을 입력하세요.</p>' })}
-                      className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap flex-shrink-0"
-                      title="문단 추가"
-                    >
-                      P 문단
-                    </button>
-                  </div>
-                  
-                  <textarea
-                    ref={textareaRef}
-                    required
-                    value={formData.content}
-                    onChange={(e) => updateFormData({ content: e.target.value })}
-                    className="w-full px-2 py-1.5 border-2 border-slate-300 rounded-b-lg focus:outline-none focus:border-blue-500 resize-none font-mono text-xs min-w-0"
-                    style={{ 
-                      wordBreak: 'break-word', 
-                      overflowWrap: 'break-word',
-                      overflowX: 'hidden',
-                      whiteSpace: 'pre-wrap',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box',
-                      width: '100%'
-                    }}
-                    rows={8}
-                    placeholder="HTML 형식으로 내용을 입력하거나 위 도구를 사용하세요. 텍스트를 선택한 후 버튼을 클릭하면 선택한 텍스트에 태그가 적용됩니다."
-                  />
-                </div>
-              ) : (
-                /* 미리보기 탭 (4.2) */
-                <div className="border-2 border-slate-300 rounded-lg p-4 sm:p-6 min-h-[300px] sm:min-h-[400px] bg-white min-w-0 max-w-full overflow-x-auto">
-                  {formData.content ? (
-                    <div 
-                      className="prose prose-slate max-w-none break-words min-w-0"
-                      style={{ 
-                        wordBreak: 'break-word', 
-                        overflowWrap: 'break-word',
-                        maxWidth: '100%'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: formData.content }}
-                    />
-                  ) : (
-                    <p className="text-slate-400 text-center py-12 text-sm sm:text-base">
-                      내용을 입력하면 미리보기가 표시됩니다.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* ========================================
-                3. 옵션 설정 (4.2)
-                ======================================== */}
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-2 space-y-2 min-w-0 max-w-full">
-              <h3 className="font-medium text-slate-800 mb-1 text-xs sm:text-sm">옵션 설정</h3>
-              
-              {/* 공개 상태 (라디오 버튼) */}
+                ======================================== */
+              }
               <div className="min-w-0">
                 <label className="block text-slate-700 font-medium mb-1 text-xs sm:text-sm">
-                  공개 상태 <span className="text-red-600">*</span>
+                  제목 <span className="text-red-600">*</span>
                 </label>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
-                    <input
-                      type="radio"
-                      name="isPublic"
-                      checked={formData.isPublic === true}
-                      onChange={() => updateFormData({ isPublic: true })}
-                      className="w-3.5 h-3.5 flex-shrink-0"
-                    />
-                    <span className="text-slate-700 text-xs sm:text-sm break-words">
-                      <span className="font-medium">공개</span> - 사용자에게 표시됨
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
-                    <input
-                      type="radio"
-                      name="isPublic"
-                      checked={formData.isPublic === false}
-                      onChange={() => updateFormData({ isPublic: false })}
-                      className="w-3.5 h-3.5 flex-shrink-0"
-                    />
-                    <span className="text-slate-700 text-xs sm:text-sm break-words">
-                      <span className="font-medium">비공개</span> - 관리자만 볼 수 있음
-                    </span>
-                  </label>
-                </div>
+                <input
+                  type="text"
+                  required
+                  maxLength={200}
+                  value={formData.title}
+                  onChange={(e) => updateFormData({ title: e.target.value })}
+                  className="w-full px-2 py-1.5 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm min-w-0"
+                  placeholder="공지사항 제목을 입력하세요 (최대 200자)"
+                />
+                <p className="text-sm text-slate-500 mt-1 text-right">
+                  {formData.title.length} / 200자
+                </p>
               </div>
 
-              {/* 상단 고정 (체크박스) */}
-              <div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    id="isPinned"
-                    checked={formData.isPinned}
-                    onChange={(e) => updateFormData({ isPinned: e.target.checked })}
-                    className="w-5 h-5 mt-0.5"
-                  />
-                  <div>
-                    <span className="text-slate-700 font-medium">상단에 고정</span>
-                    <p className="text-sm text-slate-600 mt-0.5">
-                      체크 시 공지사항 목록 상단에 고정 표시되며, 사용자 화면에서도 고정됩니다.
-                    </p>
+              {/* ========================================
+                2. 내용 입력 (HTML 에디터)
+                ======================================== */}
+              <div className="min-w-0 max-w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-1 gap-1 min-w-0">
+                  <label className="block text-slate-700 font-medium text-xs sm:text-sm min-w-0 flex-shrink">
+                    내용 <span className="text-red-600">*</span>
+                  </label>
+
+                  {/* 편집/미리보기 탭 전환 (4.2) */}
+                  <div className="flex gap-0.5 bg-slate-200 rounded-lg p-0.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('edit')}
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${activeTab === 'edit'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                      편집
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('preview')}
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${activeTab === 'preview'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                      미리보기
+                    </button>
                   </div>
-                </label>
+                </div>
+
+                {activeTab === 'edit' ? (
+                  <div className="min-w-0 max-w-full overflow-hidden">
+                    {/* 기본 포맷팅 도구 (4.2) */}
+                    <div className="mb-1 flex flex-wrap gap-0.5 p-1 bg-slate-100 rounded-t-lg border-2 border-b-0 border-slate-300 min-w-0 max-w-full overflow-x-auto">
+                      {/* 제목 */}
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<h1>', '</h1>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
+                          title="제목 1 (선택한 텍스트에 적용)"
+                        >
+                          H1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<h2>', '</h2>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
+                          title="제목 2 (선택한 텍스트에 적용)"
+                        >
+                          H2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<h3>', '</h3>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-semibold border border-slate-300 whitespace-nowrap"
+                          title="제목 3 (선택한 텍스트에 적용)"
+                        >
+                          H3
+                        </button>
+                      </div>
+
+                      <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
+
+                      {/* 텍스트 스타일 */}
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<strong>', '</strong>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs font-bold border border-slate-300 whitespace-nowrap"
+                          title="굵게 (선택한 텍스트에 적용)"
+                        >
+                          B
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<em>', '</em>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs italic border border-slate-300 whitespace-nowrap"
+                          title="기울임 (선택한 텍스트에 적용)"
+                        >
+                          I
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => wrapSelectedText('<u>', '</u>')}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs underline border border-slate-300 whitespace-nowrap"
+                          title="밑줄 (선택한 텍스트에 적용)"
+                        >
+                          U
+                        </button>
+                      </div>
+
+                      <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
+
+                      {/* 목록 */}
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => updateFormData({ content: formData.content + '<ul><li>항목 1</li><li>항목 2</li></ul>' })}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
+                          title="순서 없는 목록"
+                        >
+                          • 목록
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateFormData({ content: formData.content + '<ol><li>항목 1</li><li>항목 2</li></ol>' })}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
+                          title="순서 있는 목록"
+                        >
+                          1. 목록
+                        </button>
+                      </div>
+
+                      <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
+
+                      {/* 링크 & 이미지 */}
+                      <div className="flex gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const { text } = getSelectedText();
+                            setLinkText(text || ''); // 선택한 텍스트가 있으면 링크 텍스트로 사용
+                            setLinkUrl('');
+                            setShowLinkModal(true);
+                          }}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
+                          title="링크 삽입 (선택한 텍스트에 링크 적용)"
+                        >
+                          🔗 링크
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageUrl('');
+                            setImageAlt('');
+                            setShowImageModal(true);
+                          }}
+                          className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap"
+                          title="이미지 삽입"
+                        >
+                          🖼️ 이미지
+                        </button>
+                      </div>
+
+                      <div className="w-px h-4 bg-slate-300 flex-shrink-0"></div>
+
+                      {/* 문단 */}
+                      <button
+                        type="button"
+                        onClick={() => updateFormData({ content: formData.content + '<p>내용을 입력하세요.</p>' })}
+                        className="px-1.5 py-0.5 bg-white hover:bg-slate-200 rounded text-xs border border-slate-300 whitespace-nowrap flex-shrink-0"
+                        title="문단 추가"
+                      >
+                        P 문단
+                      </button>
+                    </div>
+
+                    <textarea
+                      ref={textareaRef}
+                      required
+                      value={formData.content}
+                      onChange={(e) => updateFormData({ content: e.target.value })}
+                      className="w-full px-2 py-1.5 border-2 border-slate-300 rounded-b-lg focus:outline-none focus:border-blue-500 resize-y font-mono text-xs min-w-0"
+                      style={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        overflowX: 'hidden',
+                        whiteSpace: 'pre-wrap',
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        maxHeight: '400px',
+                        minHeight: '150px'
+                      }}
+                      rows={6}
+                      placeholder="HTML 형식으로 내용을 입력하거나 위 도구를 사용하세요. 텍스트를 선택한 후 버튼을 클릭하면 선택한 텍스트에 태그가 적용됩니다."
+                    />
+                  </div>
+                ) : (
+                  /* 미리보기 탭 (4.2) */
+                  <div className="border-2 border-slate-300 rounded-lg p-4 sm:p-6 bg-white min-w-0 max-w-full overflow-y-auto" style={{ maxHeight: '400px', minHeight: '150px' }}>
+                    {formData.content ? (
+                      <div
+                        className="prose prose-slate max-w-none min-w-0"
+                        style={{
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word',
+                          whiteSpace: 'normal',
+                          maxWidth: '100%'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: formData.content }}
+                      />
+                    ) : (
+                      <p className="text-slate-400 text-center py-12 text-sm sm:text-base">
+                        내용을 입력하면 미리보기가 표시됩니다.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ========================================
+                3. 옵션 설정 (4.2)
+                ======================================== */}
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-2 space-y-2 min-w-0 max-w-full">
+                <h3 className="font-medium text-slate-800 mb-1 text-xs sm:text-sm">옵션 설정</h3>
+
+                {/* 공개 상태 (라디오 버튼) */}
+                <div className="min-w-0">
+                  <label className="block text-slate-700 font-medium mb-1 text-xs sm:text-sm">
+                    공개 상태 <span className="text-red-600">*</span>
+                  </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
+                      <input
+                        type="radio"
+                        name="isPublic"
+                        checked={formData.isPublic === true}
+                        onChange={() => updateFormData({ isPublic: true })}
+                        className="w-3.5 h-3.5 flex-shrink-0"
+                      />
+                      <span className="text-slate-700 text-xs sm:text-sm break-words">
+                        <span className="font-medium">공개</span> - 사용자에게 표시됨
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
+                      <input
+                        type="radio"
+                        name="isPublic"
+                        checked={formData.isPublic === false}
+                        onChange={() => updateFormData({ isPublic: false })}
+                        className="w-3.5 h-3.5 flex-shrink-0"
+                      />
+                      <span className="text-slate-700 text-xs sm:text-sm break-words">
+                        <span className="font-medium">비공개</span> - 관리자만 볼 수 있음
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* 상단 고정 (체크박스) */}
+                <div>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="isPinned"
+                      checked={formData.isPinned}
+                      onChange={(e) => updateFormData({ isPinned: e.target.checked })}
+                      className="w-5 h-5 mt-0.5"
+                    />
+                    <div>
+                      <span className="text-slate-700 font-medium">상단에 고정</span>
+                      <p className="text-sm text-slate-600 mt-0.5">
+                        체크 시 공지사항 목록 상단에 고정 표시되며, 사용자 화면에서도 고정됩니다.
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 모달 푸터 */}
-          <div className="px-2 py-2 bg-slate-50 rounded-b-lg flex flex-col sm:flex-row gap-2 border-t-2 border-slate-200 flex-shrink-0 min-w-0">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium text-xs sm:text-sm min-w-0"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all font-medium shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs sm:text-sm min-w-0"
-            >
-              <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              {notice.id ? '수정 완료' : '작성 완료'}
-            </button>
-          </div>
-        </form>
-
-        {/* 링크 입력 모달 */}
-        {showLinkModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-slate-800">링크 삽입</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    링크 URL <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    placeholder="https://example.com"
-                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    링크 텍스트 <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={linkText}
-                    onChange={(e) => setLinkText(e.target.value)}
-                    placeholder="클릭할 텍스트"
-                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLinkModal(false);
-                    setLinkUrl('');
-                    setLinkText('');
-                  }}
-                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!linkUrl || !linkText) {
-                      alert('URL과 링크 텍스트를 모두 입력해주세요.');
-                      return;
-                    }
-                    const { start, end } = getSelectedText();
-                    const before = formData.content.substring(0, start);
-                    const after = formData.content.substring(end);
-                    const linkHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
-                    updateFormData({ content: before + linkHtml + after });
-                    setShowLinkModal(false);
-                    setLinkUrl('');
-                    setLinkText('');
-                    // 커서 위치 조정
-                    setTimeout(() => {
-                      if (textareaRef.current) {
-                        const newPosition = start + linkHtml.length;
-                        textareaRef.current.setSelectionRange(newPosition, newPosition);
-                        textareaRef.current.focus();
-                      }
-                    }, 0);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                >
-                  삽입
-                </button>
-              </div>
+            {/* 모달 푸터 */}
+            <div className="px-2 py-2 bg-slate-50 rounded-b-lg flex flex-col sm:flex-row gap-2 border-t-2 border-slate-200 flex-shrink-0 min-w-0">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="flex-1 px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium text-xs sm:text-sm min-w-0"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all font-medium shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 text-xs sm:text-sm min-w-0"
+              >
+                <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                {notice.id ? '수정 완료' : '작성 완료'}
+              </button>
             </div>
-          </div>
-        )}
-
-        {/* 이미지 입력 모달 */}
-        {showImageModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-slate-800">이미지 삽입</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    이미지 URL <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    이미지 설명 (alt 텍스트)
-                  </label>
-                  <input
-                    type="text"
-                    value={imageAlt}
-                    onChange={(e) => setImageAlt(e.target.value)}
-                    placeholder="이미지에 대한 설명"
-                    className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowImageModal(false);
-                    setImageUrl('');
-                    setImageAlt('');
-                  }}
-                  className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!imageUrl) {
-                      alert('이미지 URL을 입력해주세요.');
-                      return;
-                    }
-                    const { start } = getSelectedText();
-                    const before = formData.content.substring(0, start);
-                    const after = formData.content.substring(start);
-                    const imageHtml = `<img src="${imageUrl}" alt="${imageAlt || '이미지'}" style="max-width: 100%; height: auto;" />`;
-                    updateFormData({ content: before + imageHtml + after });
-                    setShowImageModal(false);
-                    setImageUrl('');
-                    setImageAlt('');
-                    // 커서 위치 조정
-                    setTimeout(() => {
-                      if (textareaRef.current) {
-                        const newPosition = start + imageHtml.length;
-                        textareaRef.current.setSelectionRange(newPosition, newPosition);
-                        textareaRef.current.focus();
-                      }
-                    }, 0);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                >
-                  삽입
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          </form>
+        </div>
       </div>
-    </div>
+
+      {/* 링크 입력 모달 - form 바깥으로 이동 */}
+      {showLinkModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-slate-800">링크 삽입</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  링크 URL <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  링크 텍스트 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  placeholder="클릭할 텍스트"
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLinkModal(false);
+                  setLinkUrl('');
+                  setLinkText('');
+                }}
+                className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!linkUrl || !linkText) {
+                    alert('URL과 링크 텍스트를 모두 입력해주세요.');
+                    return;
+                  }
+                  const { start, end } = getSelectedText();
+                  const before = formData.content.substring(0, start);
+                  const after = formData.content.substring(end);
+                  const linkHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+                  updateFormData({ content: before + linkHtml + after });
+                  setShowLinkModal(false);
+                  setLinkUrl('');
+                  setLinkText('');
+                  // 커서 위치 조정
+                  setTimeout(() => {
+                    if (textareaRef.current) {
+                      const newPosition = start + linkHtml.length;
+                      textareaRef.current.setSelectionRange(newPosition, newPosition);
+                      textareaRef.current.focus();
+                    }
+                  }, 0);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              >
+                삽입
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이미지 입력 모달 - form 바깥으로 이동 */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-slate-800">이미지 삽입</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  이미지 URL <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  이미지 설명 (alt 텍스트)
+                </label>
+                <input
+                  type="text"
+                  value={imageAlt}
+                  onChange={(e) => setImageAlt(e.target.value)}
+                  placeholder="이미지에 대한 설명"
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImageModal(false);
+                  setImageUrl('');
+                  setImageAlt('');
+                }}
+                className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!imageUrl) {
+                    alert('이미지 URL을 입력해주세요.');
+                    return;
+                  }
+                  const { start } = getSelectedText();
+                  const before = formData.content.substring(0, start);
+                  const after = formData.content.substring(start);
+                  const imageHtml = `<img src="${imageUrl}" alt="${imageAlt || '이미지'}" style="max-width: 100%; height: auto;" />`;
+                  updateFormData({ content: before + imageHtml + after });
+                  setShowImageModal(false);
+                  setImageUrl('');
+                  setImageAlt('');
+                  // 커서 위치 조정
+                  setTimeout(() => {
+                    if (textareaRef.current) {
+                      const newPosition = start + imageHtml.length;
+                      textareaRef.current.setSelectionRange(newPosition, newPosition);
+                      textareaRef.current.focus();
+                    }
+                  }, 0);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              >
+                삽입
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1216,17 +1420,17 @@ interface NoticeViewModalProps {
 
 function NoticeViewModal({ notice, onClose, onEdit }: NoticeViewModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] my-8 flex flex-col">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col">
         {/* ========================================
             모달 헤더 (4.3)
             ======================================== */}
-        <div className="bg-gradient-to-r from-slate-700 to-slate-600 text-white px-6 py-4 flex items-center justify-between rounded-t-lg">
+        <div className="bg-gradient-to-r from-slate-700 to-slate-600 text-white px-6 py-4 flex items-center justify-between rounded-t-lg flex-shrink-0">
           <div className="flex-1">
             {/* 제목 및 배지 */}
             <div className="flex items-center gap-3 mb-2">
               <h2 className="text-xl font-medium">{notice.title}</h2>
-              
+
               {/* 고정 여부 배지 (4.3) */}
               {notice.isPinned && (
                 <span className="px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center gap-1">
@@ -1234,17 +1438,16 @@ function NoticeViewModal({ notice, onClose, onEdit }: NoticeViewModalProps) {
                   고정됨
                 </span>
               )}
-              
+
               {/* 공개 상태 배지 (4.3) */}
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                notice.isPublic
-                  ? 'bg-green-500 text-white'
-                  : 'bg-slate-400 text-white'
-              }`}>
+              <span className={`px-2 py-1 text-xs rounded-full ${notice.isPublic
+                ? 'bg-green-500 text-white'
+                : 'bg-slate-400 text-white'
+                }`}>
                 {notice.isPublic ? '공개' : '비공개'}
               </span>
             </div>
-            
+
             {/* 작성자, 작성일, 조회수 (4.3) */}
             <div className="flex items-center gap-4 text-slate-200 text-sm">
               <span className="flex items-center gap-1">
@@ -1271,7 +1474,7 @@ function NoticeViewModal({ notice, onClose, onEdit }: NoticeViewModalProps) {
               </span>
             </div>
           </div>
-          
+
           {/* 닫기 버튼 (4.3) */}
           <button
             onClick={onClose}
@@ -1289,16 +1492,22 @@ function NoticeViewModal({ notice, onClose, onEdit }: NoticeViewModalProps) {
          * 편집기에서 작성한 HTML 그대로 렌더링
          * - 이미지, 링크 등 모든 요소 정상 표시
          * - prose 스타일 적용 (읽기 편한 타이포그래피)
+         * - 고정된 높이로 내용이 길면 스크롤바가 나타남
          */}
-        <div className="p-6 overflow-y-auto flex-1">
-          <div 
+        <div className="overflow-y-auto px-6 py-6" style={{ maxHeight: '60vh', minHeight: '200px' }}>
+          <div
             className="prose prose-slate max-w-none"
+            style={{
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              whiteSpace: 'normal'
+            }}
             dangerouslySetInnerHTML={{ __html: notice.content }}
           />
         </div>
 
         {/* 모달 푸터 */}
-        <div className="px-6 py-4 bg-slate-50 rounded-b-lg flex gap-3 border-t-2 border-slate-200">
+        <div className="px-6 py-4 bg-slate-50 rounded-b-lg flex gap-3 border-t-2 border-slate-200 flex-shrink-0">
           <button
             onClick={onClose}
             className="flex-1 px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-colors font-medium"
