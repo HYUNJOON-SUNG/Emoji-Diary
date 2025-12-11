@@ -79,7 +79,7 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
   // 상세 보기 모달
   if (selectedNotice) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
         <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl">
           {/* 헤더 */}
           <div className="flex items-center justify-between p-4 border-b border-stone-200">
@@ -94,6 +94,8 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
             <button
               onClick={() => setSelectedNotice(null)}
               className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+              aria-label="닫기"
+              title="닫기"
             >
               <X className="w-5 h-5 text-stone-600" />
             </button>
@@ -131,7 +133,7 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
 
   // 목록 모달
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
       <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-2xl">
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-stone-200">
@@ -139,6 +141,8 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
           <button
             onClick={onClose}
             className="p-2 hover:bg-stone-100 rounded-full transition-colors"
+            aria-label="닫기"
+            title="닫기"
           >
             <X className="w-5 h-5 text-stone-600" />
           </button>

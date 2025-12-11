@@ -28,12 +28,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Activity, Loader2, TrendingUp, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Activity, Loader2, TrendingUp, Info, ArrowLeft } from 'lucide-react';
 import { fetchDailyStats, DailyStats } from '../../services/diaryApi';
 import { EmotionChartView } from './EmotionChartView';
 
 interface EmotionStatsPageProps {
   onDateClick?: (date: Date) => void;
+  onBack?: () => void;
+  selectedDateFromParent?: Date | null; // 부모에서 전달받은 선택된 날짜 (뒤로가기 시 복원용)
+  onSelectedDateChange?: (date: Date | null) => void; // 선택된 날짜 변경 콜백
 }
 
 const emotionColors: { [key: string]: string } = {
@@ -50,14 +53,21 @@ const emotionColors: { [key: string]: string } = {
   neutral: 'bg-stone-200',
 };
 
-export function EmotionStatsPage({ onDateClick }: EmotionStatsPageProps) {
+export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, onSelectedDateChange }: EmotionStatsPageProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'timeline' | 'chart'>('calendar');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(selectedDateFromParent || null);
   const [periodType, setPeriodType] = useState<'week' | 'month'>('week'); // 주간/월간 선택
+
+  // 부모에서 전달받은 선택된 날짜가 변경되면 동기화
+  useEffect(() => {
+    if (selectedDateFromParent !== undefined) {
+      setSelectedDate(selectedDateFromParent);
+    }
+  }, [selectedDateFromParent]);
 
   useEffect(() => {
     if (viewMode !== 'chart') {
@@ -90,6 +100,10 @@ export function EmotionStatsPage({ onDateClick }: EmotionStatsPageProps) {
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
+    // 부모에게 선택된 날짜 변경 알림
+    if (onSelectedDateChange) {
+      onSelectedDateChange(date);
+    }
   };
 
   const getStatsForDate = (date: Date): DailyStats | null => {
@@ -259,8 +273,18 @@ export function EmotionStatsPage({ onDateClick }: EmotionStatsPageProps) {
 
   return (
     <div className="min-h-full flex flex-col space-y-4">
-      {/* Header */}
-      <div className="text-center space-y-1 pb-2 border-b border-stone-200/60">
+      {/* Header - 뒤로가기 버튼 포함 */}
+      <div className="relative text-center space-y-1 pb-2 border-b border-stone-200/60">
+        {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div className="flex items-center justify-center gap-2 text-blue-700">
           <Activity className="w-5 h-5" />
           <span className="font-bold">감정 통계</span>

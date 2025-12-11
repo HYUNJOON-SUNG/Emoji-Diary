@@ -143,8 +143,8 @@ export function LoginPage({ onLoginSuccess, onBack, onSignup, onForgotPassword }
   };
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
+      <div className="w-full flex-shrink-0">
         {/* Login Form */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 shadow-lg">
           <div className="space-y-6">
@@ -155,9 +155,6 @@ export function LoginPage({ onLoginSuccess, onBack, onSignup, onForgotPassword }
               </div>
               <div>
                 <h2 className="text-slate-800 mb-1">로그인</h2>
-                <p className="text-sm text-slate-600">
-                  일기장을 열기 위해 로그인하세요
-                </p>
               </div>
             </div>
 
@@ -174,7 +171,7 @@ export function LoginPage({ onLoginSuccess, onBack, onSignup, onForgotPassword }
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@email.com"
+                    placeholder="이메일을 입력하세요"
                     disabled={isLoading}
                     className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px]"
                   />

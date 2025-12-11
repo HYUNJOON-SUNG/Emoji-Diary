@@ -37,6 +37,7 @@ export default function UserApp() {
     handleGoToForgotPassword,
     handleBackToLogin,
     handlePersonaComplete,
+    handleAccountDeleted,
   } = useUserApp();
 
   // ========== 화면 렌더링 ==========
@@ -170,7 +171,7 @@ export default function UserApp() {
    */
   return (
     <MobileFrame>
-      <DiaryBook onUserUpdate={handleUserUpdate} onLogout={handleLogout} />
+      <DiaryBook onUserUpdate={handleUserUpdate} onLogout={handleLogout} onAccountDeleted={handleAccountDeleted} />
     </MobileFrame>
   );
 }

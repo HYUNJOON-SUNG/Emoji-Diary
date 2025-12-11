@@ -183,6 +183,17 @@ export function useUserApp() {
     setAppState('diary');
   }, []);
 
+  /**
+   * 계정 탈퇴 핸들러
+   * - 세션 만료 및 랜딩페이지로 이동
+   */
+  const handleAccountDeleted = useCallback(() => {
+    TokenStorage.clearTokens();
+    localStorage.clear();
+    setUser(null);
+    setAppState('landing');
+  }, []);
+
   return {
     appState,
     user,
@@ -196,6 +207,7 @@ export function useUserApp() {
     handleGoToForgotPassword,
     handleBackToLogin,
     handlePersonaComplete,
+    handleAccountDeleted,
   };
 }
 

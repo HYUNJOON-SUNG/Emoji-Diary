@@ -11,6 +11,37 @@
 
   ## 주요 수정 사항
 
+  ### UI/UX 개선 및 버그 수정 (2025-01-XX)
+
+  #### 지원 리소스 페이지 개선
+  - **텍스트 줄넘김 문제 해결**: 긴 텍스트가 컨테이너를 벗어나지 않도록 `word-break`, `overflow-wrap` 스타일 적용
+  - **onBack 오류 수정**: `SupportResourcesPage` 컴포넌트의 props destructuring에 `onBack` 추가하여 "onBack is not defined" 오류 해결
+
+  #### 마이페이지 개선
+  - **성별 표시**: 프로필 아이콘을 성별에 따라 표시
+    - 남자: 파란색 배경에 👨 이모지
+    - 여자: 분홍색 배경에 👩 이모지
+  - **위험 알림 받기 제거**: 사용자 요청에 따라 "위험 알림 받기" 토글 및 관련 기능 제거
+  - **비밀번호 변경 플로우 개선**: 기존 비밀번호 입력 방식에서 이메일 인증 방식으로 변경
+    - 3단계 플로우: 이메일 입력 → 인증 코드 확인 → 새 비밀번호 설정
+    - 타이머 기능 (5분), 재발송 기능 포함
+    - 비밀번호 재설정과 동일한 플로우 적용
+  - **공지사항 모달 z-index 조정**: 모바일 프레임 내에서 최상위에 표시되도록 `z-[9999]` 설정 및 `absolute` positioning 적용
+  - **계정 탈퇴 플로우 개선**: 
+    - 세션 만료 처리 (`localStorage.clear()`)
+    - 랜딩페이지로 자동 이동
+    - `useUserApp` hook에 `handleAccountDeleted` 추가
+
+  #### React Hooks 오류 수정
+  - **UserApp.tsx**: `handleAccountDeleted`를 조건부 return 이후에 정의하여 발생한 "Rendered more hooks than during the previous render" 오류 수정
+    - 모든 hooks를 조건부 return 이전에 호출하도록 수정
+    - `handleAccountDeleted`를 `useUserApp` hook으로 이동
+
+  #### 비밀번호 변경 API 호출 개선
+  - **이메일 상태 유지**: `emailForPassword`가 `verify` 단계에서도 유지되도록 `useEffect` 조건 수정
+  - **API 호출 전 검증**: 이메일이 설정되어 있는지 확인하는 검증 로직 추가
+  - **에러 처리 개선**: 상세한 에러 메시지 및 콘솔 로그 추가
+
   ### API 명세서 반영 (2025-01-XX)
   - **User 인터페이스**: 
     - `persona` 필드 추가 (베프, 부모님, 전문가, 멘토, 상담사, 시인)

@@ -158,7 +158,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4 overflow-hidden">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -173,26 +173,28 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={`relative w-full max-w-md ${colors.bg} border-2 ${colors.border} rounded-2xl shadow-2xl overflow-hidden`}
+            className={`relative w-full max-w-md ${colors.bg} border-2 ${colors.border} rounded-2xl shadow-2xl overflow-hidden flex flex-col`}
+            style={{ maxHeight: '85%', maxWidth: '95%' }}
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className={`absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-lg hover:bg-white/50 transition-colors ${colors.text} min-w-[44px] min-h-[44px] flex items-center justify-center`}
+              className={`absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-lg hover:bg-white/50 transition-colors ${colors.text} min-w-[44px] min-h-[44px] flex items-center justify-center z-10`}
               aria-label="닫기"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="p-6 sm:p-8 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(85vh - 100px)' }}>
               {/* Icon & Title */}
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-full bg-white/70 ${colors.icon} flex-shrink-0`}>
                   <AlertTriangle className="w-8 h-8" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className={`mb-2 ${colors.text}`}>{getTitle()}</h3>
-                  <p className={`text-sm ${colors.text}`}>{getMessage()}</p>
+                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                  <h3 className={`mb-2 text-blue-600 ${colors.text}`}>{getTitle()}</h3>
+                  <p className={`text-sm text-blue-600 ${colors.text}`}>{getMessage()}</p>
                 </div>
               </div>
 
@@ -207,8 +209,9 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
               */}
               {reasons.length > 0 && (
                 <div className={`p-4 bg-white/50 rounded-lg border ${colors.border}`}>
-                  <p className={`text-xs mb-2 ${colors.text}`}>감지된 패턴:</p>
-                  <ul className={`space-y-2 text-xs ${colors.text}`}>
+                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                  <p className={`text-xs mb-2 text-blue-600 ${colors.text}`}>감지된 패턴:</p>
+                  <ul className={`space-y-2 text-xs text-blue-600 ${colors.text}`}>
                     {reasons.map((reason, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="mt-0.5 flex-shrink-0">•</span>
@@ -236,10 +239,11 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                   <div className="flex items-start gap-3">
                     <Heart className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-blue-900 mb-2">
+                      {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                      <p className="text-sm text-blue-600 mb-2">
                         <strong>즉시 도움이 필요하시면:</strong>
                       </p>
-                      <div className="space-y-1.5 text-xs text-blue-800">
+                      <div className="space-y-1.5 text-xs text-blue-600">
                         {urgentCounselingPhones.map((phone, index) => (
                           <p key={index}>• <strong>{phone}</strong></p>
                         ))}
@@ -266,24 +270,26 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
               */}
               <div className="flex gap-2 pt-2">
                 {/* 도움말 & 리소스 보기 버튼 (플로우 9.2) */}
+                {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
                 <button
                   onClick={onViewResources}
                   className={`flex-1 py-3 rounded-lg text-white transition-colors text-sm flex items-center justify-center gap-2 ${colors.button}`}
                 >
                   <ExternalLink className="w-4 h-4" />
-                  도움말 & 리소스 보기
+                  <span className="text-blue-600">도움말 & 리소스 보기</span>
                 </button>
                 {/* 닫기 버튼 (플로우 9.2) */}
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 bg-white text-stone-700 rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300"
+                  className="px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300"
                 >
                   닫기
                 </button>
               </div>
 
               {/* Info Text */}
-              <p className={`text-xs text-center ${colors.text} pt-2 border-t ${colors.border}`}>
+              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+              <p className={`text-xs text-center text-blue-600 ${colors.text} pt-2 border-t ${colors.border}`}>
                 이 알림은 감정 패턴 분석을 바탕으로 제공됩니다.<br />
                 전문적인 진단이 필요하면 전문가와 상담하세요.
               </p>

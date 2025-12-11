@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X, Loader2 } from 'lucide-react';
+import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X, Loader2, ArrowLeft } from 'lucide-react';
 import { getCounselingResources, type CounselingResource } from '../../services/counselingResourcesApi';
 import { categoryLabels, categoryColors } from '../../services/supportResources';
 
@@ -74,7 +74,7 @@ const convertToSupportResource = (resource: CounselingResource) => {
   };
 };
 
-export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }: SupportResourcesPageProps) {
+export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, onBack }: SupportResourcesPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [resources, setResources] = useState<ReturnType<typeof convertToSupportResource>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,8 +134,18 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
 
   return (
     <div className="min-h-screen pb-6 space-y-6">
-      {/* 헤더 */}
-      <div className="text-center space-y-3 pb-6 border-b border-stone-200/60">
+      {/* 헤더 - 뒤로가기 버튼 포함 */}
+      <div className="relative text-center space-y-3 pb-6 border-b border-stone-200/60">
+        {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
           <Heart className="w-8 h-8 text-blue-600" />
         </div>
@@ -175,37 +185,6 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
           </div>
         </div>
       )}
-
-      {/* 도움 안내 */}
-      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 space-y-4 border border-blue-200">
-        <h3 className="text-sm text-stone-800 font-medium">도움을 요청하는 것은 용기입니다</h3>
-        
-        <div className="space-y-4 text-xs text-stone-700 leading-relaxed">
-          <p>
-            혼자서 감정을 감당하기 어려울 때, 전문가의 도움을 받는 것은 매우 현명한 선택입니다. 
-            당신의 감정과 고민은 소중하며, 언제든 도움을 요청할 수 있습니다.
-          </p>
-          
-          <div className="p-4 bg-rose-50 border border-rose-300 rounded-lg">
-            <p className="text-rose-900">
-              <strong className="block mb-2">긴급한 경우</strong>
-              자살 충동이나 자해 생각이 든다면 즉시 <strong>1393</strong>(자살예방 상담전화) 또는 
-              <strong> 1577-0199</strong>(정신건강 위기상담)로 연락해주세요. <strong>24시간 상담 가능</strong>합니다.
-            </p>
-          </div>
-          
-          <div>
-            <strong className="text-stone-800 block mb-2">상담이 도움이 되는 경우:</strong>
-            <ul className="space-y-1.5 ml-1">
-              <li>• 지속적인 우울감이나 불안감</li>
-              <li>• 일상생활에 지장을 주는 감정 변화</li>
-              <li>• 수면 문제나 식욕 변화</li>
-              <li>• 대인관계의 어려움</li>
-              <li>• 스트레스 관리의 어려움</li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
       {/* 카테고리 필터 */}
       <div className="space-y-3">
@@ -279,7 +258,12 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm text-stone-900 mb-2 font-medium">{resource.name}</h3>
+                <h3 
+                  className="text-sm text-stone-900 mb-2 font-medium"
+                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
+                >
+                  {resource.name}
+                </h3>
                 <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${categoryColors[resource.category]}`}>
                   {getCategoryIcon(resource.category)}
                   <span>{categoryLabels[resource.category]}</span>
@@ -288,7 +272,10 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
             </div>
 
             {/* Description */}
-            <p className="text-xs text-stone-600 leading-relaxed">
+            <p 
+              className="text-xs text-stone-600 leading-relaxed"
+              style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
+            >
               {resource.description}
             </p>
 
@@ -298,18 +285,18 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
               {resource.phone && (
                 <a
                   href={`tel:${resource.phone}`}
-                  className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline min-h-[44px]"
+                  className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline min-h-[44px] break-words"
                 >
                   <Phone className="w-4 h-4 flex-shrink-0" />
-                  <span>{resource.phone}</span>
+                  <span className="break-all">{resource.phone}</span>
                 </a>
               )}
               
               {/* Hours */}
               {resource.hours && (
-                <div className="flex items-center gap-2 text-xs text-stone-600">
+                <div className="flex items-center gap-2 text-xs text-stone-600 break-words">
                   <Clock className="w-4 h-4 flex-shrink-0" />
-                  <span>{resource.hours}</span>
+                  <span className="break-words">{resource.hours}</span>
                 </div>
               )}
               
@@ -331,17 +318,6 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons }
             )}
           </>
         )}
-      </div>
-
-      {/* Bottom Info */}
-      <div className="pt-4 mt-4 border-t border-stone-200">
-        <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-900 leading-relaxed">
-            💡 <strong>알림 설정</strong><br />
-            마이페이지에서 '위험 알림 받기'를 켜두면 위험 신호가 감지될 때 
-            알림을 받을 수 있습니다. 당신의 감정과 고민은 소중하며, 언제든 도움을 요청할 수 있습니다.
-          </p>
-        </div>
       </div>
     </div>
   );

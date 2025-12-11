@@ -64,7 +64,7 @@ export interface DeleteImageResponse {
   message: string; // 삭제 완료 메시지
 }
 
-import { apiClient } from './api';
+import { apiClient, BASE_URL } from './api';
 
 /**
  * POST /upload/image
@@ -154,19 +154,73 @@ export async function uploadImage(data: UploadImageRequest): Promise<UploadImage
  * - Response: { success: true, data: { message: string } }
  */
 export async function deleteImage(data: DeleteImageRequest): Promise<DeleteImageResponse> {
-  // URL 검증
-  if (!data.imageUrl || !data.imageUrl.startsWith('http')) {
+  // [디버깅용] 이미지 삭제 API 호출 시작 로그 (F12 관리자도구에서 확인 가능)
+  console.log('[이미지 삭제 API] 호출 시작 - imageUrl:', data.imageUrl);
+  
+  // URL 검증 및 정규화
+  // API 명세서에 따르면 imageUrl은 문자열이므로, http/https로 시작하는지 확인
+  // 단, blob: 또는 data: URL은 서버에 업로드되지 않은 로컬 이미지이므로 API 호출 불필요
+  if (!data.imageUrl) {
+    console.error('[이미지 삭제 API] imageUrl이 없습니다');
     throw new Error('유효하지 않은 이미지 URL입니다.');
   }
   
-  const response = await apiClient.delete('/upload/image', {
-    data: { imageUrl: data.imageUrl },
-  });
+  // blob: 또는 data: URL은 서버에 업로드되지 않은 로컬 이미지
+  if (data.imageUrl.startsWith('blob:') || data.imageUrl.startsWith('data:')) {
+    console.log('[이미지 삭제 API] 로컬 이미지 (blob/data URL) - API 호출 불필요');
+    throw new Error('로컬 이미지는 서버 삭제가 필요하지 않습니다.');
+  }
   
-  if (response.data.success) {
-    return { message: response.data.data.message };
-  } else {
-    throw new Error(response.data.error?.message || '이미지 삭제에 실패했습니다.');
+  // 상대 경로 URL을 전체 URL로 변환
+  let imageUrl = data.imageUrl;
+  if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    // 상대 경로인 경우 (예: /images/user_uploads/...)
+    // BASE_URL에서 origin을 추출하여 전체 URL로 변환
+    // BASE_URL 예: http://localhost:8080/api
+    // 상대 경로 예: /images/user_uploads/xxx.png
+    // 결과: http://localhost:8080/images/user_uploads/xxx.png
+    try {
+      const baseUrlObj = new URL(BASE_URL);
+      // 상대 경로가 /로 시작하는지 확인
+      if (imageUrl.startsWith('/')) {
+        imageUrl = `${baseUrlObj.origin}${imageUrl}`;
+        console.log('[이미지 삭제 API] 상대 경로를 전체 URL로 변환:', imageUrl);
+      } else {
+        console.error('[이미지 삭제 API] 유효하지 않은 URL 형식:', data.imageUrl);
+        throw new Error('유효하지 않은 이미지 URL입니다.');
+      }
+    } catch (urlError) {
+      console.error('[이미지 삭제 API] URL 변환 실패:', urlError);
+      throw new Error('유효하지 않은 이미지 URL입니다.');
+    }
+  }
+  
+  try {
+    const response = await apiClient.delete('/upload/image', {
+      data: { imageUrl: imageUrl }, // 정규화된 URL 사용
+    });
+    
+    // [디버깅용] API 응답 로그
+    console.log('[이미지 삭제 API] 응답:', response.data);
+    
+    if (response.data.success) {
+      console.log('[이미지 삭제 API] 삭제 성공');
+      return { message: response.data.data.message };
+    } else {
+      console.error('[이미지 삭제 API] 응답 실패:', response.data);
+      throw new Error(response.data.error?.message || '이미지 삭제에 실패했습니다.');
+    }
+  } catch (error: any) {
+    // [디버깅용] 에러 상세 로그
+    console.error('[이미지 삭제 API] API 호출 실패:', error);
+    if (error.response) {
+      console.error('[이미지 삭제 API] 응답 상태:', error.response.status);
+      console.error('[이미지 삭제 API] 응답 데이터:', error.response.data);
+    }
+    if (error instanceof Error) {
+      console.error('[이미지 삭제 API] 에러 메시지:', error.message);
+    }
+    throw error;
   }
 }
 

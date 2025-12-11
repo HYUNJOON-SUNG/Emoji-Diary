@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X } from 'lucide-react';
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X, ArrowLeft } from 'lucide-react';
 import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, DiaryDetail } from '../../services/diaryApi';
 import { uploadImage, deleteImage } from '../../services/uploadApi';
 import { BASE_URL } from '../../services/api';
@@ -63,11 +63,15 @@ interface DiaryWritingPageProps {
     emotionName: string;
     emotionCategory: string;
     aiComment?: string;
+    recommendedFood?: { name: string; reason: string };
+    imageUrl?: string;
     date: Date;
     diaryId?: string; // 일기 ID (장소 추천 기능에서 사용)
   }) => void;
   /** 취소 버튼 클릭 시 콜백 (캘린더로 돌아가기 또는 상세보기로) */
   onCancel: () => void;
+  /** 하단 내비게이션 바를 통한 취소 확인 시 콜백 (페이지 이동용) */
+  onNavigationCancel?: () => Promise<void>;
   /** AI 이미지 생성 함수 (나노바나나 API) - 새 작성 시만 사용 */
   onGenerateImage?: (content: string, emotion: string, weather?: string) => Promise<string>;
   /** 장소 추천 콜백 */
@@ -92,7 +96,11 @@ interface DiaryWritingPageProps {
   };
 }
 
-export function DiaryWritingPage({ 
+// DiaryWritingPage를 forwardRef로 감싸서 부모 컴포넌트에서 메서드 호출 가능하게 함
+export const DiaryWritingPage = forwardRef<{ 
+  handleNavigationCancel: () => Promise<void>;
+  showCancelModal: () => void; // 하단 내비게이션 바 클릭 시 모달 표시용
+}, DiaryWritingPageProps>(({ 
   selectedDate, 
   onFinish, 
   onCancel, 
@@ -101,8 +109,9 @@ export function DiaryWritingPage({
   onWritingComplete, 
   onSaveSuccess,
   isEditMode = false,
-  existingDiary
-}: DiaryWritingPageProps) {
+  existingDiary,
+  onNavigationCancel
+}, ref) => {
   // ========== 기본 입력 상태 ==========
   
   /** 제목 (필수) */
@@ -157,6 +166,72 @@ export function DiaryWritingPage({
   /** 취소 확인 모달 표시 여부 (플로우 3.5) */
   const [showCancelModal, setShowCancelModal] = useState(false);
   
+  /**
+   * 북마크 내비게이션 이동 시 이미지 삭제 처리 (요구사항 10)
+   * handleCancelConfirm과 동일한 로직 사용
+   */
+  const handleNavigationCancel = async () => {
+    // 이미지 삭제 API 호출 (서버에 업로드된 이미지만 삭제)
+    if (isEditMode && existingDiary) {
+      // 플로우 4.4: 수정 모드 - 새로 추가한 이미지만 삭제
+      const existingImageUrls = existingDiary.images || [];
+      const newImages = images.filter(img => !existingImageUrls.includes(img.url));
+      
+      if (newImages.length > 0) {
+        try {
+          for (const image of newImages) {
+            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
+            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+              try {
+                await deleteImage({ imageUrl: image.url });
+                console.log('[북마크 내비게이션 이동] 이미지 삭제 성공:', image.url);
+              } catch (err) {
+                console.error('[북마크 내비게이션 이동] 이미지 삭제 실패:', image.url, err);
+                // 삭제 실패해도 계속 진행
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[북마크 내비게이션 이동] 이미지 삭제 중 오류:', err);
+        }
+      }
+    } else {
+      // 플로우 3.5: 새 작성 모드 - 모든 이미지 삭제
+      if (images.length > 0) {
+        try {
+          for (const image of images) {
+            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
+            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+              try {
+                await deleteImage({ imageUrl: image.url });
+                console.log('[북마크 내비게이션 이동] 이미지 삭제 성공:', image.url);
+              } catch (err) {
+                console.error('[북마크 내비게이션 이동] 이미지 삭제 실패:', image.url, err);
+                // 삭제 실패해도 계속 진행
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[북마크 내비게이션 이동] 이미지 삭제 중 오류:', err);
+        }
+      }
+    }
+  };
+  
+  // ref를 통해 부모 컴포넌트에서 handleNavigationCancel 호출 가능하게 함
+  // useCallback으로 감싸서 의존성 배열 최적화
+  const handleNavigationCancelMemoized = useCallback(async () => {
+    await handleNavigationCancel();
+  }, [images, isEditMode, existingDiary]);
+  
+  useImperativeHandle(ref, () => ({
+    handleNavigationCancel: handleNavigationCancelMemoized,
+    showCancelModal: () => {
+      // 하단 내비게이션 바 클릭 시 취소 모달 표시
+      setShowCancelModal(true);
+    }
+  }), [handleNavigationCancelMemoized]);
+  
   // ========== 유효성 검증 ==========
   
   /**
@@ -189,37 +264,9 @@ export function DiaryWritingPage({
    * - 수정: "수정한 내용이 사라집니다. 정말 취소하시겠습니까?"
    */
   const handleCancelClick = () => {
-    if (isEditMode && existingDiary) {
-      // 플로우 4.4: 수정 모드 - 원본과 비교
-      const hasChanges = 
-        title.trim() !== existingDiary.title ||
-        content.trim() !== existingDiary.content ||
-        mood.trim() !== (existingDiary.mood || '') ||
-        weather !== (existingDiary.weather || '') ||
-        JSON.stringify(activities) !== JSON.stringify(existingDiary.activities || []) ||
-        images.length !== (existingDiary.images?.length || 0);
-      
-      if (hasChanges) {
-        setShowCancelModal(true);
-      } else {
-        onCancel(); // 수정 없으면 즉시 상세보기로
-      }
-    } else {
-      // 플로우 3.5: 새 작성 모드 - 내용 확인
-      const hasContent = 
-        title.trim() !== '' || 
-        content.trim() !== '' || 
-        mood.trim() !== '' || 
-        weather !== '' || 
-        activities.length > 0 || 
-        images.length > 0;
-      
-      if (hasContent) {
-        setShowCancelModal(true);
-      } else {
-        onCancel();
-      }
-    }
+    // 뒤로가기 버튼 클릭 시 항상 취소 모달 표시 (하단 내비게이션 바와 동일하게)
+    // 내용이 없어도 모달을 표시하여 사용자가 확인할 수 있도록 함
+    setShowCancelModal(true);
   };
   
   /**
@@ -240,6 +287,7 @@ export function DiaryWritingPage({
    * Response: { success: boolean }
    */
   const handleCancelConfirm = async () => {
+    // 이미지 삭제 API 호출 (서버에 업로드된 이미지만 삭제)
     if (isEditMode && existingDiary) {
       // 플로우 4.4: 수정 모드 - 새로 추가한 이미지만 삭제
       const existingImageUrls = existingDiary.images || [];
@@ -248,14 +296,19 @@ export function DiaryWritingPage({
       if (newImages.length > 0) {
         try {
           for (const image of newImages) {
-            // await fetch('/api/upload/image', {
-            //   method: 'DELETE',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ url: image.url }),
-            // });
+            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
+            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+              try {
+                await deleteImage({ imageUrl: image.url });
+                console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);
+              } catch (err) {
+                console.error('[일기 작성 취소] 이미지 삭제 실패:', image.url, err);
+                // 삭제 실패해도 계속 진행 (이미지는 서버에 남아있을 수 있음)
+              }
+            }
           }
         } catch (err) {
-          console.error('이미지 삭제 실패:', err);
+          console.error('[일기 작성 취소] 이미지 삭제 중 오류:', err);
         }
       }
     } else {
@@ -263,14 +316,19 @@ export function DiaryWritingPage({
       if (images.length > 0) {
         try {
           for (const image of images) {
-            // await fetch('/api/upload/image', {
-            //   method: 'DELETE',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify({ url: image.url }),
-            // });
+            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
+            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+              try {
+                await deleteImage({ imageUrl: image.url });
+                console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);
+              } catch (err) {
+                console.error('[일기 작성 취소] 이미지 삭제 실패:', image.url, err);
+                // 삭제 실패해도 계속 진행 (이미지는 서버에 남아있을 수 있음)
+              }
+            }
           }
         } catch (err) {
-          console.error('이미지 삭제 실패:', err);
+          console.error('[일기 작성 취소] 이미지 삭제 중 오류:', err);
         }
       }
     }
@@ -401,16 +459,30 @@ export function DiaryWritingPage({
     try {
       // DELETE /api/upload/image
       // 이미 서버에 업로드된 이미지인 경우에만 삭제 API 호출
-      if (imageToRemove.url && !imageToRemove.url.startsWith('blob:')) {
-        await deleteImage({ imageUrl: imageToRemove.url });
+      // [디버깅용] 이미지 삭제 API 호출 로그 (F12 관리자도구에서 확인 가능)
+      if (imageToRemove.url && !imageToRemove.url.startsWith('blob:') && !imageToRemove.url.startsWith('data:')) {
+        console.log('[이미지 삭제] API 호출 시작:', imageToRemove.url);
+        try {
+          await deleteImage({ imageUrl: imageToRemove.url });
+          console.log('[이미지 삭제] API 호출 성공');
+        } catch (deleteErr: any) {
+          // [디버깅용] 이미지 삭제 에러 상세 로그
+          console.warn('[이미지 삭제] API 호출 실패 (무시하고 계속 진행):', deleteErr);
+          // 이미지가 이미 삭제되었거나 존재하지 않는 경우 등은 정상적인 상황일 수 있음
+          // 기능상 문제가 없으므로 에러를 무시하고 계속 진행
+        }
+      } else {
+        console.log('[이미지 삭제] 로컬 이미지 (blob/data URL) - API 호출 불필요');
       }
       
+      // 이미지 목록에서 제거 (로컬 상태 정리)
       setImages(images.filter((_, i) => i !== index));
     } catch (err: any) {
-      console.error('이미지 삭제 실패:', err);
+      // 예상치 못한 에러인 경우에만 로그 출력
+      console.error('[이미지 삭제] 예상치 못한 에러:', err);
       // 삭제 실패해도 목록에서 제거 (로컬 상태 정리)
       setImages(images.filter((_, i) => i !== index));
-      setError(err.message || '이미지 삭제에 실패했습니다.');
+      // 사용자에게 에러 메시지를 표시하지 않음 (기능은 정상 작동)
     }
   };
   
@@ -599,6 +671,8 @@ export function DiaryWritingPage({
           emotionName: emotionData?.name || savedDiary.emotion || '중립', // 백엔드 응답의 KoBERT 분석 결과 이름
           emotionCategory: savedDiary.emotionCategory || 'neutral', // 백엔드 응답의 감정 카테고리
           aiComment: savedDiary.aiComment || '', // AI 코멘트 전달
+          recommendedFood: savedDiary.recommendedFood, // 추천 음식 정보 전달
+          imageUrl: savedDiary.imageUrl, // AI 생성 이미지 URL 전달
           date: selectedDate,
           diaryId: savedDiary.id, // 일기 ID 전달 (장소 추천 기능에서 사용)
         });
@@ -651,15 +725,18 @@ export function DiaryWritingPage({
     <div className="flex flex-col h-full w-full bg-white"> {/* 전체 화면 모달 */}
       {/* 상단 헤더 - 고정 */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+        {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
         <button
           onClick={handleCancelClick}
           disabled={isSaving}
-          className="text-slate-600 hover:text-slate-900 transition-colors px-2 py-1"
+          className="text-blue-600 hover:text-blue-700 transition-colors px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="뒤로가기"
         >
-          <X className="w-6 h-6" />
+          <ArrowLeft className="w-6 h-6" />
         </button>
         
-        <h1 className="text-lg text-slate-800">
+        {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+        <h1 className="text-lg text-blue-600">
           {isEditMode ? '일기 수정' : '일기 작성'}
         </h1>
         
@@ -703,6 +780,7 @@ export function DiaryWritingPage({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="오늘의 제목을 입력하세요"
+                disabled={isSaving || isAnalyzingEmotion}
                 className={theme.input.base}
               />
             </div>
@@ -739,6 +817,7 @@ export function DiaryWritingPage({
                 value={mood}
                 onChange={(e) => setMood(e.target.value)}
                 placeholder="예: 행복, 평온"
+                disabled={isSaving || isAnalyzingEmotion}
                 className={theme.input.base}
               />
             </div>
@@ -751,6 +830,7 @@ export function DiaryWritingPage({
               <select
                 value={weather}
                 onChange={(e) => setWeather(e.target.value)}
+                disabled={isSaving || isAnalyzingEmotion}
                 className={theme.input.base}
               >
                 <option value="">선택하세요</option>
@@ -765,7 +845,7 @@ export function DiaryWritingPage({
             {/* 5. 활동 추가 (선택) */}
             <div>
               <label className="block text-sm text-slate-700 mb-2">
-                활동
+                활동 태그
               </label>
               <div className="flex gap-2 mb-3">
                 <input
@@ -778,13 +858,15 @@ export function DiaryWritingPage({
                       handleAddActivity();
                     }
                   }}
-                  placeholder="활동을 입력하세요"
+                  placeholder="활동 태그를 입력하세요"
+                  disabled={isSaving || isAnalyzingEmotion}
                   className={`flex-1 ${theme.input.base}`}
                 />
                 <button
                   onClick={handleAddActivity}
-                  className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="활동 추가"
+                  disabled={isSaving || isAnalyzingEmotion}
+                  className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center disabled:bg-slate-300 disabled:cursor-not-allowed"
+                  aria-label="활동 태그 추가"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -827,7 +909,8 @@ export function DiaryWritingPage({
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all"
+                disabled={isSaving || isAnalyzingEmotion}
+                className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all disabled:border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center justify-center gap-2 text-slate-600">
                   <ImageIcon className="w-5 h-5" />
@@ -879,7 +962,8 @@ export function DiaryWritingPage({
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="오늘 하루 어떤 일이 있었나요? 자유롭게 작성해보세요..."
                 rows={10}
-                className={`flex-1 w-full p-4 text-sm bg-white/50 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors resize-none ${theme.textPrimary}`}
+                disabled={isSaving || isAnalyzingEmotion}
+                className={`flex-1 w-full p-4 text-sm bg-white/50 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors resize-none disabled:bg-slate-100 disabled:cursor-not-allowed ${theme.textPrimary}`}
               />
             </div>
           </div>
@@ -920,7 +1004,7 @@ export function DiaryWritingPage({
         - "계속 작성" 버튼 클릭 시 모달 닫기
       */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md overflow-hidden border-2 border-blue-200">
             {/* 모달 헤더 */}
             <div className="sticky top-0 bg-gradient-to-r from-blue-100 to-cyan-100 px-4 sm:px-6 py-4 border-b-2 border-blue-200 flex items-center justify-between">
@@ -961,4 +1045,6 @@ export function DiaryWritingPage({
       )}
     </div>
   );
-}
+});
+
+DiaryWritingPage.displayName = 'DiaryWritingPage';
