@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Layout } from './components/layout';
 import { Dashboard } from './components/dashboard';
@@ -42,7 +41,7 @@ import './styles/admin-globals.css';
 
 export default function AdminApp() {
   const navigate = useNavigate();
-  
+
   // Custom hook으로 인증 로직 분리
   const { isAuthenticated, activeTab, setActiveTab, setIsAuthenticated } = useAuth();
 
@@ -57,7 +56,7 @@ export default function AdminApp() {
     try {
       // POST /api/admin/auth/login
       const response = await adminLogin(email, password);
-      
+
       if (response.success && response.data) {
         // Admin info from response
         const adminInfo: AdminInfo = {
@@ -67,25 +66,22 @@ export default function AdminApp() {
           role: 'super_admin',
           department: 'IT 운영팀'
         };
-        
+
         // [명세서 1.1] 관리자 세션 저장
         // adminLogin 함수에서 이미 admin_access_token과 admin_refresh_token을 localStorage에 저장함
         login(response.data.accessToken, adminInfo);
         setIsAuthenticated(true);
         navigate('/admin/dashboard');
-        
+
         return { success: true };
-      } else {
-        return { 
-          success: false, 
-          message: response.error?.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.' 
-        };
       }
+      // adminLogin이 성공 응답만 반환하므로 else 브랜치 없음 (에러는 catch에서 처리)
+      return { success: true };
     } catch (error: any) {
       console.error('관리자 로그인 실패:', error);
-      return { 
-        success: false, 
-        message: error.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.' 
+      return {
+        success: false,
+        message: error.message || '아이디 또는 비밀번호가 일치하지 않습니다.'
       };
     }
   };
@@ -126,10 +122,10 @@ export default function AdminApp() {
       // Logout and clear session (7.1, 9.1)
       // adminLogout 함수에서 이미 localStorage의 토큰을 제거함
       logout();
-      
+
       // Clear admin authentication state
       setIsAuthenticated(false);
-      
+
       // Reset to dashboard tab
       setActiveTab('dashboard');
       navigate('/admin');

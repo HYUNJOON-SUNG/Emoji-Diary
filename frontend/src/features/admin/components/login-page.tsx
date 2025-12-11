@@ -78,7 +78,7 @@ import { useState } from 'react';
 import { Lock, Mail, Shield, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPageProps {
-  onLogin: (email: string, password: string) => { success: boolean; message?: string };
+  onLogin: (email: string, password: string) => { success: boolean; message?: string } | Promise<{ success: boolean; message?: string }>;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
@@ -115,10 +115,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     // 백엔드가 로그인 시도 이력을 자동으로 기록합니다 (IP 주소, User Agent 등)
     try {
       const result = await onLogin(email, password);
-      
+
       if (!result.success) {
         // 통합 에러 메시지 표시 (필드별 에러 없음)
-        setError(result.message || 'ID 또는 비밀번호가 일치하지 않거나 관리자 권한이 없습니다.');
+        setError(result.message || '아이디 또는 비밀번호가 일치하지 않습니다.');
       }
       // 성공 시 onLogin에서 처리 (AdminApp.tsx의 handleLogin)
     } catch (error: any) {
@@ -148,7 +148,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       <div className="relative w-full max-w-md">
         {/* 클립보드 클립 효과 (스큐어모피즘) */}
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-32 h-12 bg-slate-600 rounded-full shadow-xl border-2 border-slate-500 z-10"></div>
-        
+
         <div className="bg-white rounded-lg shadow-2xl overflow-hidden border-2 border-slate-200">
           {/* ========================================
               헤더 섹션
@@ -189,7 +189,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <div>
                   <label htmlFor="email" className="block text-slate-700 mb-2">
                     <Mail className="w-4 h-4 inline mr-2" />
-                    관리자 ID (이메일)
+                    관리자 ID
                   </label>
                   <input
                     type="text"
@@ -197,7 +197,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-slate-300 rounded-md focus:outline-none focus:border-slate-600 focus:ring-2 focus:ring-slate-200 transition-all"
-                    placeholder="admin@example.com"
+                    placeholder="이메일 주소"
                   />
                 </div>
 
@@ -219,7 +219,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-4 py-3 pr-12 border-2 border-slate-300 rounded-md focus:outline-none focus:border-slate-600 focus:ring-2 focus:ring-slate-200 transition-all"
-                      placeholder="••••••••"
+                      placeholder="비밀번호"
                     />
                     {/* 비밀번호 표시/숨김 토글 버튼 */}
                     <button
@@ -264,22 +264,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 </button>
               </form>
 
-              {/* 보안 안내 메시지 */}
-              <div className="mt-6 pt-6 border-t border-slate-200">
-                <p className="text-slate-500 text-xs text-center">
-                  관리자 로그인 시도는 보안을 위해 모니터링되고 기록됩니다.
-                </p>
-              </div>
+
             </div>
           </div>
         </div>
 
-        {/* 하단 안내 메시지 */}
-        <div className="mt-6 text-center">
-          <p className="text-slate-300 text-sm">
-            일반 사용자 로그인과 별도로 관리됩니다
-          </p>
-        </div>
+
       </div>
     </div>
   );

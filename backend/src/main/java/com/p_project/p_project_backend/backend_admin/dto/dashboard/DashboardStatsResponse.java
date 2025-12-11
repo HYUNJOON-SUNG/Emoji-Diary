@@ -29,8 +29,6 @@ public class DashboardStatsResponse {
     @AllArgsConstructor
     public static class TotalUsersInfo {
         private Long count;
-        private Long change;
-        private String period;
     }
 
     /**
@@ -70,7 +68,6 @@ public class DashboardStatsResponse {
     @AllArgsConstructor
     public static class TotalDiariesInfo {
         private Long count;
-        private Long change;
     }
 
     /**
@@ -97,6 +94,6 @@ public class DashboardStatsResponse {
         private Long medium;
         private Long low;
         private Long none;
+        private String period;
     }
 }
-

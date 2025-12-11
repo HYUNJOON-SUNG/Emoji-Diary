@@ -35,11 +35,11 @@ import { LucideIcon } from 'lucide-react';
 
 interface MetricCardProps {
   title: string;
-  value: string;
+  value: string | React.ReactNode;
   change: string;
   trend: 'up' | 'down';
   icon: LucideIcon;
-  color: 'blue' | 'green' | 'purple' | 'orange' | 'red';
+  color: 'blue' | 'emerald' | 'indigo' | 'cyan' | 'orange' | 'red';
   description?: string;
   filter?: React.ReactNode;
 }
@@ -57,16 +57,18 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
    */
   const colorClasses = {
     blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    green: 'bg-green-50 text-green-600 border-green-200',
-    purple: 'bg-purple-50 text-purple-600 border-purple-200',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-200',
+    cyan: 'bg-cyan-50 text-cyan-600 border-cyan-200',
     orange: 'bg-orange-50 text-orange-600 border-orange-200',
     red: 'bg-red-50 text-red-600 border-red-200'
   };
 
   const iconColorClasses = {
     blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    purple: 'bg-purple-100 text-purple-600',
+    emerald: 'bg-emerald-100 text-emerald-600',
+    indigo: 'bg-indigo-100 text-indigo-600',
+    cyan: 'bg-cyan-100 text-cyan-600',
     orange: 'bg-orange-100 text-orange-600',
     red: 'bg-red-100 text-red-600'
   };
@@ -78,19 +80,20 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
     `}
       style={{
         // 그라데이션 배경 (스큐어모피즘 디자인)
-        background: `linear-gradient(135deg, ${
-          color === 'blue' ? 'rgba(239, 246, 255, 0.8)' :
-          color === 'green' ? 'rgba(240, 253, 244, 0.8)' :
-          color === 'purple' ? 'rgba(250, 245, 255, 0.8)' :
-          'rgba(255, 247, 237, 0.8)'
-        } 0%, white 100%)`
+        background: `linear-gradient(135deg, ${color === 'blue' ? 'rgba(239, 246, 255, 0.8)' :
+          color === 'emerald' ? 'rgba(236, 253, 245, 0.8)' :
+            color === 'indigo' ? 'rgba(238, 242, 255, 0.8)' :
+              color === 'cyan' ? 'rgba(236, 254, 255, 0.8)' :
+                color === 'orange' ? 'rgba(255, 247, 237, 0.8)' :
+                  'rgba(254, 242, 242, 0.8)' // red
+          } 0%, white 100%)`
       }}
     >
       {/* ========================================
           코너 접힌 효과 (종이 느낌)
           ======================================== */}
       <div className="absolute top-0 right-0 w-0 h-0 border-l-[20px] border-l-transparent border-t-[20px] border-t-slate-200 opacity-50"></div>
-      
+
       <div className="flex items-start justify-between">
         {/* ========================================
             지표 정보 영역
@@ -98,10 +101,10 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
         <div className="flex-1">
           {/* 지표 제목 */}
           <p className="text-slate-600 text-sm mb-2">{title}</p>
-          
+
           {/* 지표 값 (메인 숫자) */}
           <p className="text-slate-900 text-3xl tracking-tight mb-1">{value}</p>
-          
+
           {/* ========================================
               이전 기간 대비 증감률 표시
               ======================================== */}
@@ -119,10 +122,13 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
            *   IF((current_count - previous_count) > 0, 'up', 'down') as trend
            * FROM statistics
            */}
-          <p className={`text-sm mb-1 ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-            {change} from last month
-          </p>
-          
+          {/* 증감률이 있는 경우에만 표시 (change가 '-'가 아닌 경우) */}
+          {change && change !== '-' && (
+            <p className={`text-sm mb-1 ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+              {change} from last month
+            </p>
+          )}
+
           {/* 추가 설명 (선택사항) */}
           {description && (
             <p className="text-xs text-slate-500 mt-2">{description}</p>
@@ -132,7 +138,7 @@ export function MetricCard({ title, value, change, trend, icon: Icon, color, des
             <div className="mt-2">{filter}</div>
           )}
         </div>
-        
+
         {/* ========================================
             아이콘 영역
             ======================================== */}

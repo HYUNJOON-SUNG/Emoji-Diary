@@ -24,11 +24,12 @@ public class AdminDashboardController {
      */
     @GetMapping("/stats")
     public ResponseEntity<?> getDashboardStats(
-            @RequestParam(required = false, defaultValue = "monthly") String period,
+            @RequestParam(required = false, defaultValue = "monthly") String averageDiariesPeriod,
+            @RequestParam(required = false, defaultValue = "monthly") String riskLevelPeriod,
             @RequestParam(required = false, defaultValue = "dau") String activeUserType,
-            @RequestParam(required = false, defaultValue = "daily") String newUserPeriod
-    ) {
-        DashboardStatsResponse response = adminDashboardService.getDashboardStats(period, activeUserType, newUserPeriod);
+            @RequestParam(required = false, defaultValue = "daily") String newUserPeriod) {
+        DashboardStatsResponse response = adminDashboardService.getDashboardStats(
+                averageDiariesPeriod, riskLevelPeriod, activeUserType, newUserPeriod);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
@@ -40,8 +41,7 @@ public class AdminDashboardController {
     public ResponseEntity<?> getRiskLevelDistribution(
             @RequestParam(required = false, defaultValue = "monthly") String period,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
-    ) {
+            @RequestParam(required = false) Integer month) {
         RiskLevelDistributionResponse response = adminDashboardService.getRiskLevelDistribution(period, year, month);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
@@ -54,8 +54,7 @@ public class AdminDashboardController {
     public ResponseEntity<?> getDiaryTrend(
             @RequestParam(required = false, defaultValue = "monthly") String period,
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month
-    ) {
+            @RequestParam(required = false) Integer month) {
         DiaryTrendResponse response = adminDashboardService.getDiaryTrend(period, year, month);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
@@ -69,10 +68,8 @@ public class AdminDashboardController {
             @RequestParam(required = false, defaultValue = "monthly") String period,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
-            @RequestParam(required = false) String metrics
-    ) {
+            @RequestParam(required = false) String metrics) {
         UserActivityStatsResponse response = adminDashboardService.getUserActivityStats(period, year, month, metrics);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 }
-

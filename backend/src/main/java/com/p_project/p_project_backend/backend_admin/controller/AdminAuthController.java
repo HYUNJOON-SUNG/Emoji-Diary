@@ -12,8 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.Map;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/admin/auth")
@@ -23,7 +24,7 @@ public class AdminAuthController {
     private final AdminAuthService adminAuthService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody @Valid AdminLoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody AdminLoginRequest request) {
         try {
             AdminLoginResponse response = adminAuthService.login(request.getEmail(), request.getPassword());
             return ResponseEntity.ok(Map.of("success", true, "data", response));
@@ -52,7 +53,8 @@ public class AdminAuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+    public ResponseEntity<?> logout(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
         try {
             if (authorizationHeader == null || authorizationHeader.isBlank()) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -80,4 +82,3 @@ public class AdminAuthController {
         }
     }
 }
-
