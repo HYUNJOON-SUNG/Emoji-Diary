@@ -371,7 +371,7 @@ export function Dashboard() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
             <div className="flex items-center">
               <Activity className="w-5 h-5 text-slate-700 mr-2" />
-              <h2 className="text-slate-800">사용자 활동 통계 ({userActivityPeriod === 'week' ? '주간' : userActivityPeriod === 'month' ? '월간' : '연간'})</h2>
+              <h2 className="text-slate-800">일일 활동 추이 ({userActivityPeriod === 'week' ? '주간' : userActivityPeriod === 'month' ? '월간' : '연간'})</h2>
             </div>
             <div className="flex items-center gap-4">
               {/* 기간 필터 */}
@@ -389,11 +389,8 @@ export function Dashboard() {
               {/* 지표 선택 (2.4) */}
               <div className="flex gap-2 flex-wrap">
                 {[
-                  { key: 'dau', label: 'DAU' },
-                  { key: 'wau', label: 'WAU' },
-                  { key: 'mau', label: 'MAU' },
-                  { key: 'newUsers', label: '신규 가입자' },
-                  { key: 'retentionRate', label: '유지율' }
+                  { key: 'dau', label: '활성 사용자' },
+                  { key: 'newUsers', label: '신규 가입자' }
                 ].map((metric) => (
                   <label key={metric.key} className="flex items-center gap-1 cursor-pointer">
                     <input
@@ -430,20 +427,12 @@ export function Dashboard() {
                 />
                 <Legend />
                 {selectedMetrics.includes('dau') && (
-                  <Line type="monotone" dataKey="dau" stroke="#3b82f6" strokeWidth={2} name="DAU" />
-                )}
-                {selectedMetrics.includes('wau') && (
-                  <Line type="monotone" dataKey="wau" stroke="#8b5cf6" strokeWidth={2} name="WAU" />
-                )}
-                {selectedMetrics.includes('mau') && (
-                  <Line type="monotone" dataKey="mau" stroke="#10b981" strokeWidth={2} name="MAU" />
+                  <Line type="monotone" dataKey="dau" stroke="#3b82f6" strokeWidth={2} name="활성 사용자" />
                 )}
                 {selectedMetrics.includes('newUsers') && (
                   <Line type="monotone" dataKey="newUsers" stroke="#f59e0b" strokeWidth={2} name="신규 가입자" />
                 )}
-                {selectedMetrics.includes('retentionRate') && (
-                  <Line type="monotone" dataKey="retentionRate" stroke="#ef4444" strokeWidth={2} name="유지율 (%)" />
-                )}
+
               </LineChart>
             </ResponsiveContainer>
           </div>
