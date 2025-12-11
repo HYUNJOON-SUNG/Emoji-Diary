@@ -145,6 +145,13 @@ interface EmotionAnalysisModalProps {
   emotion: string | null;
   
   /** 
+   * KoBERT가 분석한 감정 이름 (플로우 3.4)
+   * - KoBERT 분석 결과: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오"
+   * - 감정 카테고리 배지에 표시됨
+   */
+  emotionName?: string | null;
+  
+  /** 
    * KoBERT가 분석한 감정 카테고리 (플로우 3.4)
    * - KoBERT 분석 결과: positive, neutral, negative
    * - 감정 카테고리 배지로 표시됨
@@ -160,15 +167,28 @@ interface EmotionAnalysisModalProps {
   aiComment: string | null;
   
   /** 
+   * 추천 음식 정보 (제미나이 API 결과)
+   * - KoBERT 감정 분석 결과를 반영하여 생성된 음식 추천
+   * - { name: string, reason: string } 형식
+   */
+  recommendedFood?: { name: string; reason: string } | null;
+  
+  /** 
+   * AI 생성 이미지 URL (NanoVana API 결과)
+   * - 일기 내용과 감정을 반영하여 생성된 그림일기 이미지
+   */
+  imageUrl?: string | null;
+  
+  /** 
    * 에러 메시지 (AI 분석 실패 시)
    * - 일기 저장은 성공했으나 AI 분석만 실패한 경우
    */
   error?: string | null;
   
   /** 
-   * 장소 추천 버튼 클릭 콜백 (플로우 3.4, 8.1)
+   * 맛집 추천 버튼 클릭 콜백 (플로우 3.4, 8.1)
    * - 클릭 시 장소 추천 화면으로 이동
-   * - KoBERT emotionCategory를 기반으로 장소 추천
+   * - 추천 음식 이름을 기반으로 맛집 추천
    */
   onMapRecommendation?: () => void;
   
@@ -225,9 +245,11 @@ export function EmotionAnalysisModal({
   isOpen,
   onClose,
   emotion,
-  userEmotionLabel,
+  emotionName,
   emotionCategory,
   aiComment,
+  recommendedFood,
+  imageUrl,
   error,
   onMapRecommendation,
   onCloseToCalendar,
@@ -236,9 +258,9 @@ export function EmotionAnalysisModal({
   if (!isOpen) return null;
 
   // 플로우 3.4: KoBERT가 분석한 감정 이모지 기반으로 레이블 표시
-  // - emotion 이모지를 기반으로 한글 이름 매핑
+  // - emotionName이 있으면 사용, 없으면 emotion 이모지를 기반으로 한글 이름 매핑
   // - 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
-  const displayLabel = emotion ? emotionLabels[emotion] : '중립';
+  const displayLabel = emotionName || (emotion ? emotionLabels[emotion] : '중립');
   
   // 색상은 emotion 이모지 기반으로 선택
   // 안전한 기본값 설정: emotion이 없거나 정의되지 않은 값이면 중립 색상 사용
@@ -262,7 +284,7 @@ export function EmotionAnalysisModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="absolute inset-0 bg-white/90 backdrop-blur-sm z-[9999]"
           />
 
           {/* 
@@ -270,40 +292,18 @@ export function EmotionAnalysisModal({
             - 화면 중앙 정렬
             - 클릭 이벤트 전파 방지 (모달 내부 클릭 시 닫히지 않음)
           */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+          <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', duration: 0.5 }}
-              className="relative bg-gradient-to-br from-blue-800 via-blue-900 to-slate-900 rounded-2xl p-1 shadow-2xl max-w-md w-full pointer-events-auto"
+              className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full pointer-events-auto flex flex-col overflow-hidden"
+              style={{ maxHeight: '85%', maxWidth: '95%' }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 
-                가죽 다이어리 테두리 질감
-                - 갈색 가죽 텍스처
-                - 블렌딩 모드로 자연스럽게 합성
-              */}
-              <div
-                className="absolute inset-0 rounded-2xl opacity-20 mix-blend-overlay pointer-events-none"
-                style={{
-                  backgroundImage:
-                    'url(https://images.unsplash.com/photo-1716295177956-420a647c83ac?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsZWF0aGVyJTIwYnJvd24lMjB0ZXh0dXJlfGVufDF8fHx8MTc2MzYxMjQ1Mnww&ixlib=rb-4.1.0&q=80&w=1080)',
-                  backgroundSize: 'cover',
-                }}
-              />
-
               {/* 모달 내부 컨텐츠 영역 */}
-              <div className="relative bg-blue-50 rounded-xl p-6 sm:p-8">
-                {/* 종이 질감 배경 */}
-                <div
-                  className="absolute inset-0 opacity-30 rounded-xl pointer-events-none"
-                  style={{
-                    backgroundImage:
-                      'url(https://images.unsplash.com/photo-1719563015025-83946fb49e49?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbGQlMjBwYXBlciUyMHRleHR1cmV8ZW58MXx8fHwxNzYzNTI2MzIzfDA&ixlib=rb-4.1.0&q=80&w=1080)',
-                    backgroundSize: 'cover',
-                  }}
-                />
+              <div className="relative bg-white rounded-xl p-4 sm:p-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(85vh - 100px)' }}>
 
                 {/* 닫기 버튼 (우측 상단) */}
                 <button
@@ -317,7 +317,8 @@ export function EmotionAnalysisModal({
                 <div className="relative space-y-6">
                   {/* 모달 제목 */}
                   <div className="text-center">
-                    <h2 className="text-stone-800">감정 분석 결과</h2>
+                    {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                    <h2 className="text-blue-600">감정 분석 결과</h2>
                   </div>
 
                   {/* 
@@ -395,6 +396,35 @@ export function EmotionAnalysisModal({
                       </div>
 
                       {/* 
+                        AI 생성 이미지 영역 (플로우 3.4)
+                        
+                        [AI 팀] 나노바나나 API로 생성된 그림일기 이미지
+                        - 일기 내용과 감정을 반영하여 생성된 이미지
+                      */}
+                      {imageUrl && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4 }}
+                          className="space-y-2"
+                        >
+                          <div className="flex items-center gap-2 justify-center">
+                            <div className="text-blue-700">🎨</div>
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-xs text-blue-600">AI 그림 일기</p>
+                          </div>
+                          <div className="bg-white/80 border border-stone-300 rounded-lg p-2 overflow-hidden">
+                            <img
+                              src={imageUrl}
+                              alt="AI 생성 그림일기"
+                              className="w-full h-auto rounded-lg object-contain"
+                              style={{ maxHeight: '300px' }}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* 
                         AI 코멘트 영역 (플로우 3.3의 핵심)
                         
                         [AI 팀] 제미나이 API로 생성된 코멘트
@@ -405,16 +435,50 @@ export function EmotionAnalysisModal({
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.4 }}
+                          transition={{ delay: imageUrl ? 0.5 : 0.4 }}
                           className="space-y-2"
                         >
                           <div className="flex items-center gap-2 justify-center">
                             <div className="text-blue-700">✨</div>
-                            <p className="text-xs text-stone-600">AI의 공감 한마디</p>
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-xs text-blue-600">AI의 공감 한마디</p>
                           </div>
                           <div className="bg-white/80 border border-stone-300 rounded-lg p-4">
-                            <p className="text-sm text-stone-700 leading-relaxed text-center">
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-sm text-blue-600 leading-relaxed text-center">
                               {aiComment}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {/* 
+                        추천 음식 영역 (플로우 3.4)
+                        
+                        [AI 팀] 제미나이 API로 생성된 음식 추천
+                        - 입력: 일기 내용 + KoBERT 감정 분석 결과
+                        - 출력: { name: string, reason: string }
+                      */}
+                      {recommendedFood && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: imageUrl && aiComment ? 0.6 : imageUrl || aiComment ? 0.5 : 0.4 }}
+                          className="space-y-2"
+                        >
+                          <div className="flex items-center gap-2 justify-center">
+                            <div className="text-blue-700">🍽️</div>
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-xs text-blue-600">추천 음식</p>
+                          </div>
+                          <div className="bg-white/80 border border-stone-300 rounded-lg p-4">
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-sm text-blue-600 font-semibold mb-2 text-center">
+                              {recommendedFood.name}
+                            </p>
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <p className="text-xs text-blue-600 leading-relaxed text-center">
+                              {recommendedFood.reason}
                             </p>
                           </div>
                         </motion.div>
@@ -432,10 +496,11 @@ export function EmotionAnalysisModal({
                       */}
                       <div className="pt-2 flex gap-3">
                         {/* 
-                          장소 추천 버튼 (플로우 8.1 경로 A: 일기 저장 후 감정 분석 모달에서)
+                          맛집 추천 버튼 (플로우 8.1 경로 A: 일기 저장 후 감정 분석 모달에서)
                           
                           표시 조건:
                           - 감정 분석 성공 (onMapRecommendation 콜백 존재)
+                          - 추천 음식 정보가 있는 경우 (recommendedFood.name 존재)
                           - 일기 저장 완료 후 감정 분석 모달에서만 표시
                           
                           동작 (플로우 8.1):
@@ -448,12 +513,13 @@ export function EmotionAnalysisModal({
                           전달 데이터:
                           - emotion: 사용자 선택 감정 이모지
                           - emotionCategory: AI 분석 감정 카테고리
+                          - 추천 음식 이름을 기반으로 맛집 추천
                           
                           플로우 8.1 요구사항 (경로 A):
-                          - 감정 분석 모달에서 "장소 추천" 버튼 클릭
-                          - → 장소 추천 화면으로 이동
+                          - 감정 분석 모달에서 "OO 맛집 추천" 버튼 클릭
+                          - → 장소 추천 화면으로 이동 (추천 음식 기반)
                         */}
-                        {onMapRecommendation && (
+                        {onMapRecommendation && recommendedFood?.name && (
                           <button
                             onClick={() => {
                               onMapRecommendation(); // 장소 추천 화면으로 이동
@@ -462,7 +528,8 @@ export function EmotionAnalysisModal({
                             className="flex-1 px-4 py-2.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors shadow-md flex items-center justify-center gap-2"
                           >
                             <span>📍</span>
-                            <span className="text-sm">장소 추천</span>
+                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                            <span className="text-sm text-blue-600">{recommendedFood.name} 맛집 추천</span>
                           </button>
                         )}
                         {/* 

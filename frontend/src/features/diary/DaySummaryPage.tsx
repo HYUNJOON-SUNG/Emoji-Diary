@@ -90,7 +90,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft } from 'lucide-react';
+import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diaryApi';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 
@@ -174,6 +174,16 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * 장소 추천 모달 표시 여부
    */
   const [showMapRecommendation, setShowMapRecommendation] = useState(false);
+  
+  /**
+   * 이미지 갤러리 모달 표시 여부
+   */
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  
+  /**
+   * 이미지 갤러리에서 현재 보고 있는 이미지 인덱스
+   */
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // ========== 데이터 로드 ==========
   
@@ -226,13 +236,15 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
       const data = await fetchDiaryDetails(dateKey);
       setEntry(data); // null이거나 DiaryDetail 객체
     } catch (error: any) {
-      console.error('Failed to load diary details:', error);
-      // 404 에러는 정상 (일기 없음), 다른 에러는 null로 설정
+      // 404 에러는 정상 (일기 없음), 콘솔에 에러로 표시하지 않음
       if (error?.response?.status === 404) {
         setEntry(null);
+        // 404는 정상적인 경우이므로 콘솔 로그만 출력 (에러 아님)
+        console.log('[일기 상세 조회] 해당 날짜에 작성된 일기가 없습니다:', dateKey);
       } else {
+        // 404가 아닌 다른 에러만 콘솔에 에러로 표시
+        console.error('Failed to load diary details:', error);
         setEntry(null);
-        // 에러가 발생했지만 사용자에게는 일기 없는 것으로 표시
       }
     } finally {
       setIsLoading(false);
@@ -372,18 +384,19 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           - 검색 키워드 및 필터 상태 유지
         */}
         <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          {/* X 버튼 - 우측 상단에 배치 */}
+          {/* 뒤로가기 버튼 - 좌측 상단에 배치 */}
           {onBackToCalendar && (
             <button
               onClick={onBackToCalendar}
-              className="absolute top-4 right-4 p-2 active:bg-gray-100 rounded-xl transition-colors text-gray-500 active:text-gray-700 touch-manipulation"
-              title="닫기"
+              className="absolute top-4 left-4 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="뒤로가기"
             >
-              <X className="w-5 h-5" />
+              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+              <ArrowLeft className="w-5 h-5" />
             </button>
           )}
           
-          <div className="flex items-start justify-between pr-10">
+          <div className="flex items-start justify-between pr-10 pl-10">
             <div>
               <div className="text-xs text-gray-500 mb-1 font-medium">오늘의 일기</div>
               <div className="text-base text-gray-900 font-semibold">{formattedDate}</div>
@@ -403,29 +416,66 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
           {entry.images && entry.images.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {entry.images.map((imageUrl, index) => (
-                <div
-                  key={index}
-                  className="relative rounded-lg overflow-hidden bg-slate-100"
-                >
-                  <img
-                    src={imageUrl}
-                    alt={`사용자 업로드 이미지 ${index + 1}`}
-                    className="w-full rounded-lg"
-                    style={{
-                      maxHeight: '300px',
-                      objectFit: 'contain',
-                      objectPosition: 'center'
+            <div className="relative">
+              {/* 이미지 컨테이너 - 유동적 높이 */}
+              <div className="relative rounded-lg overflow-hidden bg-slate-100 w-full" style={{ minHeight: '200px' }}>
+                <img
+                  src={entry.images[currentImageIndex]}
+                  alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
+                  className="w-full h-auto rounded-lg"
+                  style={{
+                    objectFit: 'contain',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
+                  onError={(e) => {
+                    // 이미지 로드 실패 시 대체 처리
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+                
+                {/* 이전 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
+                {entry.images.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex((prev) => 
+                        prev === 0 ? entry.images!.length - 1 : prev - 1
+                      );
                     }}
-                    onError={(e) => {
-                      // 이미지 로드 실패 시 대체 처리
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors z-10 shadow-lg"
+                    aria-label="이전 이미지"
+                    style={{ minWidth: '40px', minHeight: '40px' }}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                )}
+
+                {/* 다음 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
+                {entry.images.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImageIndex((prev) => 
+                        prev === entry.images!.length - 1 ? 0 : prev + 1
+                      );
                     }}
-                  />
-                </div>
-              ))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors z-10 shadow-lg"
+                    aria-label="다음 이미지"
+                    style={{ minWidth: '40px', minHeight: '40px' }}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )}
+
+                {/* 이미지 인덱스 표시 (2장 이상인 경우) - 이미지 박스 안에 */}
+                {entry.images.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/70 text-white text-xs rounded-full backdrop-blur-sm shadow-lg z-10">
+                    {currentImageIndex + 1} / {entry.images.length}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-xs text-slate-400 py-8 text-center">
@@ -450,7 +500,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         {/* Activities Card */}
         {entry.activities && entry.activities.length > 0 && (
           <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-2 font-medium">활동</div>
+            <div className="text-xs text-gray-500 mb-2 font-medium">활동 태그</div>
             <div className="flex flex-wrap gap-1.5">
               {entry.activities.map((activity, index) => (
                 <span
@@ -486,9 +536,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         {/* Content Card */}
         <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
-          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+          <div className="text-sm text-blue-600 leading-relaxed whitespace-pre-wrap break-words" style={{ 
+            wordBreak: 'break-word', 
+            overflowWrap: 'break-word',
+            hyphens: 'auto'
+          }}>
             {entry.content}
-          </p>
+          </div>
         </div>
 
         {/* AI Comment Card */}
@@ -613,7 +668,10 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
           >
             <MapPin className="w-3.5 h-3.5" />
-            장소 추천
+            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+            <span className="text-blue-600">
+              {entry.recommendedFood?.name ? `${entry.recommendedFood.name} 맛집 추천` : '맛집 추천'}
+            </span>
           </button>
           
           {/* 
@@ -651,8 +709,8 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           - 캘린더로 이동
         */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl p-4 shadow-xl max-w-xs">
+          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm">
+            <div className="bg-white rounded-xl p-4 shadow-xl max-w-xs w-full">
               <h4 className="text-stone-800 mb-2">일기 삭제</h4>
               <p className="text-sm text-stone-600 mb-4">
                 정말 이 일기를 삭제하시겠어요?<br />
@@ -689,6 +747,86 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             hideFoodRecommendation={true} // 일기 상세 조회에서는 AI 음식 추천 숨김 (중복 방지)
           />
         )}
+
+        {/* 이미지 갤러리 모달 */}
+        {showImageGallery && entry && entry.images && entry.images.length > 0 && (
+          <div className="absolute inset-0 bg-black/90 z-[9999] flex items-center justify-center overflow-hidden">
+            <div className="relative w-full h-full flex items-center justify-center" style={{ padding: '16px' }}>
+              {/* 닫기 버튼 - 우측 상단, 항상 보이도록 */}
+              <button
+                onClick={() => {
+                  setShowImageGallery(false);
+                }}
+                className="absolute top-4 right-4 p-3 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                aria-label="닫기"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {/* 이전 이미지 버튼 - 좌측 중앙, 항상 보이도록 */}
+              {entry.images.length > 1 && (
+                <button
+                  onClick={() => {
+                    setCurrentImageIndex((prev) => 
+                      prev === 0 ? entry.images!.length - 1 : prev - 1
+                    );
+                  }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                  aria-label="이전 이미지"
+                  style={{ minWidth: '48px', minHeight: '48px' }}
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* 현재 이미지 - 박스 크기를 넘지 않도록 엄격히 제한 */}
+              <div className="relative flex items-center justify-center w-full h-full overflow-hidden">
+                <img
+                  src={entry.images[currentImageIndex]}
+                  alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
+                  className="object-contain rounded-lg"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    display: 'block',
+                    margin: 'auto'
+                  }}
+                  onError={(e) => {
+                    // 이미지 로드 실패 시 대체 처리
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              </div>
+
+              {/* 다음 이미지 버튼 - 우측 중앙, 항상 보이도록 */}
+              {entry.images.length > 1 && (
+                <button
+                  onClick={() => {
+                    setCurrentImageIndex((prev) => 
+                      prev === entry.images!.length - 1 ? 0 : prev + 1
+                    );
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                  aria-label="다음 이미지"
+                  style={{ minWidth: '48px', minHeight: '48px' }}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* 이미지 인덱스 표시 (2장 이상인 경우) - 하단 중앙, 항상 보이도록 */}
+              {entry.images.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full backdrop-blur-sm border-2 border-white/50 shadow-lg z-50">
+                  {currentImageIndex + 1} / {entry.images.length}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -717,13 +855,14 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         검색 페이지에서 온 경우 검색 페이지로 복귀
       */}
       {onBackToCalendar && (
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-start mb-2">
+          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
           <button
             onClick={onBackToCalendar}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-700"
-            title="닫기"
+            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="뒤로가기"
           >
-            <X className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" />
           </button>
         </div>
       )}

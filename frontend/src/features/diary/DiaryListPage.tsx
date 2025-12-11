@@ -30,11 +30,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, CalendarDays, Loader2, X, HelpCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, CalendarDays, Loader2, X, HelpCircle, ArrowLeft } from 'lucide-react';
 import { searchDiaries, DiarySearchParams, DiarySearchResult, DiaryDetail } from '../../services/diaryApi';
 
 interface DiaryListPageProps {
   onDateClick?: (date: Date) => void;
+  onDiaryClick?: (date: Date) => void; // 일기 클릭 콜백 (onDateClick과 동일하지만 명확성을 위해 별도 prop)
+  onBack?: () => void; // 뒤로가기 콜백 (요구사항 12)
 }
 
 /**
@@ -57,7 +59,7 @@ const emotionColors: { [key: string]: string } = {
   '혐오': 'bg-rose-200',
 };
 
-export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
+export function DiaryListPage({ onDateClick, onDiaryClick, onBack }: DiaryListPageProps) {
   const [searchResult, setSearchResult] = useState<DiarySearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,10 +84,18 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
 
   // 페이지 변경 시 검색 실행
   useEffect(() => {
-    if (currentPage > 1 && searchResult && !isInitialLoad) {
+    if (!isInitialLoad) {
       performSearch();
     }
   }, [currentPage]);
+
+  // 필터 변경 시 자동 검색 실행 (요구사항: 필터 변경 시 자동으로 검색 실행)
+  useEffect(() => {
+    if (!isInitialLoad) {
+      setCurrentPage(1); // 필터 변경 시 첫 페이지로 리셋
+      performSearch();
+    }
+  }, [keyword, startDate, endDate, emotionCategories.join(',')]);
 
   const performSearch = async () => {
     setIsLoading(true);
@@ -123,10 +133,7 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
     setEndDate('');
     setEmotionCategories([]);
     setCurrentPage(1);
-    // 필터 초기화 후 전체 일기 조회
-    setTimeout(() => {
-      performSearch();
-    }, 0);
+    // 필터 초기화 후 즉시 전체 일기 조회 (useEffect가 자동으로 검색 실행)
   };
 
   const handleEmotionToggle = (emotion: string) => {
@@ -140,8 +147,11 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
   };
 
   const handleDiaryClick = (diary: DiaryDetail) => {
-    if (onDateClick) {
-      const date = new Date(diary.date);
+    const date = new Date(diary.date);
+    // onDiaryClick이 있으면 우선 사용, 없으면 onDateClick 사용
+    if (onDiaryClick) {
+      onDiaryClick(date);
+    } else if (onDateClick) {
       onDateClick(date);
     }
   };
@@ -150,8 +160,18 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
 
   return (
     <div className="w-full min-h-full flex flex-col space-y-4">
-      {/* Header */}
+      {/* Header - 뒤로가기 버튼 포함 */}
       <div className="text-center space-y-1 pb-2 border-b border-stone-200/60 relative">
+        {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="뒤로가기"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div className="flex items-center justify-center gap-2 text-blue-700">
           <Search className="w-5 h-5" />
           <span className="font-bold">일기 검색</span>
@@ -182,7 +202,7 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
       )}
 
       {/* Search Bar & Filter Toggle */}
-      <form onSubmit={handleSearch} className="space-y-2">
+      <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-2">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -215,7 +235,15 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  setStartDate(newStartDate);
+                  // 시작일이 종료일보다 늦으면 종료일을 시작일로 설정
+                  if (newStartDate && endDate && newStartDate > endDate) {
+                    setEndDate(newStartDate);
+                  }
+                }}
+                max={endDate || undefined} // 종료일이 있으면 종료일 이후 선택 불가
                 className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-white border border-stone-300 rounded-md focus:border-blue-500 outline-none"
                 title="시작 날짜"
                 aria-label="시작 날짜"
@@ -224,7 +252,15 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  const newEndDate = e.target.value;
+                  // 시작일이 있으면 시작일 이전은 선택 불가
+                  if (startDate && newEndDate < startDate) {
+                    return; // 유효하지 않은 날짜는 무시
+                  }
+                  setEndDate(newEndDate);
+                }}
+                min={startDate || undefined} // 시작일이 있으면 시작일 이전 선택 불가
                 className="flex-1 min-w-0 px-2 py-1.5 text-xs bg-white border border-stone-300 rounded-md focus:border-blue-500 outline-none"
                 title="종료 날짜"
                 aria-label="종료 날짜"
@@ -253,17 +289,11 @@ export function DiaryListPage({ onDateClick }: DiaryListPageProps) {
             </div>
 
             <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                className="flex-1 py-2 bg-blue-600 text-white text-xs rounded-lg font-medium hover:bg-blue-700"
-              >
-                검색 적용
-              </button>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={handleClearFilters}
-                  className="px-3 py-2 bg-white text-rose-600 border border-rose-200 text-xs rounded-lg hover:bg-rose-50"
+                  className="w-full py-2 bg-white text-rose-600 border border-rose-200 text-xs rounded-lg hover:bg-rose-50 font-medium"
                 >
                   초기화
                 </button>

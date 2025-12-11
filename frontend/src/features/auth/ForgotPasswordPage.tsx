@@ -62,6 +62,10 @@ interface ForgotPasswordPageProps {
 }
 
 export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
+  // ========== 입력 필드 ref (검증 실패 시 스크롤 및 강조용) ==========
+  const newPasswordInputRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
+  
   // ========== 기본 입력 필드 상태 ==========
   
   /** 이메일 입력값 */
@@ -367,20 +371,50 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setError('');
     setSuccess('');
     
-    if (!newPassword.trim() || !confirmPassword.trim()) {
-      setError('모든 필드를 입력해주세요.');
-      return;
+    // 검증 플래그
+    let hasError = false;
+    
+    if (!newPassword.trim()) {
+      setNewPasswordError('비밀번호를 입력해주세요.');
+      hasError = true;
+    }
+    
+    if (!confirmPassword.trim()) {
+      setConfirmPasswordError('비밀번호 확인을 입력해주세요.');
+      hasError = true;
     }
     
     // Validate new password
-    const passwordErr = validatePassword(newPassword);
-    if (passwordErr) {
-      setNewPasswordError(passwordErr);
-      return;
+    if (newPassword.trim()) {
+      const passwordErr = validatePassword(newPassword);
+      if (passwordErr) {
+        setNewPasswordError(passwordErr);
+        hasError = true;
+      }
     }
     
-    if (newPassword !== confirmPassword) {
+    if (confirmPassword.trim() && newPassword !== confirmPassword) {
       setConfirmPasswordError('비밀번호가 일치하지 않습니다.');
+      hasError = true;
+    }
+    
+    // 검증 실패 시 첫 번째 오류 필드로 스크롤하고 강조
+    if (hasError) {
+      if (newPasswordError && newPasswordInputRef.current) {
+        newPasswordInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        newPasswordInputRef.current.focus();
+        newPasswordInputRef.current.classList.add('border-rose-500', 'ring-2', 'ring-rose-500/20');
+        setTimeout(() => {
+          newPasswordInputRef.current?.classList.remove('border-rose-500', 'ring-2', 'ring-rose-500/20');
+        }, 3000);
+      } else if (confirmPasswordError && confirmPasswordInputRef.current) {
+        confirmPasswordInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        confirmPasswordInputRef.current.focus();
+        confirmPasswordInputRef.current.classList.add('border-rose-500', 'ring-2', 'ring-rose-500/20');
+        setTimeout(() => {
+          confirmPasswordInputRef.current?.classList.remove('border-rose-500', 'ring-2', 'ring-rose-500/20');
+        }, 3000);
+      }
       return;
     }
     
@@ -402,10 +436,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
       
       setSuccess(response.message);
       
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        onBackToLogin();
-      }, 2000);
+      // Redirect to login immediately
+      onBackToLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : '비밀번호 재설정에 실패했습니다.');
     } finally {
@@ -414,8 +446,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   };
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
+      <div className="w-full flex-shrink-0">
         {/* Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-lg">
           <div className="space-y-6">
@@ -424,8 +456,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
               <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
                 <KeyRound className="w-7 h-7 text-white" />
               </div>
-              <h2 className="text-2xl text-stone-800">비밀번호 찾기</h2>
-              <p className="text-sm text-stone-600">
+              <h2 className="text-2xl text-stone-800 text-blue-600">비밀번호 찾기</h2>
+              <p className="text-sm text-stone-600 text-blue-600">
                 {step === 'email' && '이메일로 인증 코드를 받아주세요'}
                 {step === 'verify' && '인증 코드를 입력해주세요'}
                 {step === 'password' && '새로운 비밀번호를 설정해주세요'}
@@ -445,7 +477,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="example@email.com"
+                      placeholder="이메일을 입력하세요"
                       disabled={isLoading}
                       className="w-full pl-10 pr-3 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
                     />
@@ -479,14 +511,16 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={onBackToLogin}
-                  disabled={isLoading}
-                  className="w-full py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50"
-                >
-                  ← 로그인으로 돌아가기
-                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
               </form>
             )}
 
@@ -506,7 +540,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   <label className="text-xs text-stone-600 block mb-1.5 text-center">
                     인증 코드 (6자리)
                   </label>
-                  <div className="flex gap-2 justify-center">
+                  <div className="flex gap-2 justify-center flex-wrap max-w-full">
                     {verificationCode.map((digit, index) => (
                       <input
                         key={index}
@@ -517,7 +551,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                         onChange={(e) => handleCodeChange(index, e.target.value)}
                         onKeyDown={(e) => handleCodeKeyDown(index, e)}
                         disabled={codeExpired || isLoading}
-                        className="w-12 h-14 text-center text-xl bg-white border border-stone-300 rounded-lg outline-none text-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                        className="w-12 h-14 text-center text-xl bg-white border border-stone-300 rounded-lg outline-none text-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 flex-shrink-0"
+                        style={{ minWidth: '48px', maxWidth: '48px' }}
                       />
                     ))}
                   </div>
@@ -570,14 +605,16 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={onBackToLogin}
-                  disabled={isLoading}
-                  className="w-full py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50"
-                >
-                  ← 로그인으로 돌아가기
-                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
               </form>
             )}
 
@@ -592,13 +629,14 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                     <input
+                      ref={newPasswordInputRef}
                       type={showNewPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       onBlur={handleNewPasswordBlur}
                       placeholder="영문, 숫자, 특수문자 포함 8자 이상"
                       disabled={isLoading}
-                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-blue-600"
                     />
                     <button
                       type="button"
@@ -625,12 +663,13 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                     <input
+                      ref={confirmPasswordInputRef}
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                       placeholder="비밀번호를 다시 입력하세요"
                       disabled={isLoading}
-                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-blue-600"
                     />
                     <button
                       type="button"
@@ -677,14 +716,16 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={onBackToLogin}
-                  disabled={isLoading}
-                  className="w-full py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50"
-                >
-                  ← 로그인으로 돌아가기
-                </button>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
               </form>
             )}
           </div>

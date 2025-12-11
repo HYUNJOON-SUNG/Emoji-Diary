@@ -21,8 +21,8 @@ interface LandingPageProps {
 
 export function LandingPage({ onOpenBook }: LandingPageProps) {
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6 overflow-y-auto">
-      <div className="w-full space-y-8">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6 overflow-y-auto text-blue-600">
+      <div className="w-full space-y-8 flex-shrink-0">
         {/* Main Content */}
         <div className="text-center space-y-6">
           {/* Icon */}
@@ -33,7 +33,7 @@ export function LandingPage({ onOpenBook }: LandingPageProps) {
           {/* Title */}
           <div className="space-y-2">
             <h1 className="text-3xl text-slate-700 tracking-tight" style={{ fontFamily: 'Georgia, serif' }}>
-              My Diary
+              Emoji-Diary
             </h1>
             <p className="text-sm text-slate-600">
               나의 감정을 기록하는 특별한 공간
@@ -47,15 +47,6 @@ export function LandingPage({ onOpenBook }: LandingPageProps) {
           >
             일기장 열기
           </button>
-        </div>
-        
-        {/* Welcome text */}
-        <div className="text-center space-y-2 pt-4">
-          <h2 className="text-base text-slate-700">환영합니다</h2>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            오늘 하루의 감정을 기록하고<br />
-            소중한 순간들을 간직하세요
-          </p>
         </div>
       </div>
     </div>

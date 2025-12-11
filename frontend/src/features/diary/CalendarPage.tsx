@@ -328,15 +328,15 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
           key={day}
           onClick={() => onDateSelect(new Date(year, month, day))}
           disabled={isLoading}
-          className={`aspect-square rounded-xl relative flex items-center justify-center transition-all text-gray-800 active:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed p-1 touch-manipulation
+          className={`aspect-square rounded-xl relative flex flex-col items-center justify-center transition-all text-gray-800 active:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed p-1 touch-manipulation
             ${selected ? 'bg-blue-500 text-white shadow-md scale-105' : today ? 'bg-blue-100 text-blue-700 font-semibold' : 'bg-white hover:bg-gray-50'}`}
         >
           {/* 날짜 숫자 - 항상 중앙 정렬 (플로우 5.1) */}
-          <span className="text-sm">{day}</span>
+          <span className="text-sm leading-tight">{day}</span>
           
-          {/* 감정 스티커 - 우측 상단 배치 (플로우 5.1) */}
+          {/* 감정 스티커 - 하단 배치 (날짜를 가리지 않도록) */}
           {emotion && (
-            <span className="absolute top-1 right-1 text-base leading-none">{emotion}</span>
+            <span className="text-xs leading-none mt-0.5">{emotion}</span>
           )}
         </button>
       );
@@ -370,8 +370,9 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
         
         <div className="text-center flex items-center gap-2">
           <div>
-            <div className={`text-gray-900 font-semibold ${compact ? 'text-lg' : 'text-xl'}`}>{monthNames[month]}</div>
-            <div className={`text-gray-500 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
+            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+            <div className={`text-blue-600 font-semibold ${compact ? 'text-lg' : 'text-xl'}`}>{monthNames[month]}</div>
+            <div className={`text-blue-600 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
           </div>
           {isLoading && (
             <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -392,11 +393,18 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
 
       {/* Day Names */}
       <div className="grid grid-cols-7 gap-1.5 mb-2 px-1">
-        {dayNames.map((day, index) => (
-          <div key={index} className={`text-center text-gray-500 font-medium ${compact ? 'text-xs' : 'text-sm'}`}>
-            {day}
-          </div>
-        ))}
+        {dayNames.map((day, index) => {
+          // 일요일: 빨강, 토요일: 파랑
+          const isSunday = index === 0;
+          const isSaturday = index === 6;
+          const dayColorClass = isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-500';
+          
+          return (
+            <div key={index} className={`text-center ${dayColorClass} font-medium ${compact ? 'text-xs' : 'text-sm'}`}>
+              {day}
+            </div>
+          );
+        })}
       </div>
 
       {/* Calendar Grid */}

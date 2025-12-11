@@ -95,12 +95,29 @@ export interface RiskAnalysis {
  * @returns RiskAnalysis 위험 분석 결과
  */
 export async function analyzeRiskSignals(monitoringPeriod: number = 14): Promise<RiskAnalysis> {
-  const response = await apiClient.get('/risk-detection/analyze');
+  // [디버깅용] API 호출 시작 로그 (F12 관리자도구에서 확인 가능)
+  console.log('[위험 신호 분석] GET /api/risk-detection/analyze 호출 시작');
+  console.log('[위험 신호 분석] monitoringPeriod:', monitoringPeriod);
   
-  if (response.data.success) {
-    return response.data.data;
-  } else {
-    throw new Error(response.data.error?.message || '위험 신호 분석에 실패했습니다.');
+  try {
+    const response = await apiClient.get('/risk-detection/analyze');
+    
+    // [디버깅용] API 응답 로그
+    console.log('[위험 신호 분석] API 응답:', response.data);
+    
+    if (response.data.success) {
+      console.log('[위험 신호 분석] 분석 결과:', response.data.data);
+      return response.data.data;
+    } else {
+      console.error('[위험 신호 분석] API 응답 실패:', response.data);
+      throw new Error(response.data.error?.message || '위험 신호 분석에 실패했습니다.');
+    }
+  } catch (error) {
+    console.error('[위험 신호 분석] API 호출 실패:', error);
+    if (error instanceof Error) {
+      console.error('[위험 신호 분석] 에러 메시지:', error.message);
+    }
+    throw error;
   }
 }
 
@@ -143,12 +160,28 @@ export function getRiskNotificationMessage(riskLevel: 'low' | 'medium' | 'high')
  * - 세션 정보는 서버에서 관리 (Redis 등)
  */
 export async function getRiskSessionStatus(): Promise<{ alreadyShown: boolean }> {
-  const response = await apiClient.get('/risk-detection/session-status');
+  // [디버깅용] API 호출 시작 로그 (F12 관리자도구에서 확인 가능)
+  console.log('[위험 신호 세션 상태] GET /api/risk-detection/session-status 호출 시작');
   
-  if (response.data.success) {
-    return response.data.data;
-  } else {
-    throw new Error(response.data.error?.message || '위험 신호 세션 확인에 실패했습니다.');
+  try {
+    const response = await apiClient.get('/risk-detection/session-status');
+    
+    // [디버깅용] API 응답 로그
+    console.log('[위험 신호 세션 상태] API 응답:', response.data);
+    
+    if (response.data.success) {
+      console.log('[위험 신호 세션 상태] 세션 상태:', response.data.data);
+      return response.data.data;
+    } else {
+      console.error('[위험 신호 세션 상태] API 응답 실패:', response.data);
+      throw new Error(response.data.error?.message || '위험 신호 세션 확인에 실패했습니다.');
+    }
+  } catch (error) {
+    console.error('[위험 신호 세션 상태] API 호출 실패:', error);
+    if (error instanceof Error) {
+      console.error('[위험 신호 세션 상태] 에러 메시지:', error.message);
+    }
+    throw error;
   }
 }
 
@@ -168,12 +201,28 @@ export async function getRiskSessionStatus(): Promise<{ alreadyShown: boolean }>
  * - 세션 정보는 서버에서 관리 (Redis 등)
  */
 export async function markRiskAlertShown(): Promise<{ message: string }> {
-  const response = await apiClient.post('/risk-detection/mark-shown');
+  // [디버깅용] API 호출 시작 로그 (F12 관리자도구에서 확인 가능)
+  console.log('[위험 알림 표시 완료] POST /api/risk-detection/mark-shown 호출 시작');
   
-  if (response.data.success) {
-    return response.data.data;
-  } else {
-    throw new Error(response.data.error?.message || '위험 알림 표시 완료 기록에 실패했습니다.');
+  try {
+    const response = await apiClient.post('/risk-detection/mark-shown');
+    
+    // [디버깅용] API 응답 로그
+    console.log('[위험 알림 표시 완료] API 응답:', response.data);
+    
+    if (response.data.success) {
+      console.log('[위험 알림 표시 완료] 기록 완료:', response.data.data);
+      return response.data.data;
+    } else {
+      console.error('[위험 알림 표시 완료] API 응답 실패:', response.data);
+      throw new Error(response.data.error?.message || '위험 알림 표시 완료 기록에 실패했습니다.');
+    }
+  } catch (error) {
+    console.error('[위험 알림 표시 완료] API 호출 실패:', error);
+    if (error instanceof Error) {
+      console.error('[위험 알림 표시 완료] 에러 메시지:', error.message);
+    }
+    throw error;
   }
 }
 

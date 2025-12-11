@@ -5,12 +5,14 @@
  * 
  * 회원가입 직후에만 표시되는 페르소나 선택 화면
  * - 환영 화면과 페르소나 선택 단계 포함
- * - 선택한 페르소나를 localStorage에 저장
+ * - 선택한 페르소나를 DB에 저장 (API 호출)
+ * - localStorage에도 저장 (로컬 캐시용)
  */
 
 import { useState } from 'react';
-import { BookHeart, Sparkles, ChevronRight } from 'lucide-react';
+import { BookHeart, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
 import { PERSONAS } from '../features/user/PersonaSelectionModal';
+import { updatePersona } from '../services/authApi';
 
 interface InitialPersonaSetupProps {
   /** 페르소나 설정 완료 시 호출되는 콜백 */
@@ -20,25 +22,50 @@ interface InitialPersonaSetupProps {
 export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
   const [step, setStep] = useState<1 | 2>(1); // 1: 환영 화면, 2: 페르소나 선택
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handlePersonaSelect = (personaId: string) => {
     setSelectedPersona(personaId);
   };
 
-  const handleComplete = () => {
-    if (selectedPersona) {
-      // localStorage에 페르소나 저장
+  const handleComplete = async () => {
+    if (!selectedPersona) return;
+    
+    // personaId (영어 소문자)를 한글 이름으로 변환
+    const persona = PERSONAS.find(p => p.id === selectedPersona);
+    if (!persona) {
+      setError('페르소나를 선택해주세요.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      // [API 명세서 Section 3.2] PUT /api/users/me/persona
+      // DB에 페르소나 저장
+      await updatePersona({ persona: persona.name });
+      
+      // localStorage에도 저장 (로컬 캐시용)
       localStorage.setItem('aiPersona', selectedPersona);
       localStorage.setItem('personaSetupCompleted', 'true');
+      
+      // 완료 콜백 호출
       onComplete(selectedPersona);
+    } catch (err: any) {
+      console.error('페르소나 설정 실패:', err);
+      setError(err?.message || '페르소나 설정에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // 단계 1: 환영 화면
   if (step === 1) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6 overflow-y-auto">
-        <div className="w-full max-w-lg space-y-8 text-center">
+      <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex flex-col items-center justify-center p-6 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
+        <div className="w-full max-w-lg space-y-8 text-center flex-shrink-0">
           {/* 아이콘 */}
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-xl">
             <BookHeart className="w-12 h-12 text-white" strokeWidth={1.5} />
@@ -46,10 +73,10 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
 
           {/* 환영 메시지 */}
           <div className="space-y-4">
-            <h1 className="text-3xl font-bold text-slate-700">
+            <h1 className="text-3xl font-bold text-slate-700 text-blue-600">
               환영합니다! 🎉
             </h1>
-            <p className="text-slate-600">
+            <p className="text-slate-600 text-blue-600">
               나만의 AI 친구를 선택해보세요
             </p>
           </div>
@@ -69,8 +96,9 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
               <div className="flex items-start gap-4">
                 <div className="text-3xl">🎨</div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-slate-800 mb-1">그림 일기</h3>
-                  <p className="text-sm text-slate-600">감정에 맞는 아름다운 그림을 자동으로 생성해줘요</p>
+                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                  <h3 className="font-semibold text-slate-800 mb-1 text-blue-600">그림 일기</h3>
+                  <p className="text-sm text-slate-600 text-blue-600">감정에 맞는 아름다운 그림을 자동으로 생성해줘요</p>
                 </div>
               </div>
             </div>
@@ -78,8 +106,9 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
               <div className="flex items-start gap-4">
                 <div className="text-3xl">📊</div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-slate-800 mb-1">감정 분석</h3>
-                  <p className="text-sm text-slate-600">나의 감정 패턴을 분석하고 통계로 보여줘요</p>
+                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                  <h3 className="font-semibold text-slate-800 mb-1 text-blue-600">감정 분석</h3>
+                  <p className="text-sm text-slate-600 text-blue-600">나의 감정 패턴을 분석하고 통계로 보여줘요</p>
                 </div>
               </div>
             </div>
@@ -100,13 +129,13 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
 
   // 단계 2: 페르소나 선택
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto">
+    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 p-6 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
+      <div className="max-w-4xl mx-auto flex-shrink-0">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-slate-700 mb-2">
+          <h2 className="text-2xl font-bold text-slate-700 mb-2 text-blue-600">
             어떤 AI 친구를 원하시나요?
           </h2>
-          <p className="text-slate-600">
+          <p className="text-slate-600 text-blue-600">
             마음에 드는 말투를 선택해주세요
           </p>
         </div>
@@ -124,8 +153,9 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
               }`}
             >
               <div className="text-4xl mb-2">{persona.icon}</div>
-              <div className="font-semibold text-lg text-stone-800 mb-1">{persona.name}</div>
-              <div className="text-xs text-stone-500">{persona.style}</div>
+              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+              <div className="font-semibold text-lg text-stone-800 mb-1 text-blue-600">{persona.name}</div>
+              <div className="text-xs text-stone-500 text-blue-600">{persona.style}</div>
               {selectedPersona === persona.id && (
                 <div className="mt-2 text-blue-600 text-sm font-medium">✓ 선택됨</div>
               )}
@@ -136,8 +166,9 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
         {/* 미리보기 영역 */}
         {selectedPersona && (
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 mb-6 shadow-lg">
-            <h3 className="font-semibold text-slate-800 mb-3">말투 미리보기</h3>
-            <div className="text-slate-600 italic">
+            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+            <h3 className="font-semibold text-slate-800 mb-3 text-blue-600">말투 미리보기</h3>
+            <div className="text-slate-600 italic text-blue-600">
               {selectedPersona === 'friend' && '"오늘 하루 어땠어? 너의 감정을 이렇게 솔직하게 적어줘서 고마워!"'}
               {selectedPersona === 'parent' && '"힘든 일이 있었구나. 괜찮아, 천천히 해도 돼. 엄마/아빠는 네가 자랑스러워."'}
               {selectedPersona === 'expert' && '"오늘의 감정 패턴을 분석한 결과, 스트레스 관리가 필요해 보입니다."'}
@@ -148,18 +179,34 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
           </div>
         )}
 
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg text-center">
+            <p className="text-xs text-rose-700 text-blue-600">{error}</p>
+          </div>
+        )}
+
         {/* 시작하기 버튼 */}
         <button
           onClick={handleComplete}
-          disabled={!selectedPersona}
+          disabled={!selectedPersona || isLoading}
           className={`w-full max-w-sm mx-auto py-4 rounded-2xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-            selectedPersona
+            selectedPersona && !isLoading
               ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
               : 'bg-stone-300 text-stone-500 cursor-not-allowed'
           }`}
         >
-          <Sparkles className="w-5 h-5" />
-          시작하기
+          {isLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              설정 중...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              시작하기
+            </>
+          )}
         </button>
       </div>
     </div>

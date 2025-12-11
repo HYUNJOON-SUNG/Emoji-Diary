@@ -17,7 +17,7 @@
  * - 상세 화면: '뒤로가기' 버튼으로 캘린더 복귀
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarPage } from './CalendarPage';
 import { DaySummaryPage } from './DaySummaryPage';
@@ -32,7 +32,6 @@ import { BottomTabBar, TabType } from './BottomTabBar';
 import { analyzeRiskSignals, RiskAnalysis } from '../../services/riskDetection';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 import { getCurrentUser, User as UserType } from '../../services/authApi';
-import { Plus, Wifi, Battery } from 'lucide-react';
 import { MobileLayout } from '../../components/MobileLayout';
 
 /**
@@ -50,32 +49,15 @@ interface DiaryBookProps {
 }
 
 export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBookProps) {
-  // 실시간 시간 상태
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // 시간 업데이트 (1분마다)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000); // 1초마다 업데이트
-    
-    return () => clearInterval(timer);
-  }, []);
-  
-  // 시간 포맷팅 (HH:MM)
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ko-KR', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-  };
   // ========== 상태 관리 ==========
   
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
   // 현재 표시 중인 월 (모바일 단일 뷰에서는 이 값만 사용)
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  // 이전에 조회하던 월 (일기 상세 조회 후 뒤로 가기 시 복원용)
+  const [previousMonth, setPreviousMonth] = useState<Date | null>(null);
   
   // 데이터 새로고침 키
   const [refreshKey, setRefreshKey] = useState(0);
@@ -85,6 +67,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   
   // 이전 뷰 모드 (뒤로가기용)
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode | null>(null);
+  
+  // 통계 페이지에서 선택된 날짜 (뒤로가기 시 복원용)
+  const [statsSelectedDate, setStatsSelectedDate] = useState<Date | null>(null);
   
   // 페이지 전환 애니메이션 상태
   const [isFlipping, setIsFlipping] = useState(false);
@@ -104,10 +89,22 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
   // 사용자 정보 상태
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  
+  // 로그인 시점 추적 (예외 처리용)
+  // 1) 최초 로그인 시 한 번만 모달 표시
+  // 2) 같은 세션에서 다시 진입해도 모달 표시 안 함
+  // 3) 로그아웃 후 재로그인 시 모달 다시 표시
+  const lastUserIdRef = useRef<string | null>(null); // 이전 사용자 ID 저장
+  const hasShownModalInSessionRef = useRef<boolean>(false); // 현재 세션에서 모달을 표시했는지 여부
 
-  // 북마크 네비게이션 경고 모달 상태
-  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  // 북마크 네비게이션 경고 모달 상태 (제거됨 - DiaryWritingPage의 취소 모달 사용)
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
+  
+  // DiaryWritingPage ref (북마크 내비게이션 이동 시 이미지 삭제 처리 및 모달 표시용)
+  const writingPageRef = useRef<{ 
+    handleNavigationCancel: () => Promise<void>;
+    showCancelModal: () => void;
+  } | null>(null);
 
   // 감정 분석 모달 상태
   const [showEmotionAnalysis, setShowEmotionAnalysis] = useState(false);
@@ -115,6 +112,8 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   const [analysisEmotionName, setAnalysisEmotionName] = useState('');
   const [analysisEmotionCategory, setAnalysisEmotionCategory] = useState('');
   const [analysisComment, setAnalysisComment] = useState('');
+  const [analysisRecommendedFood, setAnalysisRecommendedFood] = useState<{ name: string; reason: string } | null>(null);
+  const [analysisImageUrl, setAnalysisImageUrl] = useState<string | null>(null);
   const [analysisDate, setAnalysisDate] = useState<Date | null>(null);
 
   // 위험 신호 감지 상태
@@ -139,9 +138,16 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setPreviousViewMode(viewMode);
     setSelectedDate(date);
     
-    // 선택된 날짜의 월로 현재 월 업데이트
-    const selectedMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    setCurrentMonth(selectedMonth);
+    // 이전 월 저장 (뒤로 가기 시 복원용)
+    setPreviousMonth(new Date(currentMonth));
+    
+    // 선택된 날짜의 월로 현재 월 업데이트하지 않음 (이전 달 유지)
+    // 다른 달 보다가 일기 상세 조회 후 뒤로 가기 시 이전 달로 돌아가도록
+    
+    // 통계 페이지에서 온 경우 선택된 날짜 저장
+    if (viewMode === 'stats') {
+      setStatsSelectedDate(date);
+    }
     
     setShowMapRecommendation(false);
     setViewMode('reading');
@@ -199,30 +205,45 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setAnalysisEmotionName(emotionData.emotionName);
     setAnalysisEmotionCategory(mappedEmotionCategory);
     setAnalysisComment(emotionData.aiComment || '오늘 하루도 수고 많았어요!');
+    setAnalysisRecommendedFood(emotionData.recommendedFood || null);
+    setAnalysisImageUrl(emotionData.imageUrl || null);
     setAnalysisDate(emotionData.date);
     
     // 일기 ID 저장 (장소 추천 기능에서 사용)
     setMapDiaryId(emotionData.diaryId);
     
+    // 일기 작성 화면을 닫고 감정 분석 모달 표시
+    setViewMode('home');
     setShowEmotionAnalysis(true);
     handleDataChange();
   };
 
-  // 뒤로가기 핸들러 (캘린더로 복귀)
+  // 뒤로가기 핸들러 (캘린더로 복귀 또는 이전 뷰로 복귀)
   const handleBackToCalendar = () => {
     setIsFlipping(true);
     setTimeout(() => {
-      setViewMode(previousViewMode || 'home');
+      // 이전 뷰 모드가 'list'이면 목록으로 복귀, 'stats'이면 통계로 복귀, 아니면 홈으로
+      const targetView = previousViewMode || 'home';
+      setViewMode(targetView);
       setSelectedDate(null);
       setPreviousViewMode(null);
       setShowMapRecommendation(false);
       setIsEditMode(false);
       setExistingDiaryData(null);
       
-      // 현재 날짜 기준 월 복원
-      const now = new Date();
-      const currentMonthObj = new Date(now.getFullYear(), now.getMonth(), 1);
-      setCurrentMonth(currentMonthObj);
+      // 이전에 조회하던 달로 복원 (다른 달 보다가 일기 상세 조회 후 뒤로 가기 시)
+      if (previousMonth) {
+        setCurrentMonth(previousMonth);
+        setPreviousMonth(null);
+      } else if (targetView === 'home') {
+        // 홈으로 돌아갈 때만 현재 날짜 기준 월로 복원
+        const now = new Date();
+        const currentMonthObj = new Date(now.getFullYear(), now.getMonth(), 1);
+        setCurrentMonth(currentMonthObj);
+      }
+      
+      // 통계 페이지로 돌아갈 때는 선택된 날짜 유지 (요약 정보 표시용)
+      // statsSelectedDate는 EmotionStatsPage에서 관리하므로 여기서는 null로 설정하지 않음
       
       setIsFlipping(false);
     }, 200);
@@ -312,13 +333,15 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   const performNavigation = (targetView: ViewMode) => {
     setIsFlipping(true);
     setTimeout(() => {
+      // 일기 작성 관련 상태 초기화 (모든 뷰 모드 전환 시)
+      setIsEditMode(false);
+      setExistingDiaryData(null);
+      setSelectedDate(null);
+      setShowMapRecommendation(false);
+      
       setViewMode(targetView);
+      
       if (targetView === 'home') {
-        setSelectedDate(null);
-        setShowMapRecommendation(false);
-        setIsEditMode(false);
-        setExistingDiaryData(null);
-        
         const now = new Date();
         const currentMonthObj = new Date(now.getFullYear(), now.getMonth(), 1);
         setCurrentMonth(currentMonthObj);
@@ -327,18 +350,25 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     }, 200);
   };
 
-  const handleConfirmNavigation = () => {
-    console.log('작성/수정 중인 내용 삭제 및 페이지 이동');
-    setShowNavigationWarning(false);
+  // 하단 내비게이션 바를 통한 취소 확인 핸들러 (DiaryWritingPage의 취소 모달에서 호출)
+  const handleNavigationCancelConfirm = async () => {
+    console.log('작성/수정 중인 내용 삭제 및 페이지 이동 (하단 내비게이션 바)');
+    
+    // 일기 작성/수정 중인 경우 업로드한 이미지 삭제 API 호출 (요구사항 10)
+    if (viewMode === 'writing' && writingPageRef.current) {
+      try {
+        await writingPageRef.current.handleNavigationCancel();
+        console.log('[북마크 내비게이션] 이미지 삭제 완료');
+      } catch (err) {
+        console.error('[북마크 내비게이션] 이미지 삭제 중 오류:', err);
+        // 이미지 삭제 실패해도 페이지 이동은 계속 진행
+      }
+    }
+    
     if (pendingNavigation) {
       performNavigation(pendingNavigation);
       setPendingNavigation(null);
     }
-  };
-
-  const handleContinueWritingFromNav = () => {
-    setShowNavigationWarning(false);
-    setPendingNavigation(null);
   };
 
   const handleGoToStats = () => {
@@ -385,6 +415,12 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       try {
         const userData = await getCurrentUser();
         setCurrentUser(userData);
+        
+        // 로그인 시점 추적: 사용자 ID가 변경되면 새로운 로그인으로 간주
+        if (userData.id !== lastUserIdRef.current) {
+          console.log('[위험 신호 분석] 새로운 사용자 로그인 감지 - userId:', userData.id, '이전 userId:', lastUserIdRef.current);
+          lastUserIdRef.current = userData.id;
+        }
       } catch (error) {
         console.error('사용자 정보 로드 실패:', error);
       }
@@ -398,29 +434,95 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   useEffect(() => {
     const analyzeRisk = async () => {
       try {
+        // [디버깅용] 위험 신호 분석 시작 로그
+        console.log('[위험 신호 분석] 시작 - currentUser:', currentUser?.email, 'viewMode:', viewMode);
+        
         // 세션 상태 확인 (이미 표시했는지 확인)
         const { getRiskSessionStatus } = await import('../../services/riskDetection');
+        console.log('[위험 신호 분석] session-status API 호출 시작');
         const sessionStatus = await getRiskSessionStatus();
+        console.log('[위험 신호 분석] session-status 응답:', sessionStatus);
         
-        // 이미 표시했다면 다시 표시하지 않음
-        if (sessionStatus.alreadyShown) {
+        // ========== 예외 처리 1: 최초 로그인 시 한 번만 모달 표시 ==========
+        // 사용자 ID가 변경된 경우 = 새로운 로그인 (최초 로그인 또는 로그아웃 후 재로그인)
+        // lastUserIdRef.current가 null이면 최초 로그인으로 간주
+        const isNewLogin = currentUser?.id && (
+          lastUserIdRef.current === null || 
+          currentUser.id !== lastUserIdRef.current
+        );
+        
+        if (isNewLogin) {
+          console.log('[위험 신호 분석] 새로운 로그인 감지 - userId:', currentUser.id, '이전 userId:', lastUserIdRef.current);
+          // 새로운 로그인인 경우 세션 상태 초기화
+          lastUserIdRef.current = currentUser.id;
+          hasShownModalInSessionRef.current = false; // 현재 세션에서 모달 표시 여부 초기화
+          console.log('[위험 신호 분석] 새로운 로그인 - 세션 상태 초기화 완료');
+        }
+        
+        // ========== 예외 처리 2: 같은 세션에서 다시 진입해도 모달 표시 안 함 ==========
+        // 프론트엔드 세션 추적: 현재 세션에서 이미 모달을 표시했는지 확인
+        // 단, 새로운 로그인인 경우는 제외 (최초 로그인 시 모달 표시 필요)
+        if (hasShownModalInSessionRef.current && !isNewLogin) {
+          console.log('[위험 신호 분석] 현재 세션에서 이미 모달을 표시했으므로 모달 표시하지 않음');
+          // 위험 신호 분석은 수행하되 모달은 표시하지 않음 (최신 위험 레벨은 state에 저장)
+          const analysis = await analyzeRiskSignals();
+          console.log('[위험 신호 분석] analyze 응답:', analysis);
+          setRiskAnalysis(analysis);
           return;
         }
         
-        // 위험 신호 분석
+        // ========== 예외 처리 3: 로그아웃 후 재로그인 시 모달 다시 표시 ==========
+        // 백엔드 세션 상태 확인: alreadyShown=true이면 백엔드에서 이미 표시했다고 기록된 상태
+        // 하지만 새로운 로그인인 경우(isNewLogin=true)는 최초 로그인이므로 모달을 표시해야 함
+        // 같은 세션 내에서 이미 표시했는지만 확인
+        if (sessionStatus.alreadyShown && !isNewLogin) {
+          console.log('[위험 신호 분석] 백엔드 세션에서 alreadyShown=true이고 새로운 로그인이 아님, 모달 표시하지 않음');
+          // 위험 신호 분석은 수행하되 모달은 표시하지 않음 (최신 위험 레벨은 state에 저장)
+          const analysis = await analyzeRiskSignals();
+          console.log('[위험 신호 분석] analyze 응답:', analysis);
+          setRiskAnalysis(analysis);
+          // 프론트엔드 세션 상태도 동기화
+          hasShownModalInSessionRef.current = true;
+          return;
+        }
+        
+        // 위험 신호 분석 (항상 호출하여 최신 위험 레벨 확인)
+        console.log('[위험 신호 분석] analyze API 호출 시작');
         const analysis = await analyzeRiskSignals();
+        console.log('[위험 신호 분석] analyze 응답:', analysis);
         setRiskAnalysis(analysis);
         
-        // 위험 레벨이 medium 이상이고 알림 설정이 활성화된 경우에만 표시 (플로우 9.2)
-        if ((analysis.riskLevel === 'medium' || analysis.riskLevel === 'high') && currentUser?.notificationEnabled) {
+        // 위험 레벨이 medium 이상인 경우 모달 표시 (플로우 9.2)
+        // [명세서 참고] 위험 레벨이 medium 이상인 경우 표시, 알림 설정 조건 없음
+        // [중요] 최초 로그인 시(isNewLogin=true) 또는 alreadyShown=false인 경우에만 모달 표시
+        const isRiskLevelMediumOrHigh = analysis.riskLevel === 'medium' || analysis.riskLevel === 'high';
+        
+        // 최초 로그인 시 또는 새로운 로그인 시 모달 표시 (alreadyShown과 무관)
+        const shouldShowModal = isRiskLevelMediumOrHigh && (isNewLogin || !sessionStatus.alreadyShown);
+        
+        if (shouldShowModal) {
+          console.log('[위험 신호 분석] 위험 레벨:', analysis.riskLevel, 'alreadyShown:', sessionStatus.alreadyShown, 'isNewLogin:', isNewLogin, '→ 모달 표시');
           setShowRiskAlert(true);
           
-          // 표시 완료 기록
+          // 프론트엔드 세션 상태 업데이트: 현재 세션에서 모달을 표시했다고 기록
+          hasShownModalInSessionRef.current = true;
+          console.log('[위험 신호 분석] 프론트엔드 세션 상태 업데이트 - hasShownModalInSession: true');
+          
+          // 백엔드 세션 상태 업데이트: 세션 중 다시 표시하지 않도록 기록
           const { markRiskAlertShown } = await import('../../services/riskDetection');
+          console.log('[위험 신호 분석] mark-shown API 호출 시작');
           await markRiskAlertShown();
+          console.log('[위험 신호 분석] mark-shown 완료');
+        } else {
+          console.log('[위험 신호 분석] 모달 표시 조건 불만족 - riskLevel:', analysis.riskLevel, 'isNewLogin:', isNewLogin, 'alreadyShown:', sessionStatus.alreadyShown);
         }
       } catch (error) {
-        console.error('위험 신호 분석 실패:', error);
+        console.error('[위험 신호 분석] 실패:', error);
+        // [디버깅용] 에러 상세 정보
+        if (error instanceof Error) {
+          console.error('[위험 신호 분석] 에러 메시지:', error.message);
+          console.error('[위험 신호 분석] 에러 스택:', error.stack);
+        }
       }
     };
     
@@ -456,8 +558,14 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     const targetView = tabToViewMode[tab];
     
     if (viewMode === 'writing') {
-      setPendingNavigation(targetView);
-      setShowNavigationWarning(true);
+      // 일기 작성/수정 중일 때는 DiaryWritingPage의 취소 모달 표시 (뒤로 가기 버튼과 동일한 모달)
+      if (writingPageRef.current) {
+        setPendingNavigation(targetView);
+        writingPageRef.current.showCancelModal();
+      } else {
+        // ref가 아직 설정되지 않은 경우 즉시 이동 (fallback)
+        performNavigation(targetView);
+      }
     } else {
       performNavigation(targetView);
     }
@@ -472,80 +580,26 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     return 'home';
   };
 
-  // Header 컴포넌트 (상단 상태바)
-  const header = (
-    <div className="w-full h-9 bg-white flex items-center justify-between px-4 text-xs text-gray-900 border-b border-gray-100">
-      {/* 왼쪽: 시간 */}
-      <div className="flex items-center gap-2">
-        <span className="font-semibold text-sm">{formatTime(currentTime)}</span>
-      </div>
-      
-      {/* 오른쪽: 신호, 와이파이, 배터리 */}
-      <div className="flex items-center gap-2">
-        {/* 신호 강도 (4단계) */}
-        <div className="flex items-end gap-0.5 h-3">
-          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '3px' }}></div>
-          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '5px' }}></div>
-          <div className="w-1 bg-gray-900 rounded-t-sm" style={{ height: '7px' }}></div>
-          <div className="w-1 bg-gray-400 rounded-t-sm" style={{ height: '9px' }}></div>
-        </div>
-        
-        {/* 와이파이 */}
-        <Wifi className="w-4 h-4 text-gray-900" strokeWidth={2} />
-        
-        {/* 배터리 */}
-        <div className="flex items-center">
-          <Battery className="w-5 h-5 text-gray-900" strokeWidth={2} />
-          <span className="text-[10px] font-medium text-gray-900 ml-0.5">85%</span>
-        </div>
-      </div>
-    </div>
-  );
+  // Header 컴포넌트 (상단 상태바) - 제거됨
+  const header = null;
 
   // Footer 컴포넌트 (하단 탭바)
-  const footer = viewMode !== 'writing' && viewMode !== 'reading' ? (
+  // 일기 작성/수정 중에도 하단 내비게이션 바 표시 (요구사항 10, 11)
+  const footer = (
     <BottomTabBar 
       activeTab={getCurrentTab()}
       onTabChange={handleTabChange}
     />
-  ) : null;
+  );
 
   return (
-    <MobileLayout header={header} footer={footer}>
-      <div className="relative w-full h-full">
-        {/* Navigation Warning Modal */}
-        {showNavigationWarning && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-              <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-                  <span className="text-3xl">⚠️</span>
-                </div>
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-lg text-stone-800">작성 중인 내용이 사라집니다</h3>
-                <p className="text-sm text-stone-600">정말 이동하시겠습니까?</p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={handleContinueWritingFromNav} 
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm min-h-[44px]"
-                >
-                  계속 작성
-                </button>
-                <button 
-                  onClick={handleConfirmNavigation} 
-                  className="flex-1 px-4 py-3 bg-stone-200 text-stone-700 rounded-xl hover:bg-stone-300 transition-colors min-h-[44px]"
-                >
-                  이동하기
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="relative w-full h-full">
+      <MobileLayout header={header} footer={footer}>
+        <div className="relative w-full h-full">
+          {/* Navigation Warning Modal - 제거됨 (DiaryWritingPage의 취소 모달 사용) */}
 
-        {/* Main Content */}
-        <div className="w-full max-w-2xl mx-auto px-4 py-4">
+          {/* Main Content */}
+          <div className="w-full max-w-2xl mx-auto px-4 py-4">
           {/* Home View - 캘린더 + 일기 요약 */}
           {viewMode === 'home' && (
             <div className="w-full px-4 py-2">
@@ -563,15 +617,19 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
           {/* Writing View - 전체 화면 모달 */}
           <AnimatePresence>
-            {viewMode === 'writing' && (
+            {viewMode === 'writing' && !showEmotionAnalysis && (
               <motion.div 
                 className="absolute inset-0 bg-white z-50"
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                style={{ 
+                  bottom: '64px' // 하단 내비게이션 바 높이만큼 여백 (h-16 = 64px)
+                }}
               >
                 <DiaryWritingPage 
+                  ref={writingPageRef}
                   selectedDate={selectedDate}
                   onFinish={handleFinishWriting}
                   onCancel={handleBackToCalendar}
@@ -590,6 +648,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                     setViewMode('reading');
                     handleDataChange();
                   }}
+                  onNavigationCancel={pendingNavigation ? handleNavigationCancelConfirm : undefined}
                 />
               </motion.div>
             )}
@@ -637,7 +696,13 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           {viewMode === 'list' && (
             <div className="w-full p-4">
               <DiaryListPage 
-                onDiaryClick={handleDateSelect}
+                onDiaryClick={(date) => {
+                  // 일기 목록에서 일기 클릭 시 상세조회로 이동
+                  setPreviousViewMode('list'); // 목록에서 왔음을 기록
+                  setSelectedDate(date);
+                  setViewMode('reading');
+                }}
+                onBack={() => setViewMode('home')}
               />
             </div>
           )}
@@ -647,6 +712,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
             <div className="w-full">
               <EmotionStatsPage 
                 onDateClick={handleDateSelect}
+                onBack={() => setViewMode('home')}
+                selectedDateFromParent={statsSelectedDate}
+                onSelectedDateChange={(date) => setStatsSelectedDate(date)}
               />
             </div>
           )}
@@ -670,48 +738,41 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           {/* Support View */}
           {viewMode === 'support' && (
             <div className="w-full p-4">
-              <SupportResourcesPage />
+              <SupportResourcesPage 
+                onBack={() => setViewMode('home')}
+              />
             </div>
           )}
         </div>
+        </div>
+      </MobileLayout>
 
-        {/* Floating Action Button - 홈 화면에서만 표시 */}
-        {viewMode === 'home' && (
-          <button
-            onClick={() => handleStartWriting(selectedDate || new Date())}
-            className="fixed bottom-24 right-4 w-14 h-14 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center active:bg-blue-600 transition-all active:scale-95 z-30 touch-manipulation"
-            title="일기 작성하기"
-            aria-label="일기 작성하기"
-          >
-            <Plus className="w-7 h-7" strokeWidth={2.5} />
-          </button>
+      {/* Modals - MobileLayout 밖에 배치하여 모든 화면 위에 표시 */}
+      <AnimatePresence>
+        {showRiskAlert && riskAnalysis && (
+          <RiskAlertModal 
+            isOpen={showRiskAlert}
+            riskLevel={riskAnalysis.riskLevel}
+            reasons={riskAnalysis.reasons}
+            urgentCounselingPhones={riskAnalysis.urgentCounselingPhones}
+            onClose={() => setShowRiskAlert(false)}
+            onViewResources={handleViewResources}
+          />
         )}
-
-        {/* Modals */}
-        <AnimatePresence>
-          {showRiskAlert && riskAnalysis && (
-            <RiskAlertModal 
-              isOpen={showRiskAlert}
-              riskLevel={riskAnalysis.riskLevel}
-              reasons={riskAnalysis.reasons}
-              urgentCounselingPhones={riskAnalysis.urgentCounselingPhones}
-              onClose={() => setShowRiskAlert(false)}
-              onViewResources={handleViewResources}
-            />
-          )}
-          {showEmotionAnalysis && (
-            <EmotionAnalysisModal 
-              isOpen={showEmotionAnalysis}
-              onClose={handleCloseEmotionAnalysis}
-              emotion={analysisEmotion}
-              emotionName={analysisEmotionName}
-              emotionCategory={analysisEmotionCategory}
-              comment={analysisComment}
-              onMapRecommendation={handleEmotionAnalysisMapRecommendation}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </MobileLayout>
+        {showEmotionAnalysis && (
+          <EmotionAnalysisModal 
+            isOpen={showEmotionAnalysis}
+            onClose={handleCloseEmotionAnalysis}
+            emotion={analysisEmotion}
+            emotionName={analysisEmotionName}
+            emotionCategory={analysisEmotionCategory}
+            aiComment={analysisComment}
+            recommendedFood={analysisRecommendedFood}
+            imageUrl={analysisImageUrl}
+            onMapRecommendation={handleEmotionAnalysisMapRecommendation}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

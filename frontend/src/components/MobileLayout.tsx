@@ -15,13 +15,9 @@
  */
 
 interface MobileLayoutProps {
-  /** 상단 헤더 영역 */
   header?: React.ReactNode;
-  /** 메인 콘텐츠 영역 */
   children: React.ReactNode;
-  /** 하단 푸터 영역 */
   footer?: React.ReactNode;
-  /** 추가 클래스명 */
   className?: string;
 }
 
@@ -29,56 +25,31 @@ export function MobileLayout({ header, children, footer, className = '' }: Mobil
   return (
     <div 
       className={`w-full h-full flex flex-col bg-white ${className}`} 
-      style={{ 
-        height: '100%',
-        minHeight: 0, 
-        maxHeight: '100%', 
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
+      // 부모(MobileFrame)가 overflow-hidden이므로 여기서 h-full이 정확히 화면 크기가 됩니다.
     >
-      {/* Header 영역 - 고정 */}
+      {/* Header: 고정 */}
       {header && (
-        <div 
-          className="flex-shrink-0 z-40" 
-          style={{ 
-            flexShrink: 0,
-            flexGrow: 0
-          }}
-        >
+        <header className="flex-shrink-0 z-40 relative">
           {header}
-        </div>
+        </header>
       )}
       
-      {/* Main 영역 - 스크롤 가능 (Header와 Footer를 제외한 나머지 공간) */}
-      <div 
-        className="relative" 
+      {/* Main: 나머지 공간 차지 + 내부 스크롤 */}
+      <main 
+        className="flex-1 w-full relative overflow-y-auto scrollbar-hide"
         style={{ 
-          flex: '1 1 0%',
-          minHeight: 0,
-          maxHeight: '100%',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch', // iOS 부드러운 스크롤
         }}
       >
         {children}
-      </div>
+      </main>
       
-      {/* Footer 영역 - 고정 (항상 바닥에) */}
+      {/* Footer: 고정 */}
       {footer && (
-        <div 
-          className="flex-shrink-0 z-40" 
-          style={{ 
-            flexShrink: 0,
-            flexGrow: 0
-          }}
-        >
+        <footer className="flex-shrink-0 z-40 relative">
           {footer}
-        </div>
+        </footer>
       )}
     </div>
   );
 }
-
