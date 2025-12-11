@@ -143,21 +143,13 @@ public class AdminDashboardService {
      */
     @Transactional(readOnly = true)
     public DashboardStatsResponse getDashboardStats(
-            String totalUsersPeriod,
             String averageDiariesPeriod,
-            String totalDiariesPeriod,
             String riskLevelPeriod,
             String activeUserType,
             String newUserPeriod) {
         // 기본값 설정
-        String resolvedTotalUsersPeriod = (totalUsersPeriod != null && !totalUsersPeriod.trim().isEmpty())
-                ? totalUsersPeriod.toLowerCase()
-                : PERIOD_MONTHLY;
         String resolvedAverageDiariesPeriod = (averageDiariesPeriod != null && !averageDiariesPeriod.trim().isEmpty())
                 ? averageDiariesPeriod.toLowerCase()
-                : PERIOD_MONTHLY;
-        String resolvedTotalDiariesPeriod = (totalDiariesPeriod != null && !totalDiariesPeriod.trim().isEmpty())
-                ? totalDiariesPeriod.toLowerCase()
                 : PERIOD_MONTHLY;
         String resolvedRiskLevelPeriod = (riskLevelPeriod != null && !riskLevelPeriod.trim().isEmpty())
                 ? riskLevelPeriod.toLowerCase()
@@ -169,18 +161,8 @@ public class AdminDashboardService {
                 ? newUserPeriod.toLowerCase()
                 : NEW_USER_PERIOD_DAILY;
 
-        // 1. 전체 사용자 수 및 증감 (totalUsersPeriod 사용)
-        PeriodRange totalUsersPeriodRange = calculatePeriodRangeForStats(resolvedTotalUsersPeriod);
-        LocalDateTime totalUsersCurrentStart = totalUsersPeriodRange.getStartDate();
-        LocalDateTime totalUsersCurrentEnd = totalUsersPeriodRange.getEndDate();
-        PeriodRange totalUsersPreviousPeriodRange = calculatePreviousPeriodRange(resolvedTotalUsersPeriod,
-                totalUsersCurrentStart);
-        LocalDateTime totalUsersPreviousStart = totalUsersPreviousPeriodRange.getStartDate();
-        LocalDateTime totalUsersPreviousEnd = totalUsersPreviousPeriodRange.getEndDate();
-
-        DashboardStatsResponse.TotalUsersInfo totalUsers = calculateTotalUsersInfo(
-                resolvedTotalUsersPeriod, totalUsersCurrentStart, totalUsersCurrentEnd,
-                totalUsersPreviousStart, totalUsersPreviousEnd);
+        // 1. 전체 사용자 수
+        DashboardStatsResponse.TotalUsersInfo totalUsers = calculateTotalUsersInfo();
 
         // 2. 활성 사용자 수 (DAU/WAU/MAU)
         DashboardStatsResponse.ActiveUsersInfo activeUsers = calculateActiveUsers(resolvedActiveUserType);
@@ -188,18 +170,8 @@ public class AdminDashboardService {
         // 3. 신규 가입자 수
         DashboardStatsResponse.NewUsersInfo newUsers = calculateNewUsers(resolvedNewUserPeriod);
 
-        // 4. 총 일지 작성 수 및 증감 (totalDiariesPeriod 사용 - 독립 파라미터)
-        PeriodRange totalDiariesPeriodRange = calculatePeriodRangeForStats(resolvedTotalDiariesPeriod);
-        LocalDateTime totalDiariesCurrentStart = totalDiariesPeriodRange.getStartDate();
-        LocalDateTime totalDiariesCurrentEnd = totalDiariesPeriodRange.getEndDate();
-        PeriodRange totalDiariesPreviousPeriodRange = calculatePreviousPeriodRange(resolvedTotalDiariesPeriod,
-                totalDiariesCurrentStart);
-        LocalDateTime totalDiariesPreviousStart = totalDiariesPreviousPeriodRange.getStartDate();
-        LocalDateTime totalDiariesPreviousEnd = totalDiariesPreviousPeriodRange.getEndDate();
-
-        DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo(
-                resolvedTotalDiariesPeriod, totalDiariesCurrentStart, totalDiariesCurrentEnd, totalDiariesPreviousStart,
-                totalDiariesPreviousEnd);
+        // 4. 총 일지 작성 수
+        DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo();
 
         // 5. 일평균 일지 작성 수 (averageDiariesPeriod 사용)
         PeriodRange avgDiariesPeriodRange = calculatePeriodRangeForStats(resolvedAverageDiariesPeriod);
@@ -229,51 +201,24 @@ public class AdminDashboardService {
 
     /**
      * 전체 사용자 수 정보 계산
-     * change는 현재 기간 종료 시점의 전체 사용자 수 - 이전 기간 종료 시점의 전체 사용자 수
      */
-    private DashboardStatsResponse.TotalUsersInfo calculateTotalUsersInfo(
-            String period,
-            LocalDateTime currentStart,
-            LocalDateTime currentEnd,
-            LocalDateTime previousStart,
-            LocalDateTime previousEnd) {
+    private DashboardStatsResponse.TotalUsersInfo calculateTotalUsersInfo() {
         // 현재 시점의 전체 사용자 수
         long totalUsersCount = userRepository.countByDeletedAtIsNull();
 
-        // 이전 기간 종료 시점까지의 전체 사용자 수
-        long previousTotalUsersCount = getLongValueOrZero(
-                userRepository.countByDeletedAtIsNullAndCreatedAtBefore(previousEnd));
-
-        // 전체 사용자 수 증감 = 현재 전체 사용자 수 - 이전 기간 종료 시점 전체 사용자 수
-        long usersChange = totalUsersCount - previousTotalUsersCount;
-
         return DashboardStatsResponse.TotalUsersInfo.builder()
                 .count(totalUsersCount)
-                .change(usersChange)
-                .period(period)
                 .build();
     }
 
     /**
      * 총 일지 작성 수 정보 계산
      */
-    private DashboardStatsResponse.TotalDiariesInfo calculateTotalDiariesInfo(
-            String period,
-            LocalDateTime currentStart,
-            LocalDateTime currentEnd,
-            LocalDateTime previousStart,
-            LocalDateTime previousEnd) {
+    private DashboardStatsResponse.TotalDiariesInfo calculateTotalDiariesInfo() {
         long totalDiariesCount = getLongValueOrZero(adminDiaryRepository.countTotalDiaries());
-        long currentDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
-                currentStart.toLocalDate(), currentEnd.toLocalDate()));
-        long previousDiariesCount = getLongValueOrZero(adminDiaryRepository.countDiariesInPeriod(
-                previousStart.toLocalDate(), previousEnd.toLocalDate()));
-        long diariesChange = currentDiariesCount - previousDiariesCount;
 
         return DashboardStatsResponse.TotalDiariesInfo.builder()
                 .count(totalDiariesCount)
-                .change(diariesChange)
-                .period(period)
                 .build();
     }
 

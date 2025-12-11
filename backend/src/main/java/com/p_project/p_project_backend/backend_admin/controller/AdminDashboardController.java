@@ -24,15 +24,12 @@ public class AdminDashboardController {
      */
     @GetMapping("/stats")
     public ResponseEntity<?> getDashboardStats(
-            @RequestParam(required = false, defaultValue = "monthly") String totalUsersPeriod,
             @RequestParam(required = false, defaultValue = "monthly") String averageDiariesPeriod,
-            @RequestParam(required = false, defaultValue = "monthly") String totalDiariesPeriod,
             @RequestParam(required = false, defaultValue = "monthly") String riskLevelPeriod,
             @RequestParam(required = false, defaultValue = "dau") String activeUserType,
             @RequestParam(required = false, defaultValue = "daily") String newUserPeriod) {
         DashboardStatsResponse response = adminDashboardService.getDashboardStats(
-                totalUsersPeriod, averageDiariesPeriod, totalDiariesPeriod, riskLevelPeriod, activeUserType,
-                newUserPeriod);
+                averageDiariesPeriod, riskLevelPeriod, activeUserType, newUserPeriod);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 

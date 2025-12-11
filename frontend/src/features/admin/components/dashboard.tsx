@@ -88,9 +88,7 @@ export function Dashboard() {
   // ========================================
   // [명세서 2.2] 각 카드의 기간 필터는 독립적으로 동작
   // 카드별 독립 필터
-  const [totalUsersPeriod, setTotalUsersPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드1: 전체 사용자 수
   const [avgDiariesPeriod, setAvgDiariesPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드5: 일평균 일지 작성 수
-  const [totalDiariesPeriod, setTotalDiariesPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드4: 총 일지 작성 수 (신규)
   const [riskLevelPeriod, setRiskLevelPeriod] = useState<'week' | 'month' | 'year'>('month'); // 카드6: 위험 레벨별 사용자 수 (신규)
   const [activeUserFilter, setActiveUserFilter] = useState<'dau' | 'wau' | 'mau'>('dau'); // 카드2: 활성 사용자 수
   const [newUserFilter, setNewUserFilter] = useState<'today' | 'thisWeek' | 'thisMonth'>('today'); // 카드3: 신규 가입자 수
@@ -109,9 +107,7 @@ export function Dashboard() {
   const activeUserTypeParam = activeUserFilter === 'dau' ? 'dau' : activeUserFilter === 'wau' ? 'wau' : 'mau';
   const newUserPeriodParam = newUserFilter === 'today' ? 'daily' : newUserFilter === 'thisWeek' ? 'weekly' : 'monthly';
   const { stats, isLoading, isRefreshing: _isRefreshing, error } = useDashboardData(
-    totalUsersPeriod,
     avgDiariesPeriod,
-    totalDiariesPeriod,
     riskLevelPeriod,
     diaryTrendPeriod,
     userActivityPeriod,
@@ -162,54 +158,20 @@ export function Dashboard() {
     {
       title: '전체 사용자 수',
       value: (stats.totalUsers ?? 0).toLocaleString(),
-      change: stats.totalUsersChange ? (stats.totalUsersChange > 0 ? `+${stats.totalUsersChange}` : `${stats.totalUsersChange}`) : '0',
-      trend: (stats.totalUsersChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
+      change: '-',
+      trend: 'up' as const,
       icon: Users,
       color: 'blue' as const,
-      description: '등록된 전체 사용자',
-      filter: (
-        <div className="flex gap-1 mt-2">
-          {(['week', 'month', 'year'] as const).map((p) => (
-            <button
-              key={p}
-              onClick={(e) => { e.stopPropagation(); setTotalUsersPeriod(p); }}
-              className={`px-2 py-1 text-xs rounded ${totalUsersPeriod === p ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}
-            >
-              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
-            </button>
-          ))}
-        </div>
-      )
+      description: '등록된 전체 사용자'
     },
     {
-      title: '활성 사용자 수',
-      value: activeUserFilter === 'dau'
-        ? (stats.activeUsers?.dau ?? 0).toLocaleString()
-        : activeUserFilter === 'wau'
-          ? (stats.activeUsers?.wau ?? 0).toLocaleString()
-          : (stats.activeUsers?.mau ?? 0).toLocaleString(),
-      change: '-', // 활성 사용자 수는 change 필드가 API 응답에 없음
+      title: '총 일지 작성 수',
+      value: (stats.totalDiaries ?? 0).toLocaleString(),
+      change: '-',
       trend: 'up' as const,
-      icon: Activity,
-      color: 'emerald' as const,
-      description: activeUserFilter === 'dau' ? '일일 활성 사용자 (DAU)' : activeUserFilter === 'wau' ? '주간 활성 사용자 (WAU)' : '월간 활성 사용자 (MAU)',
-      filter: (
-        <div className="flex gap-1 mt-2">
-          {(['dau', 'wau', 'mau'] as const).map((filter) => (
-            <button
-              key={filter}
-              onClick={(e) => { e.stopPropagation(); setActiveUserFilter(filter); }}
-              className="px-2 py-1 text-xs rounded"
-              style={{
-                backgroundColor: activeUserFilter === filter ? '#065f46' : '#d1fae5',
-                color: activeUserFilter === filter ? 'white' : '#047857'
-              }}
-            >
-              {filter.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      )
+      icon: BookOpen,
+      color: 'orange' as const,
+      description: '전체 누적 일지 작성 개수'
     },
     {
       title: '신규 가입자 수',
@@ -242,22 +204,30 @@ export function Dashboard() {
       )
     },
     {
-      title: '총 일지 작성 수',
-      value: (stats.totalDiaries ?? 0).toLocaleString(),
-      change: stats.totalDiariesChange ? (stats.totalDiariesChange > 0 ? `+${stats.totalDiariesChange}` : `${stats.totalDiariesChange}`) : '0',
-      trend: (stats.totalDiariesChange ?? 0) >= 0 ? 'up' as const : 'down' as const,
-      icon: BookOpen,
-      color: 'orange' as const,
-      description: '선택한 기간의 일지 작성 개수',
+      title: '활성 사용자 수',
+      value: activeUserFilter === 'dau'
+        ? (stats.activeUsers?.dau ?? 0).toLocaleString()
+        : activeUserFilter === 'wau'
+          ? (stats.activeUsers?.wau ?? 0).toLocaleString()
+          : (stats.activeUsers?.mau ?? 0).toLocaleString(),
+      change: '-', // 활성 사용자 수는 change 필드가 API 응답에 없음
+      trend: 'up' as const,
+      icon: Activity,
+      color: 'emerald' as const,
+      description: activeUserFilter === 'dau' ? '일일 활성 사용자 (DAU)' : activeUserFilter === 'wau' ? '주간 활성 사용자 (WAU)' : '월간 활성 사용자 (MAU)',
       filter: (
         <div className="flex gap-1 mt-2">
-          {(['week', 'month', 'year'] as const).map((p) => (
+          {(['dau', 'wau', 'mau'] as const).map((filter) => (
             <button
-              key={p}
-              onClick={(e) => { e.stopPropagation(); setTotalDiariesPeriod(p); }}
-              className={`px-2 py-1 text-xs rounded ${totalDiariesPeriod === p ? 'bg-orange-600 text-white' : 'bg-orange-100 text-orange-700'}`}
+              key={filter}
+              onClick={(e) => { e.stopPropagation(); setActiveUserFilter(filter); }}
+              className="px-2 py-1 text-xs rounded"
+              style={{
+                backgroundColor: activeUserFilter === filter ? '#065f46' : '#d1fae5',
+                color: activeUserFilter === filter ? 'white' : '#047857'
+              }}
             >
-              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+              {filter.toUpperCase()}
             </button>
           ))}
         </div>
