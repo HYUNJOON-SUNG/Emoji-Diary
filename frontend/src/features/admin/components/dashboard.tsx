@@ -197,7 +197,7 @@ export function Dashboard() {
                 color: newUserFilter === filter ? 'white' : '#4338ca'
               }}
             >
-              {filter === 'today' ? '일' : filter === 'thisWeek' ? '주' : '월'}
+              {filter === 'today' ? '일간' : filter === 'thisWeek' ? '주간' : '월간'}
             </button>
           ))}
         </div>
@@ -249,7 +249,7 @@ export function Dashboard() {
               onClick={(e) => { e.stopPropagation(); setAvgDiariesPeriod(p); }}
               className={`px-2 py-1 text-xs rounded ${avgDiariesPeriod === p ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700'}`}
             >
-              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+              {p === 'week' ? '주간' : p === 'month' ? '월간' : '연간'}
             </button>
           ))}
         </div>
@@ -257,12 +257,43 @@ export function Dashboard() {
     },
     {
       title: '위험 레벨별 사용자 수',
-      value: `${(stats.riskLevelUsers?.high ?? 0) + (stats.riskLevelUsers?.medium ?? 0) + (stats.riskLevelUsers?.low ?? 0)}명`,
-      change: '-', // 위험 레벨별 사용자 수는 change 필드가 API 응답에 없음
+      value: (
+        <div className="flex gap-1 mt-1" style={{ maxWidth: 'calc(100% - 60px)' }}>
+          <div className="flex items-center gap-1 p-1 bg-red-50 rounded border border-red-200 flex-1 min-w-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></div>
+            <div className="flex flex-col min-w-0">
+              <p className="text-[10px] text-red-600 leading-tight">High</p>
+              <p className="text-sm font-bold text-red-700 leading-tight truncate">{stats.riskLevelUsers?.high ?? 0}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-orange-50 rounded border border-orange-200 flex-1 min-w-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0"></div>
+            <div className="flex flex-col min-w-0">
+              <p className="text-[10px] text-orange-600 leading-tight">Medium</p>
+              <p className="text-sm font-bold text-orange-700 leading-tight truncate">{stats.riskLevelUsers?.medium ?? 0}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-blue-50 rounded border border-blue-200 flex-1 min-w-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></div>
+            <div className="flex flex-col min-w-0">
+              <p className="text-[10px] text-blue-600 leading-tight">Low</p>
+              <p className="text-sm font-bold text-blue-700 leading-tight truncate">{stats.riskLevelUsers?.low ?? 0}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-green-50 rounded border border-green-200 flex-1 min-w-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></div>
+            <div className="flex flex-col min-w-0">
+              <p className="text-[10px] text-green-600 leading-tight">None</p>
+              <p className="text-sm font-bold text-green-700 leading-tight truncate">{stats.riskLevelUsers?.none ?? 0}</p>
+            </div>
+          </div>
+        </div>
+      ),
+      change: '-',
       trend: 'down' as const,
       icon: AlertTriangle,
       color: 'red' as const,
-      description: `High: ${stats.riskLevelUsers?.high ?? 0}명, Medium: ${stats.riskLevelUsers?.medium ?? 0}명, Low: ${stats.riskLevelUsers?.low ?? 0}명, None: ${stats.riskLevelUsers?.none ?? 0}명`,
+      description: '선택한 기간의 위험 레벨 분포',
       filter: (
         <div className="flex gap-1 mt-2">
           {(['week', 'month', 'year'] as const).map((p) => (
@@ -271,7 +302,7 @@ export function Dashboard() {
               onClick={(e) => { e.stopPropagation(); setRiskLevelPeriod(p); }}
               className={`px-2 py-1 text-xs rounded ${riskLevelPeriod === p ? 'bg-red-600 text-white' : 'bg-red-100 text-red-700'}`}
             >
-              {p === 'week' ? '주' : p === 'month' ? '월' : '년'}
+              {p === 'week' ? '주간' : p === 'month' ? '월간' : '연간'}
             </button>
           ))}
         </div>
@@ -291,7 +322,6 @@ export function Dashboard() {
           <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 tracking-tight break-words">대시보드 (핵심 지표)</h1>
           <p className="text-slate-600 mt-1 text-sm sm:text-base break-words">전체 사용자, 일지 작성 현황을 한눈에 확인하세요</p>
           <p className="text-slate-500 text-xs sm:text-sm mt-2">마지막 업데이트: {new Date().toLocaleString('ko-KR')}</p>
-          <p className="text-slate-400 text-xs mt-1">각 카드와 차트의 기간 필터를 개별적으로 설정할 수 있습니다.</p>
         </div>
       </div>
 

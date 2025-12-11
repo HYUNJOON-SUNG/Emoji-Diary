@@ -35,7 +35,7 @@ import { LucideIcon } from 'lucide-react';
 
 interface MetricCardProps {
   title: string;
-  value: string;
+  value: string | React.ReactNode;
   change: string;
   trend: 'up' | 'down';
   icon: LucideIcon;
