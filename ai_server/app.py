@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     print("감정 분석 모델 로드 중...")
     
     possible_paths = [
-        project_root / "best_model.pt",  # Most likely location
+        project_root / "best_model.pt",  
         project_root / "model" / "best_model.pt",
     ]
     
@@ -86,9 +86,9 @@ class Sex(str, Enum):
 
 class AiServerRequest(BaseModel):
     content: str
-    weather: Optional[Weather] = None  # 선택사항 (요구사항: 날씨는 선택)
+    weather: Optional[Weather] = None  
     persona: Persona
-    gender: Sex  # 'sex' -> 'gender'로 필드명 변경 (백엔드와 통일)
+    gender: Sex  
 
 class EmotionAnalysisResult(BaseModel):
     emotion: str

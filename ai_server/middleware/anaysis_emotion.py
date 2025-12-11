@@ -1,8 +1,12 @@
 import torch
 from torch import nn
 import numpy as np
+import warnings
 from transformers import BertModel
 from kobert_tokenizer import KoBERTTokenizer
+
+# 토크나이저 불일치 경고 억제 (state_dict만 사용하므로 문제 없음)
+warnings.filterwarnings("ignore", message=".*tokenizer class.*")
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -80,6 +84,8 @@ class BERTClassifier(nn.Module):
         super(BERTClassifier, self).__init__()
         self.bert = bert
         self.dr_rate = dr_rate
+        # 정규화 강화: LayerNorm 추가 (학습 시 사용된 구조와 일치)
+        self.layer_norm = nn.LayerNorm(hidden_size)
         self.classifier = nn.Linear(hidden_size, num_classes)
         if dr_rate:
             self.dropout = nn.Dropout(p=dr_rate)
@@ -93,6 +99,8 @@ class BERTClassifier(nn.Module):
     def forward(self, token_ids, valid_length, segment_ids):
         attention_mask = self.gen_attention_mask(token_ids, valid_length)
         _, pooler = self.bert(input_ids=token_ids, token_type_ids=segment_ids.long(), attention_mask=attention_mask.float().to(token_ids.device))
+        # 정규화 강화: LayerNorm 적용 (학습 시 사용된 구조와 일치)
+        pooler = self.layer_norm(pooler)
         if self.dr_rate:
             out = self.dropout(pooler)
         else:
@@ -112,16 +120,48 @@ class SimpleVocab:
 
 def load_trained_model(model_path='best_model.pt'):
     from transformers import BertModel
+    import os
     
-    bert_base = BertModel.from_pretrained('skt/kobert-base-v1', return_dict=False)
-    loaded_model = BERTClassifier(bert_base, dr_rate=0.75, num_classes=7)
+    # 모델 파일 존재 및 유효성 확인
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {model_path}")
     
-    loaded_model.load_state_dict(torch.load(model_path, map_location=device))
-    loaded_model = loaded_model.to(device)
-    loaded_model.eval()  
+    file_size = os.path.getsize(model_path)
+    print(f"모델 파일 크기: {file_size / (1024*1024):.2f} MB")
     
-    print(f"✓ 모델 로드 완료: {model_path}")
-    return loaded_model
+    if file_size == 0:
+        raise ValueError(f"모델 파일이 비어있습니다: {model_path}")
+    
+    if file_size < 1000:  # 1KB 미만이면 의심스러움
+        raise ValueError(f"모델 파일 크기가 너무 작습니다 (의심스러움): {model_path}")
+    
+    try:
+        bert_base = BertModel.from_pretrained('skt/kobert-base-v1', return_dict=False)
+        loaded_model = BERTClassifier(bert_base, dr_rate=0.75, num_classes=7)
+        
+        print(f"모델 파일 로딩 시도: {model_path}")
+        try:
+            state_dict = torch.load(model_path, map_location=device)
+            loaded_model.load_state_dict(state_dict)
+        except RuntimeError as e:
+            if "zip archive" in str(e) or "central directory" in str(e):
+                raise RuntimeError(
+                    f"모델 파일이 손상되었거나 불완전합니다: {model_path}\n"
+                    f"원본 에러: {str(e)}\n"
+                    f"파일 크기: {file_size} bytes\n"
+                    f"해결 방법: 모델 파일을 다시 다운로드하거나 다른 위치의 모델 파일을 사용하세요."
+                ) from e
+            else:
+                raise
+        
+        loaded_model = loaded_model.to(device)
+        loaded_model.eval()  
+        
+        print(f"모델 로드 완료: {model_path}")
+        return loaded_model
+    except Exception as e:
+        print(f"모델 로드 실패: {type(e).__name__}: {str(e)}")
+        raise
 
 def predict_emotion(model, sentence, tokenizer, vocab, max_len=128):
     emotion_names = ['분노', '슬픔', '불안', '행복', '혐오', '당황', '중립']
