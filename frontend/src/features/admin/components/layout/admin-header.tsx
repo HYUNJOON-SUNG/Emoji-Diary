@@ -27,7 +27,7 @@ export function AdminHeader() {
                 <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end hidden md:flex">
                         <span className="text-sm font-semibold text-slate-900">{user?.name || "관리자 A"}</span>
-                        <span className="text-xs text-slate-500">Super Admin</span>
+                        <span className="text-xs text-slate-500">Admin</span>
                     </div>
 
                     <DropdownMenu>

@@ -272,8 +272,9 @@ adminApiClient.interceptors.response.use(
 
     // 401 또는 403 에러 (인증 실패) 처리
     const isTokenError = error.response?.status === 401 || error.response?.status === 403;
-    const isAuthEndpoint = originalRequest?.url?.includes('/admin/auth/login') ||
-      originalRequest?.url?.includes('/admin/auth/refresh');
+    // [수정] url이 상대 경로('/auth/login')일 경우를 대비해 '/admin' prefix 제거하고 체크
+    const isAuthEndpoint = originalRequest?.url?.includes('auth/login') ||
+      originalRequest?.url?.includes('auth/refresh');
 
     if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
@@ -352,7 +353,8 @@ adminApiClient.interceptors.response.use(
     }
 
     // 기타 에러 처리
-    if (isTokenError && !originalRequest?._retry) {
+    // [수정] 로그인/토큰갱신 요청 실패 시에는 리다이렉트 하지 않음 (!isAuthEndpoint 추가)
+    if (isTokenError && !originalRequest?._retry && !isAuthEndpoint) {
       // [명세서 1.1] 관리자 Access Token 및 Refresh Token 제거
       localStorage.removeItem('admin_access_token');
       localStorage.removeItem('admin_refresh_token');

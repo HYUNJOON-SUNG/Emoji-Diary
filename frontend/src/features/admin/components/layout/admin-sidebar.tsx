@@ -136,7 +136,11 @@ export function AdminSidebar({ collapsed, setCollapsed, onLogout }: SidebarProps
             {/* Footer / Logout */}
             <div className="p-4 border-t border-slate-100">
                 <button
-                    onClick={onLogout}
+                    onClick={() => {
+                        if (window.confirm("정말 로그아웃 하시겠습니까?")) {
+                            onLogout()
+                        }
+                    }}
                     className={cn(
                         "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors group",
                         collapsed && "justify-center"
