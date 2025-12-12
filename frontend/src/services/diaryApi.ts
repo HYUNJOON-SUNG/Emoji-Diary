@@ -228,7 +228,7 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -274,7 +274,7 @@ export async function fetchDiaryById(diaryId: string): Promise<DiaryDetail | nul
       return null;
     }
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -328,7 +328,7 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
       return null;
     }
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -416,7 +416,7 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -494,7 +494,7 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     if (error.response?.status === 404) {
@@ -527,7 +527,7 @@ export async function deleteDiary(id: string, date: string): Promise<void> {
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     if (error.response?.status === 404) {
@@ -680,7 +680,7 @@ export async function fetchRecentDiaries(startDate: string, endDate: string): Pr
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -834,7 +834,7 @@ export async function fetchChartStats(
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;

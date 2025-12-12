@@ -122,7 +122,7 @@ apiClient.interceptors.response.use(
           console.warn('토큰이 만료되었고 refresh token이 없습니다. 로그인 페이지로 이동합니다.');
           TokenStorage.clearTokens();
           localStorage.removeItem('user');
-          window.location.href = '/login';
+        window.location.href = '/';
           return Promise.reject(new Error('로그인이 필요합니다.'));
         }
 
