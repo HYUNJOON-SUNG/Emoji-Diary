@@ -890,7 +890,7 @@ export function KakaoMapRecommendation({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col min-h-0">
           {/* 지도 영역 - 별도 박스로 표시 */}
           <div className="w-full flex-shrink-0 relative border-b border-stone-200 overflow-hidden" style={{ height: '350px' }}>
             <div
@@ -901,7 +901,8 @@ export function KakaoMapRecommendation({
             {/* 지도 컨트롤 버튼들 (플로우 8.2) - 지도 우측 상단에 배치 */}
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-50 pointer-events-auto">
               {/* 줌 인/아웃 */}
-              <div className="bg-white rounded-lg shadow-lg border border-stone-200 overflow-hidden">
+              {/* 줌 인/아웃 및 현재 위치 (하나의 그룹으로 통합) */}
+              <div className="bg-white rounded-lg shadow-lg border border-stone-200 overflow-hidden flex flex-col">
                 <button
                   onClick={handleZoomIn}
                   className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors border-b border-stone-200"
@@ -912,33 +913,21 @@ export function KakaoMapRecommendation({
                 </button>
                 <button
                   onClick={handleZoomOut}
-                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors border-b border-stone-200"
                   aria-label="줌 아웃"
                   title="줌 아웃"
                 >
                   <ZoomOut className="w-4 h-4 text-stone-700" />
                 </button>
+                <button
+                  onClick={handleReloadLocation}
+                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+                  aria-label="현재 위치 재확인"
+                  title="현재 위치 재확인"
+                >
+                  <Navigation className="w-4 h-4 text-blue-600" />
+                </button>
               </div>
-              
-              {/* 현재 위치 재확인 */}
-              <button
-                onClick={handleReloadLocation}
-                className="p-2.5 bg-white rounded-lg shadow-lg border border-stone-200 hover:bg-stone-50 active:bg-stone-100 transition-colors"
-                aria-label="현재 위치 재확인"
-                title="현재 위치 재확인"
-              >
-                <Navigation className="w-4 h-4 text-blue-600" />
-              </button>
-              
-              {/* 지도 타입 전환 */}
-              <button
-                onClick={handleMapTypeChange}
-                className="p-2.5 bg-white rounded-lg shadow-lg border border-stone-200 hover:bg-stone-50 active:bg-stone-100 transition-colors"
-                aria-label="지도 타입 전환"
-                title={mapType === 'ROADMAP' ? '일반지도' : mapType === 'SKYVIEW' ? '스카이뷰' : '하이브리드'}
-              >
-                <Layers className="w-4 h-4 text-stone-700" />
-              </button>
             </div>
           </div>
 
@@ -1152,7 +1141,8 @@ export function KakaoMapRecommendation({
             {/* 지도 컨트롤 버튼들 (플로우 8.2) - 지도 우측 상단에 배치 */}
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-50">
               {/* 줌 인/아웃 */}
-              <div className="bg-white rounded-lg shadow-lg border border-stone-300 overflow-hidden">
+              {/* 줌 인/아웃 및 현재 위치 (하나의 그룹으로 통합) */}
+              <div className="bg-white rounded-lg shadow-lg border border-stone-300 overflow-hidden flex flex-col">
                 <button
                   onClick={handleZoomIn}
                   className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors border-b border-stone-200"
@@ -1163,38 +1153,26 @@ export function KakaoMapRecommendation({
                 </button>
                 <button
                   onClick={handleZoomOut}
-                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors border-b border-stone-200"
                   aria-label="줌 아웃"
                   title="줌 아웃"
                 >
                   <ZoomOut className="w-4 h-4 text-stone-700" />
                 </button>
+                <button
+                  onClick={handleReloadLocation}
+                  className="p-2.5 hover:bg-stone-50 active:bg-stone-100 transition-colors"
+                  aria-label="현재 위치 재확인"
+                  title="현재 위치 재확인"
+                >
+                  <Navigation className="w-4 h-4 text-blue-600" />
+                </button>
               </div>
-              
-              {/* 현재 위치 재확인 */}
-              <button
-                onClick={handleReloadLocation}
-                className="p-2.5 bg-white rounded-lg shadow-lg border border-stone-300 hover:bg-stone-50 active:bg-stone-100 transition-colors"
-                aria-label="현재 위치 재확인"
-                title="현재 위치 재확인"
-              >
-                <Navigation className="w-4 h-4 text-blue-600" />
-              </button>
-              
-              {/* 지도 타입 전환 */}
-              <button
-                onClick={handleMapTypeChange}
-                className="p-2.5 bg-white rounded-lg shadow-lg border border-stone-300 hover:bg-stone-50 active:bg-stone-100 transition-colors"
-                aria-label="지도 타입 전환"
-                title={mapType === 'ROADMAP' ? '일반지도' : mapType === 'SKYVIEW' ? '스카이뷰' : '하이브리드'}
-              >
-                <Layers className="w-4 h-4 text-stone-700" />
-              </button>
             </div>
           </div>
 
           {/* 장소 리스트 영역 - 반응형 */}
-          <div className="w-full sm:w-80 md:w-96 border-t sm:border-t-0 sm:border-l border-stone-200 overflow-y-auto bg-white max-h-[40vh] sm:max-h-none">
+          <div className="w-full sm:w-80 md:w-96 border-t sm:border-t-0 sm:border-l border-stone-200 overflow-y-auto scrollbar-hide bg-white max-h-[40vh] sm:max-h-none">
             <div className="p-4">
               {loading ? (
                 <div className="flex flex-col items-center justify-center h-64">

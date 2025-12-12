@@ -340,7 +340,8 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
             <img 
               src={getEmotionImage(emotion)} 
               alt={emotion} 
-              className="absolute -top-1.5 -right-1.5 w-6 h-6 object-contain z-10 filter drop-shadow-sm transform rotate-12" 
+              // [수정] z-10 제거 (모달 침범 방지), transform과 filter는 유지
+              className="absolute -top-1.5 -right-1.5 w-6 h-6 object-contain filter drop-shadow-sm transform rotate-12" 
             />
           )}
         </button>

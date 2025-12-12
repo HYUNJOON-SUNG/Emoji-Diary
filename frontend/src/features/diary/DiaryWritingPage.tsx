@@ -134,8 +134,8 @@ export const DiaryWritingPage = forwardRef<{
   /** 기분 입력 (선택) */
   const [mood, setMood] = useState(existingDiary?.mood || '');
   
-  /** 날씨 선택 (선택) */
-  const [weather, setWeather] = useState<string>(existingDiary?.weather || '');
+  /** 날씨 선택 (선택) - 기본값: 맑음 */
+  const [weather, setWeather] = useState<string>(existingDiary?.weather || '맑음');
   
   /** 활동 목록 (선택) */
   const [activities, setActivities] = useState<string[]>(existingDiary?.activities || []);
@@ -249,17 +249,17 @@ export const DiaryWritingPage = forwardRef<{
         title !== existingDiary.title ||
         content !== existingDiary.content ||
         mood !== (existingDiary.mood || '') ||
-        weather !== (existingDiary.weather || '') ||
+        weather !== (existingDiary.weather || '맑음') ||
         isActivitiesChanged ||
         isImagesChanged
       );
     } else {
-      // 새 작성 모드: 하나라도 입력값이 있으면 변경됨
+      // 새 작성 모드: 하나라도 입력값이 있으면 변경됨 (날씨 기본값 '맑음' 제외)
       return (
         title.trim() !== '' ||
         content.trim() !== '' ||
         mood !== '' ||
-        weather !== '' ||
+        weather !== '맑음' ||
         activities.length > 0 ||
         images.length > 0
       );
@@ -769,8 +769,8 @@ export const DiaryWritingPage = forwardRef<{
           <ArrowLeft className="w-6 h-6" />
         </button>
         
-        {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-        <h1 className="text-lg text-blue-600">
+        {/* 제목 타이틀 수정: 파란색 -> 검정색 */}
+        <h1 className="text-lg text-stone-900 font-bold">
           {isEditMode ? '일기 수정' : '일기 작성'}
         </h1>
         
@@ -779,7 +779,7 @@ export const DiaryWritingPage = forwardRef<{
           disabled={!isValid || isSaving || isAnalyzingEmotion}
           className={`px-4 py-2 rounded-lg transition-all min-h-[44px] flex items-center gap-2 ${
             isValid && !isSaving && !isAnalyzingEmotion
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-blue-500 text-white hover:bg-blue-600' // 활동 태그 추가 버튼과 동일한 색상으로 변경
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
           }`}
         >
@@ -795,7 +795,7 @@ export const DiaryWritingPage = forwardRef<{
       </div>
 
       {/* 스크롤 가능한 컨텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <div className="p-4 space-y-6 pb-8">
           {/* 날짜 표시 */}
           <div className="flex items-center gap-2 text-slate-600">
@@ -831,10 +831,10 @@ export const DiaryWritingPage = forwardRef<{
               <div className="flex items-start gap-3">
                 <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm text-blue-800 font-medium mb-1">
+                  <p className="text-sm text-stone-900 font-medium mb-1">
                     AI가 감정을 자동으로 분석해드려요
                   </p>
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-stone-600">
                     일기를 작성하고 저장하면, AI가 본문을 분석하여 감정을 자동으로 파악합니다.
                   </p>
                   </div>
@@ -867,7 +867,7 @@ export const DiaryWritingPage = forwardRef<{
                 disabled={isSaving || isAnalyzingEmotion}
                 className={theme.input.base}
               >
-                <option value="">선택하세요</option>
+                {/* 선택하세요 옵션 제거 */}
                 {WEATHER_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.emoji} {option.label}

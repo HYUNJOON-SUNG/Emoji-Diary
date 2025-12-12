@@ -123,9 +123,27 @@
  *    - 출력: 그림일기 형태의 이미지 URL
  */
 
-import { X } from 'lucide-react';
+import { X, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getEmotionImage } from '../../utils/emotionImages';
+// import { getEmotionImage } from '../../utils/emotionImages'; // 직접 임포트로 대체
+
+import happyImg from '../../assets/행복.png';
+import neutralImg from '../../assets/중립.png';
+import embarrassedImg from '../../assets/당황.png';
+import sadImg from '../../assets/슬픔.png';
+import angerImg from '../../assets/분노.png';
+import anxietyImg from '../../assets/불안.png';
+import disgustImg from '../../assets/혐오.png';
+
+const KOBERT_EMOTIONS_MAP: { [key: string]: string } = {
+  '행복': happyImg,
+  '중립': neutralImg,
+  '당황': embarrassedImg,
+  '슬픔': sadImg,
+  '분노': angerImg,
+  '불안': anxietyImg,
+  '혐오': disgustImg,
+};
 
 /**
  * EmotionAnalysisModal 컴포넌트 Props
@@ -270,15 +288,17 @@ export function EmotionAnalysisModal({
     : '중립';
   const colors = emotionColors[safeEmotion];
 
+  // 이미지 매핑 (기본값: 중립)
+  const emotionImage = emotion && KOBERT_EMOTIONS_MAP[emotion] ? KOBERT_EMOTIONS_MAP[emotion] : neutralImg;
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           {/* 
             배경 딤 처리 (Backdrop)
-            - 반투명 검은색 배경
-            - 블러 효과
-            - 클릭 시 모달 닫기
+            - Absolute positioning inside the container to respect mobile frame/layout
+            - Z-Index high to cover content
           */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -290,8 +310,7 @@ export function EmotionAnalysisModal({
 
           {/* 
             모달 컨테이너
-            - 화면 중앙 정렬
-            - 클릭 이벤트 전파 방지 (모달 내부 클릭 시 닫히지 않음)
+            - Absolute positioning
           */}
           <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none overflow-hidden">
             <motion.div
@@ -304,7 +323,7 @@ export function EmotionAnalysisModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* 모달 내부 컨텐츠 영역 */}
-              <div className="relative bg-white rounded-xl p-4 sm:p-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+              <div className="relative bg-white rounded-xl p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-hide" style={{ maxHeight: 'calc(85vh - 100px)' }}>
 
                 {/* 닫기 버튼 (우측 상단) */}
                 <button
@@ -319,7 +338,7 @@ export function EmotionAnalysisModal({
                   {/* 모달 제목 */}
                   <div className="text-center">
                     {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                    <h2 className="text-blue-600">감정 분석 결과</h2>
+                    <h2 className="text-stone-900 text-lg font-bold">감정 분석 결과</h2>
                   </div>
 
                   {/* 
@@ -341,7 +360,7 @@ export function EmotionAnalysisModal({
                       <div className="pt-2">
                         <button
                           onClick={onClose}
-                          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
+                          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-h-[44px]"
                         >
                           확인
                         </button>
@@ -378,7 +397,7 @@ export function EmotionAnalysisModal({
                             className="w-24 h-24 sm:w-28 sm:h-28" 
                           >
                             <img 
-                              src={getEmotionImage(emotion)} 
+                              src={emotionImage} 
                               alt={emotion}
                               className="w-full h-full object-contain filter drop-shadow-md"
                             />
@@ -394,9 +413,10 @@ export function EmotionAnalysisModal({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.3 }}
-                          className={`px-6 py-2 rounded-full border-2 ${colors.bg} ${colors.border}`}
+                          // [수정] 감정 배지 스타일: 하양 배경 + 검정 텍스트 (기존 필터 버튼 스타일)
+                          className="px-6 py-2 rounded-full border-2 bg-white border-stone-200 shadow-sm"
                         >
-                          <span className={`text-sm ${colors.text}`}>{displayLabel}</span>
+                          <span className="text-sm text-stone-900 font-bold">{displayLabel}</span>
                         </motion.div>
                       </div>
 
@@ -414,9 +434,9 @@ export function EmotionAnalysisModal({
                           className="space-y-2"
                         >
                           <div className="flex items-center gap-2 justify-center">
-                            <div className="text-blue-700">🎨</div>
+                            <div className="text-stone-900">🎨</div>
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-blue-600">AI 그림 일기</p>
+                            <p className="text-xs text-stone-900 font-bold">AI 그림 일기</p>
                           </div>
                           <div className="bg-white/80 border border-stone-300 rounded-lg p-2 overflow-hidden">
                             <img
@@ -444,13 +464,14 @@ export function EmotionAnalysisModal({
                           className="space-y-2"
                         >
                           <div className="flex items-center gap-2 justify-center">
-                            <div className="text-blue-700">✨</div>
+                            <div className="text-stone-900">✨</div>
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-blue-600">AI의 공감 한마디</p>
+                            <p className="text-xs text-stone-900 font-bold">AI의 공감 한마디</p>
                           </div>
-                          <div className="bg-white/80 border border-stone-300 rounded-lg p-4">
+                          {/* [수정] DaySummaryPage와 동일한 스타일 적용 (배경, 테두리, 그림자) */}
+                          <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-sm text-blue-600 leading-relaxed text-center">
+                            <p className="text-sm text-stone-900 leading-relaxed text-center">
                               {aiComment}
                             </p>
                           </div>
@@ -472,17 +493,18 @@ export function EmotionAnalysisModal({
                           className="space-y-2"
                         >
                           <div className="flex items-center gap-2 justify-center">
-                            <div className="text-blue-700">🍽️</div>
+                            <div className="text-stone-900">🍽️</div>
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-blue-600">추천 음식</p>
+                            <p className="text-xs text-stone-900 font-bold">추천 음식</p>
                           </div>
-                          <div className="bg-white/80 border border-stone-300 rounded-lg p-4">
+                          {/* [수정] DaySummaryPage와 동일한 스타일 적용 (배경, 테두리 없음, 그림자) */}
+                          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-sm text-blue-600 font-semibold mb-2 text-center">
+                            <p className="text-sm text-stone-900 font-bold mb-2 text-center">
                               {recommendedFood.name}
                             </p>
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-blue-600 leading-relaxed text-center">
+                            <p className="text-xs text-stone-900 leading-relaxed text-center">
                               {recommendedFood.reason}
                             </p>
                           </div>
@@ -530,11 +552,11 @@ export function EmotionAnalysisModal({
                               onMapRecommendation(); // 장소 추천 화면으로 이동
                               onClose(); // 모달 닫기
                             }}
-                            className="flex-1 px-4 py-2.5 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors shadow-md flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2.5 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition-colors shadow-none flex items-center justify-center gap-2 font-medium"
                           >
-                            <span>📍</span>
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <span className="text-sm text-blue-600">{recommendedFood.name} 맛집 추천</span>
+                            <MapPin className="w-3.5 h-3.5" />
+                            {/* 맛집 추천 버튼 텍스트: 초록색(Teal)으로 변경 (기존 유지) */}
+                            <span className="text-sm text-teal-700">{recommendedFood.name} 맛집 추천</span>
                           </button>
                         )}
                         {/* 
@@ -550,7 +572,7 @@ export function EmotionAnalysisModal({
                               onCloseToCalendar();
                             }
                           }}
-                          className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md`}
+                          className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md`}
                         >
                           닫기
                         </button>

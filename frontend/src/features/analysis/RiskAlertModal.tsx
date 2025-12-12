@@ -200,36 +200,43 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
               {/* 
                 감지된 패턴 (플로우 9.1)
               */}
-              {reasons.length > 0 && (
-                <div className={`p-4 bg-white/50 rounded-lg border ${colors.border}`}>
-                  <p className={`text-xs mb-2 font-semibold ${colors.text}`}>감지된 패턴:</p>
-                  <ul className={`space-y-2 text-xs ${colors.text}`}>
-                    {reasons.map((reason, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="mt-0.5 flex-shrink-0">•</span>
-                        <span className="flex-1">{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {/* 
+                  감지된 패턴 (플로우 9.1)
+                  - [수정] 붉은 계열로 표시하여 위험 강조
+                */}
+                {reasons.length > 0 && (
+                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-xs mb-2 font-semibold text-red-700">감지된 패턴:</p>
+                    <ul className="space-y-2 text-xs text-red-600">
+                      {reasons.map((reason, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="mt-0.5 flex-shrink-0">•</span>
+                          <span className="flex-1">{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
               {/* 
                 긴급 연락처 (플로우 9.2)
+                - [수정] 다른 칸과 비슷한 색상 유지 (테마 색상 적용)
               */}
               {riskLevel === 'high' && urgentCounselingPhones.length > 0 && (
-                <div className="p-4 bg-white border-2 border-blue-400 rounded-lg">
+                <div className={`p-4 rounded-lg border-2 ${colors.bg} ${colors.border}`}>
                   <div className="flex items-start gap-3">
-                    <Heart className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    {/* [수정] 하트 아이콘도 테마 색상 적용 */}
+                    <Heart className={`w-5 h-5 ${colors.icon} flex-shrink-0 mt-0.5`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-stone-900 mb-2">
-                        <strong>즉시 도움이 필요하시면:</strong>
+                      {/* [수정] 내부 텍스트도 테마 색상 적용 */}
+                      <p className={`text-sm mb-2 font-bold ${colors.text}`}>
+                        즉시 도움이 필요하시면:
                       </p>
-                      <div className="space-y-1.5 text-xs text-stone-800">
+                      <div className={`space-y-1.5 text-xs ${colors.text}`}>
                         {urgentCounselingPhones.map((phone, index) => (
                           <p key={index}>• <strong>{phone}</strong></p>
                         ))}
-                        <p className="text-stone-600 mt-2">※ 24시간 상담 가능</p>
+                        <p className={`mt-2 opacity-80 ${colors.text}`}>※ 24시간 상담 가능</p>
                       </div>
                     </div>
                   </div>
@@ -251,7 +258,8 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                 {/* 닫기 버튼 (플로우 9.2) */}
                 <button
                   onClick={onClose}
-                  className={`px-6 py-3 bg-white ${colors.text} rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300 font-bold`}
+                  // [수정] 닫기 텍스트 색상: 검정색 (text-stone-900)
+                  className={`px-6 py-3 bg-white text-stone-900 rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300 font-bold`}
                 >
                   닫기
                 </button>

@@ -104,10 +104,21 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   };
 
   const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    // 부모에게 선택된 날짜 변경 알림
-    if (onSelectedDateChange) {
-      onSelectedDateChange(date);
+    // 이미 선택된 날짜를 클릭하면 선택 해제 (토글)
+    if (selectedDate && 
+        date.getDate() === selectedDate.getDate() &&
+        date.getMonth() === selectedDate.getMonth() &&
+        date.getFullYear() === selectedDate.getFullYear()) {
+      setSelectedDate(null);
+      if (onSelectedDateChange) {
+        onSelectedDateChange(null);
+      }
+    } else {
+      setSelectedDate(date);
+      // 부모에게 선택된 날짜 변경 알림
+      if (onSelectedDateChange) {
+        onSelectedDateChange(date);
+      }
     }
   };
 
@@ -294,13 +305,13 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
               className="w-16 h-16 object-contain filter drop-shadow-md"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-stone-800 mb-2 line-clamp-1">{stats.title}</p>
+              <p className="text-base font-bold text-stone-900 mb-2 line-clamp-1">{stats.title}</p>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDateClick && onDateClick(date);
                 }}
-                className="text-xs text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full transition-colors shadow-sm min-h-[44px] flex items-center"
+                className="text-xs text-stone-900 bg-blue-200 hover:bg-blue-300 px-4 py-2 rounded-full transition-colors shadow-sm min-h-[44px] flex items-center font-medium"
               >
                 일기 보러가기
               </button>

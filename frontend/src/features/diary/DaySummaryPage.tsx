@@ -352,7 +352,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
     // 일반 일기 보기 모드
     return (
-      <div className="h-full w-full overflow-y-auto p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
+      <div className="h-full w-full overflow-y-auto scrollbar-hide p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
         {/* 
           Date Header (플로우 6.3)
           
@@ -383,6 +383,20 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             <div>
               <div className="text-xs text-stone-400 mb-1 font-medium">{formattedDate}</div>
               <div className="text-base text-gray-900 font-semibold whitespace-normal leading-snug pr-2">{entry.title}</div>
+              
+              {/* 활동 태그 (Header로 이동) */}
+              {entry.activities && entry.activities.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {entry.activities.map((activity, index) => (
+                    <span
+                      key={index}
+                      className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg font-medium"
+                    >
+                      {activity}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center">
               <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-14 h-14 object-contain" />
@@ -393,9 +407,125 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
 
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
-        <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
-          {entry.images && entry.images.length > 0 ? (
+
+
+        {/* Mood & Weather Card - 2 Column */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
+          </div>
+
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
+          </div>
+        </div>
+
+        {/* Activities Card */}
+
+
+        {/* AI Generated Image */}
+        {entry.imageUrl && (
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
+            <div className="relative rounded-lg overflow-hidden bg-slate-100">
+              <img 
+                src={entry.imageUrl} 
+                alt="AI Generated Diary Illustration"
+                className="w-full rounded-lg"
+                style={{
+                  maxHeight: '400px',
+                  objectFit: 'contain',
+                  objectPosition: 'center'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Content Card */}
+        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
+          <div className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap break-words" style={{ 
+            wordBreak: 'break-word', 
+            overflowWrap: 'break-word',
+            hyphens: 'auto'
+          }}>
+            {entry.content}
+          </div>
+        </div>
+
+        {/* AI Comment Card */}
+        {entry.aiComment && (
+          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
+            <div className="text-xs text-stone-800 mb-3 flex items-center gap-1.5 font-medium">
+              <span>{(() => {
+                const persona = localStorage.getItem('aiPersona') || 'friend';
+                const personaMap: { [key: string]: string } = {
+                  'friend': '💙',
+                  'parent': '🤗',
+                  'expert': '💼',
+                  'mentor': '🎯',
+                  'therapist': '🌸',
+                  'poet': '✨'
+                };
+                return personaMap[persona] || '✨';
+              })()}</span>
+              <span>{(() => {
+                const persona = localStorage.getItem('aiPersona') || 'friend';
+                const nameMap: { [key: string]: string } = {
+                  'friend': '베프',
+                  'parent': '부모님',
+                  'expert': '전문가',
+                  'mentor': '멘토',
+                  'therapist': '상담사',
+                  'poet': '시인'
+                };
+                return nameMap[persona] || '베프';
+              })()}의 코멘트</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {entry.aiComment}
+            </p>
+          </div>
+        )}
+
+        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
+        {entry.recommendedFood && (
+          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
+            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
+              <span>🍽️</span>
+              <span>AI 음식 추천</span>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-bold text-slate-800">
+                {entry.recommendedFood.name}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {entry.recommendedFood.reason}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 
+          액션 버튼 영역 (플로우 4.1, 5.2)
+          
+          일기가 있을 때 표시되는 버튼:
+          1. 수정하기 (파란색) - 플로우 4.1, 5.2
+             - 클릭 시 일기 작성 페이지로 이동
+             - 기존 일기 데이터 자동 로드
+          2. 장소 추천 (초록색) - 플로우 5.2
+             - 클릭 시 장소 추천 화면으로 이동
+             - 감정 카테고리 기반으로 주변 장소 추천 (카카오맵)
+          3. 삭제 (빨간색) - 플로우 5.2
+             - 클릭 시 삭제 확인 모달 표시
+        */}
+        {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) - 위치 이동됨: 음식 추천 아래, 버튼 위 */}
+        {entry.images && entry.images.length > 0 && (
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+            <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
             <div className="relative">
               {/* 이미지 컨테이너 - 유동적 높이 */}
               <div className="relative rounded-lg overflow-hidden bg-slate-100 w-full" style={{ minHeight: '200px' }}>
@@ -457,141 +587,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
                 )}
               </div>
             </div>
-          ) : (
-            <div className="text-xs text-slate-400 py-8 text-center">
-              이미지
-            </div>
-          )}
-        </div>
-
-        {/* Mood & Weather Card - 2 Column */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
-          </div>
-
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
-          </div>
-        </div>
-
-        {/* Activities Card */}
-        {entry.activities && entry.activities.length > 0 && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-2 font-medium">활동 태그</div>
-            <div className="flex flex-wrap gap-1.5">
-              {entry.activities.map((activity, index) => (
-                <span
-                  key={index}
-                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
-                >
-                  {activity}
-                </span>
-              ))}
-            </div>
           </div>
         )}
 
-        {/* AI Generated Image */}
-        {entry.imageUrl && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
-            <div className="relative rounded-lg overflow-hidden bg-slate-100">
-              <img 
-                src={entry.imageUrl} 
-                alt="AI Generated Diary Illustration"
-                className="w-full rounded-lg"
-                style={{
-                  maxHeight: '400px',
-                  objectFit: 'contain',
-                  objectPosition: 'center'
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Content Card */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
-          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-          <div className="text-sm text-blue-600 leading-relaxed whitespace-pre-wrap break-words" style={{ 
-            wordBreak: 'break-word', 
-            overflowWrap: 'break-word',
-            hyphens: 'auto'
-          }}>
-            {entry.content}
-          </div>
-        </div>
-
-        {/* AI Comment Card */}
-        {entry.aiComment && (
-          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
-            <div className="text-xs text-blue-700 mb-3 flex items-center gap-1.5 font-medium">
-              <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const personaMap: { [key: string]: string } = {
-                  'friend': '💙',
-                  'parent': '🤗',
-                  'expert': '💼',
-                  'mentor': '🎯',
-                  'therapist': '🌸',
-                  'poet': '✨'
-                };
-                return personaMap[persona] || '✨';
-              })()}</span>
-              <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const nameMap: { [key: string]: string } = {
-                  'friend': '베프',
-                  'parent': '부모님',
-                  'expert': '전문가',
-                  'mentor': '멘토',
-                  'therapist': '상담사',
-                  'poet': '시인'
-                };
-                return nameMap[persona] || '베프';
-              })()}의 코멘트</span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              {entry.aiComment}
-            </p>
-          </div>
-        )}
-
-        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
-        {entry.recommendedFood && (
-          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
-              <span>🍽️</span>
-              <span>AI 음식 추천</span>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-slate-800">
-                {entry.recommendedFood.name}
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {entry.recommendedFood.reason}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* 
-          액션 버튼 영역 (플로우 4.1, 5.2)
-          
-          일기가 있을 때 표시되는 버튼:
-          1. 수정하기 (파란색) - 플로우 4.1, 5.2
-             - 클릭 시 일기 작성 페이지로 이동
-             - 기존 일기 데이터 자동 로드
-          2. 장소 추천 (초록색) - 플로우 5.2
-             - 클릭 시 장소 추천 화면으로 이동
-             - 감정 카테고리 기반으로 주변 장소 추천 (카카오맵)
-          3. 삭제 (빨간색) - 플로우 5.2
-             - 클릭 시 삭제 확인 모달 표시
-        */}
         <div className="grid grid-cols-3 gap-2">
           {/* 
             수정하기 버튼 (플로우 4.1, 5.2)
@@ -637,19 +635,19 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
               // 장소 추천 화면 표시
               setShowMapRecommendation(true);
               
-              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우)
-              if (onMapRecommendation) {
-                 // emotionCategory가 없으면 계산
-                 const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
-                 // 일기 ID 전달 (장소 추천 API 호출에 사용)
-                 onMapRecommendation(entry.emotion, emotionCategory, entry.id);
-              }
+              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우) - 중복 렌더링 방지를 위해 제거
+              // if (onMapRecommendation) {
+              //    // emotionCategory가 없으면 계산
+              //    const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
+              //    // 일기 ID 전달 (장소 추천 API 호출에 사용)
+              //    onMapRecommendation(entry.emotion, emotionCategory, entry.id);
+              // }
             }}
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
           >
             <MapPin className="w-3.5 h-3.5" />
             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-            <span className="text-blue-600">
+            <span className="text-teal-700 font-medium">
               {entry.recommendedFood?.name ? `${entry.recommendedFood.name} 맛집 추천` : '맛집 추천'}
             </span>
           </button>
@@ -827,7 +825,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * - 뒤로가기 버튼 클릭 → onBackToCalendar 호출 (플로우 6.3)
    */
   return (
-    <div className="min-h-full flex flex-col overflow-y-auto py-4">
+    <div className="min-h-full flex flex-col overflow-y-auto scrollbar-hide py-4">
       {/* 
         X 버튼 (플로우 6.3)
         

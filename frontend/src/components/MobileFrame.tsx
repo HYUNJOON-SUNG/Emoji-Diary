@@ -18,13 +18,15 @@ interface MobileFrameProps {
 
 export function MobileFrame({ children }: MobileFrameProps) {
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 py-8">
+    <div 
+      className="w-full min-h-screen min-h-[700px] flex items-center justify-center bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 py-2 sm:py-8"
+    >
       {/* 모바일 프레임 컨테이너 */}
       <div 
         className="relative flex items-center justify-center shadow-2xl flex-shrink-0"
         style={{ 
           width: 'clamp(320px, 90vw, 460px)',
-          height: 'clamp(790px, 90vh, 1000px)'
+          height: 'clamp(600px, 95vh, 1000px)'
         }}
       >
         {/* 상단 노치, 스피커 등은 그대로 유지... */}

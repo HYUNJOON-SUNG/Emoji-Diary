@@ -219,9 +219,19 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     // 일기 ID 저장 (장소 추천 기능에서 사용)
     setMapDiaryId(emotionData.diaryId);
     
-    // 일기 작성 화면을 닫고 감정 분석 모달 표시
+    // 일기 작성 화면을 닫고 감정 분석 모달 표시 (플로우 변경)
+    // [수정] 바로 상세 조회로 가지 않고, 홈(캘린더) 위에서 모달 표시
+    // 모달을 닫을 때 상세 조회(reading) 화면으로 이동함 (handleCloseEmotionAnalysis 참고)
+    
+    // 1. 선택된 날짜 설정
+    setSelectedDate(emotionData.date);
+    
+    // 2. 홈 화면으로 전환 (Writing 모달 닫기)
     setViewMode('home');
+    
+    // 3. 감정 분석 모달 즉시 표시
     setShowEmotionAnalysis(true);
+    
     handleDataChange();
   };
 
@@ -230,7 +240,15 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setIsFlipping(true);
     setTimeout(() => {
       // 이전 뷰 모드가 'list'이면 목록으로 복귀, 'stats'이면 통계로 복귀, 'reading'이면 상세로 복귀
-      const targetView = previousViewMode || 'home';
+      // [수정] 일기 작성 중 취소 시:
+      // 1. 새 일기 작성 중이었다면(isEditMode === false) -> '빈 일기' 페이지(reading)가 아닌 캘린더(home)로 이동
+      // 2. 일기 수정 중이었다면(isEditMode === true) -> 원래 상세 페이지(reading)로 이동
+      let targetView = previousViewMode || 'home';
+      
+      if (!isEditMode && viewMode === 'writing') {
+        targetView = 'home';
+      }
+
       setViewMode(targetView);
       
       // 상세 화면('reading')으로 돌아갈 때는 선택된 날짜 유지
@@ -595,7 +613,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
   return (
     <div className="relative w-full h-full">
-      <MobileLayout header={header} footer={footer}>
+      {/* [수정] MobileLayout에 z-0을 부여하여 새로운 Stacking Context 생성. 
+          이로써 내부의 Calendar 이미지(transform/z-index 사용)가 Modals(z-9999) 위로 올라오는 현상 방지 */}
+      <MobileLayout header={header} footer={footer} className="relative z-0">
         <div className="relative w-full h-full">
           {/* Navigation Warning Modal - 제거됨 (DiaryWritingPage의 취소 모달 사용) */}
 
@@ -764,13 +784,16 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           <EmotionAnalysisModal 
             isOpen={showEmotionAnalysis}
             onClose={handleCloseEmotionAnalysis}
-            emotion={analysisEmotion}
+            // [수정] 모달 내부 매핑(색상, 이미지)을 위해 이모지가 아닌 한글 이름(emotionName)을 전달해야 함
+            emotion={analysisEmotionName || analysisEmotion}
             emotionName={analysisEmotionName}
             emotionCategory={analysisEmotionCategory}
             aiComment={analysisComment}
             recommendedFood={analysisRecommendedFood}
             imageUrl={analysisImageUrl}
             onMapRecommendation={handleEmotionAnalysisMapRecommendation}
+            // [수정] 모달 닫을 때 캘린더 복귀가 아닌 현재 상세 화면 유지하도록 콜백 제거 또는 수정
+            // onCloseToCalendar 콜백을 제거하면 모달만 닫히고 viewMode='reading' 유지됨
           />
         )}
         {showMapRecommendation && (

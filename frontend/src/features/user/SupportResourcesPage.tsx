@@ -352,7 +352,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              <div className="p-6 space-y-6 overflow-y-auto scrollbar-hide flex-1">
                 <div className="text-center space-y-4 pt-2">
                   <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 flex items-center justify-center mb-2">
                     <Heart className="w-6 h-6 text-blue-600" />
