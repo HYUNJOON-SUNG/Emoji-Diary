@@ -1,8 +1,8 @@
 import { useState, useRef, forwardRef, useCallback, useImperativeHandle } from 'react';
-import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X, ArrowLeft } from 'lucide-react';
+import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X, ArrowLeft, PenLine, Smile, FileText } from 'lucide-react';
 import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, DiaryDetail } from '../../services/diaryApi';
 import { uploadImage, deleteImage } from '../../services/uploadApi';
-import { apiClient } from '../../services/api';
+import { apiClient, BASE_URL } from '../../services/api';
 import { enumToPersona } from '../../utils/personaConverter';
 
 /**
@@ -416,9 +416,6 @@ export const DiaryWritingPage = forwardRef<{
     // 각 파일을 순차적으로 업로드
     const newImages: { url: string; file: File }[] = [];
 
-    // 로딩 상태 표시는 개별적으로 하기 어려우므로 전체 에러만 관리하거나
-    // 각 이미지별 로딩 상태를 관리해야 함. 여기서는 간단히 처리.
-
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -442,7 +439,19 @@ export const DiaryWritingPage = forwardRef<{
       }
     } catch (err: any) {
       console.error('이미지 업로드 실패:', err);
-      setError(err.message || '이미지 업로드에 실패했습니다.');
+
+      const errorMessage = err.message || '';
+      // 서버 연결 실패 (Connection refused, Network Error 등) 감지
+      if (
+        errorMessage.includes('Network Error') ||
+        errorMessage.includes('Connection refused') ||
+        errorMessage.includes('timeout') ||
+        !err.response // 응답이 아예 없는 경우
+      ) {
+        setError('이미지 업로드 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      } else {
+        setError(errorMessage || '이미지 업로드에 실패했습니다.');
+      }
     } finally {
       // input 초기화 (동일 파일 다시 선택 가능하도록)
       if (fileInputRef.current) {
@@ -819,36 +828,62 @@ export const DiaryWritingPage = forwardRef<{
             </div>
           </section>
 
-          {/* 2. 제목 입력 - Clean Input */}
-          <section>
+          {/* 2. 제목 입력 */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm">
+            <h3 className="text-sm font-semibold text-emerald-900/70 dark:text-emerald-100/70 mb-3 flex items-center gap-2">
+              <PenLine className="w-4 h-4" />
+              제목
+            </h3>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목을 입력하세요"
               maxLength={50}
-              className="w-full px-4 py-4 text-lg font-bold bg-white dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-stone-400 shadow-sm"
+              className="w-full px-4 py-3 text-lg font-bold bg-white dark:bg-stone-900/60 rounded-xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-stone-400"
               autoFocus={!isEditMode}
             />
           </section>
 
-          {/* 3. 본문 입력 - Large Textarea */}
-          <section className="relative">
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="오늘 하루는 어떠셨나요? 자유롭게 기록해보세요."
-              className="w-full px-5 py-5 min-h-[300px] text-base leading-relaxed bg-white dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all resize-none placeholder:text-stone-400 shadow-sm"
-              style={{ lineHeight: '1.8' }}
+          {/* 기분 입력 (선택) */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm">
+            <h3 className="text-sm font-semibold text-emerald-900/70 dark:text-emerald-100/70 mb-3 flex items-center gap-2">
+              <Smile className="w-4 h-4" />
+              기분
+            </h3>
+            <input
+              type="text"
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              placeholder="지금 기분이 어떠신가요? (선택)"
+              maxLength={20}
+              className="w-full px-4 py-3 text-base bg-white dark:bg-stone-900/60 rounded-xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-stone-400"
             />
-            {isAnalyzingEmotion && (
-              <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center z-10 transition-all">
-                <div className="bg-white dark:bg-stone-800 p-4 rounded-full shadow-2xl mb-4 animate-bounce">
-                  <Sparkles className="w-8 h-8 text-emerald-500" />
+          </section>
+
+          {/* 3. 본문 입력 */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm relative">
+            <h3 className="text-sm font-semibold text-emerald-900/70 dark:text-emerald-100/70 mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              일기 내용
+            </h3>
+            <div className="relative">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="오늘 하루는 어떠셨나요? 자유롭게 기록해보세요."
+                className="w-full px-5 py-5 min-h-[300px] text-base leading-relaxed bg-white dark:bg-stone-900/60 rounded-xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all resize-none placeholder:text-stone-400"
+                style={{ lineHeight: '1.8' }}
+              />
+              {isAnalyzingEmotion && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] rounded-xl flex flex-col items-center justify-center z-10 transition-all">
+                  <div className="bg-white dark:bg-stone-800 p-4 rounded-full shadow-2xl mb-4 animate-bounce">
+                    <Sparkles className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <p className="text-emerald-800 dark:text-emerald-200 font-medium animate-pulse">AI가 감정을 분석하고 있어요...</p>
                 </div>
-                <p className="text-emerald-800 dark:text-emerald-200 font-medium animate-pulse">AI가 감정을 분석하고 있어요...</p>
-              </div>
-            )}
+              )}
+            </div>
           </section>
 
           {/* 4. 사진 추가 (선택) */}
@@ -858,7 +893,7 @@ export const DiaryWritingPage = forwardRef<{
               사진 추가
             </h3>
 
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide select-none">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={images.length >= 5}
@@ -883,11 +918,21 @@ export const DiaryWritingPage = forwardRef<{
               />
 
               {images.map((image, index) => (
-                <div key={index} className="relative flex-shrink-0 w-24 h-24 group">
+                <div key={index} className="relative flex-shrink-0 w-24 h-24 group last:mr-2">
                   <img
-                    src={image.url}
-                    alt={`업로드된 이미지 ${index + 1}`}
-                    className="w-full h-full object-cover rounded-2xl shadow-sm border border-black/5"
+                    src={(() => {
+                      const url = image.url;
+                      if (!url) return '';
+                      if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http')) return url;
+                      try {
+                        const baseUrlObj = new URL(BASE_URL);
+                        return `${baseUrlObj.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+                      } catch (e) {
+                        return url;
+                      }
+                    })()}
+                    alt="이미지"
+                    className="w-full h-full object-cover rounded-2xl shadow-sm border border-black/5 bg-stone-100 dark:bg-stone-800 text-[10px] text-stone-400 overflow-hidden"
                   />
                   <button
                     onClick={() => handleRemoveImage(index)}

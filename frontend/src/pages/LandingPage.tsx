@@ -21,7 +21,7 @@ interface LandingPageProps {
 
 export function LandingPage({ onOpenBook }: LandingPageProps) {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-6 overflow-y-auto text-primary-foreground relative z-10">
+    <div className="w-full h-full flex flex-col items-center justify-center p-6 overflow-y-auto scrollbar-hide text-primary-foreground relative z-10">
       <div className="w-full space-y-12 flex-shrink-0">
         {/* Main Content */}
         <div className="text-center space-y-8 glass p-10 rounded-[2.5rem] shadow-2xl backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20">

@@ -682,7 +682,7 @@ export function EmotionChartView() {
 
           {/* 1. 기간 선택 (Toggle Style) */}
           <div
-            className="bg-white/40 dark:bg-black/20 backdrop-blur-sm border border-white/20 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
+            className="bg-stone-100 dark:bg-stone-800 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
             style={{ width: '280px', minWidth: '280px' }}
           >
             <button
@@ -707,7 +707,7 @@ export function EmotionChartView() {
 
           {/* 2. 차트 타입 선택 (Toggle Style) - 주간/월간 모두 표시 */}
           <div
-            className="bg-white/40 dark:bg-black/20 backdrop-blur-sm border border-white/20 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
+            className="bg-stone-100 dark:bg-stone-800 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
             style={{ width: '280px', minWidth: '280px' }}
           >
             <button

@@ -818,11 +818,11 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4 py-8 overflow-y-auto relative z-10" style={{ minHeight: 0 }}>
+    <div className="w-full h-full flex items-center justify-center p-4 py-8 overflow-y-auto scrollbar-hide relative z-10" style={{ minHeight: 0 }}>
       {/* Signup Card */}
       <div className="w-full flex-shrink-0 max-w-md">
         <div className="glass rounded-[2.5rem] shadow-2xl backdrop-blur-md bg-white/40 dark:bg-black/40 border border-white/20 overflow-hidden">
-          <div className="p-6 max-h-[85vh] overflow-y-auto space-y-6 custom-scrollbar">
+          <div className="p-6 max-h-[85vh] overflow-y-auto space-y-6 scrollbar-hide">
             {/* Header */}
             <div className="text-center space-y-3">
               <div className="w-20 h-20 mx-auto rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg ring-4 ring-white/20">

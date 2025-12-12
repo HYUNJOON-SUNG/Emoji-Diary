@@ -64,7 +64,7 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
   // 단계 1: 환영 화면
   if (step === 1) {
     return (
-      <div className="w-full h-full bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 overflow-y-auto" style={{ minHeight: 0 }}>
+      <div className="w-full h-full bg-zinc-50 dark:bg-black flex flex-col items-center justify-center p-6 overflow-y-auto scrollbar-hide" style={{ minHeight: 0 }}>
         <div className="w-full max-w-lg space-y-8 text-center flex-shrink-0">
           {/* 아이콘 */}
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-xl shadow-emerald-500/20 ring-4 ring-white/20 dark:ring-white/10">

@@ -185,7 +185,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
               <X className="w-5 h-5" />
             </button>
 
-            <div className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+            <div className="p-4 sm:p-6 space-y-6 overflow-y-auto scrollbar-hide flex-1" style={{ maxHeight: 'calc(85vh - 100px)' }}>
               {/* Icon & Title */}
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-full bg-white/70 ${colors.icon} flex-shrink-0`}>
@@ -200,23 +200,23 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
               {/* 
                 감지된 패턴 (플로우 9.1)
               */}
-                {/* 
+              {/* 
                   감지된 패턴 (플로우 9.1)
                   - [수정] 붉은 계열로 표시하여 위험 강조
                 */}
-                {reasons.length > 0 && (
-                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-xs mb-2 font-semibold text-red-700">감지된 패턴:</p>
-                    <ul className="space-y-2 text-xs text-red-600">
-                      {reasons.map((reason, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="mt-0.5 flex-shrink-0">•</span>
-                          <span className="flex-1">{reason}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+              {reasons.length > 0 && (
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-xs mb-2 font-semibold text-red-700">감지된 패턴:</p>
+                  <ul className="space-y-2 text-xs text-red-600">
+                    {reasons.map((reason, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="mt-0.5 flex-shrink-0">•</span>
+                        <span className="flex-1">{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* 
                 긴급 연락처 (플로우 9.2)

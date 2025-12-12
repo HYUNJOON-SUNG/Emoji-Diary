@@ -575,7 +575,7 @@ export async function fetchDailyStats(yearMonth: string): Promise<DailyStats[]> 
   try {
     const [year, month] = yearMonth.split('-').map(Number);
     const emotions = await fetchMonthlyEmotions(year, month - 1);
-    
+
     // 각 날짜별로 일기 상세 정보를 조회하여 제목 가져오기
     // 병렬 처리로 성능 최적화
     const statsPromises = emotions.map(async (emotion) => {
@@ -598,7 +598,7 @@ export async function fetchDailyStats(yearMonth: string): Promise<DailyStats[]> 
         };
       }
     });
-    
+
     return await Promise.all(statsPromises);
   } catch (error: any) {
     throw error;
@@ -731,7 +731,7 @@ export async function fetchChartStats(
     const end = new Date(endDate);
     const year = start.getFullYear();
     const month = start.getMonth() + 1;
-    
+
     // [백엔드 코드 확인] StatsService.getEmotionTrend
     // - weekly일 때: getDailyTrendForMonth 호출 → year와 month가 필수 (validateYearAndMonth 호출)
     // - monthly일 때: getWeeklyTrendForMonth 호출 → year와 month가 필수
@@ -747,11 +747,11 @@ export async function fetchChartStats(
 
     if (response.data.success) {
       const data = response.data.data;
-      
+
       // API 응답을 ChartDataPoint 형식으로 변환
       // dates 배열과 emotions 배열을 결합하여 날짜별 감정 데이터 생성
       const dateEmotionMap: { [date: string]: { [emotion: string]: number } } = {};
-      
+
       // 각 날짜별로 감정 카운트 집계
       // [ERD 설계서] KoBERT 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오 (7가지)
       console.log('API 응답 emotions 데이터:', data.emotions);
@@ -769,7 +769,7 @@ export async function fetchChartStats(
             total: 0,
           };
         }
-        
+
         // KoBERT 감정을 ChartDataPoint 형식으로 매핑
         // [ERD 설계서] KoBERT 감정 7가지: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
         const emotion = item.emotion;
@@ -791,14 +791,14 @@ export async function fetchChartStats(
           // 알 수 없는 감정은 로그로 기록
           console.warn('알 수 없는 감정:', emotion, 'date:', item.date);
         }
-        
+
         dateEmotionMap[item.date].total++;
       });
-      
+
       // 디버깅: 날짜별 감정 데이터 확인
       console.log('날짜별 감정 데이터 집계 결과:', dateEmotionMap);
       console.log('API 응답 dates 배열:', data.dates);
-      
+
       // dates 배열을 기준으로 ChartDataPoint 배열 생성
       // 월간일 때는 주별로 그룹화된 데이터가 올 수 있음
       const chartData = data.dates.map((date: string) => {
@@ -813,21 +813,21 @@ export async function fetchChartStats(
           disgust: 0,   // 혐오
           total: 0,
         };
-        
+
         const point = {
           date,
           displayLabel: formatDateLabel(date, type),
           ...emotionData,
         };
-        
+
         // 디버깅: 각 데이터 포인트 확인 (월간일 때만)
         if (type === 'monthly') {
           console.log(`월간 데이터 포인트 [${date}]:`, point);
         }
-        
+
         return point;
       });
-      
+
       console.log('최종 차트 데이터:', chartData);
       return chartData;
     } else {
@@ -853,15 +853,15 @@ function formatDateLabel(dateStr: string, type: 'weekly' | 'monthly'): string {
     const date = new Date(dateStr);
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
-    
+
     // 해당 날짜가 속한 주가 해당 월의 몇 번째 주인지 계산
     const firstDayOfMonth = new Date(year, date.getMonth(), 1);
     const firstDayOfWeek = firstDayOfMonth.getDay(); // 0(일) ~ 6(토)
     const dayOfMonth = date.getDate();
-    
+
     // 주차 계산: (날짜 + 첫날의 요일 오프셋) / 7 올림
     const weekOfMonth = Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
-    
+
     return `${month}월 ${weekOfMonth}주차`;
   }
 }
@@ -941,7 +941,7 @@ export interface DiarySearchResult {
 export async function searchDiaries(params: DiarySearchParams): Promise<DiarySearchResult> {
   try {
     const queryParams: any = {};
-    
+
     if (params.keyword) queryParams.keyword = params.keyword;
     if (params.startDate) queryParams.startDate = params.startDate;
     if (params.endDate) queryParams.endDate = params.endDate;

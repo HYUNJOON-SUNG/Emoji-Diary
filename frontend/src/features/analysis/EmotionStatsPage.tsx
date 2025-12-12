@@ -156,7 +156,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
           onClick={() => handleDateClick(date)}
           className={`aspect-square rounded-xl border transition-all relative group p-1 ${isToday ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''
             } ${stats
-              ? `${emotionColors[stats.emotionCategory]} border-emerald-200/50 dark:border-emerald-700/50 shadow-sm`
+              ? 'bg-white/80 dark:bg-white/5 border-emerald-200/50 dark:border-emerald-700/50 shadow-sm'
               : 'bg-white/40 dark:bg-black/20 border-white/20 dark:border-white/10 hover:bg-white/60 dark:hover:bg-white/10'
             }`}
         >
@@ -327,12 +327,12 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   return (
     <div className="min-h-full flex flex-col space-y-4">
       {/* Header - 뒤로가기 버튼 포함 */}
-      <div className="relative text-center space-y-1 pb-2 border-b border-white/20">
+      <div className="relative text-center space-y-1 pb-2 pt-6 border-b border-white/20">
         {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-6 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -401,7 +401,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
         {!isLoading && !error && viewMode !== 'chart' && (
           <div className="space-y-4">
             {viewMode === 'calendar' ? renderCalendarView() : renderTimelineView()}
