@@ -16,9 +16,6 @@ import java.util.List;
 @AllArgsConstructor
 public class UserActivityStatsResponse {
     private String period;
-    private Integer year;
-    private Integer month;
     private List<String> metrics;
     private List<UserActivityStatsItem> trend;
 }
-

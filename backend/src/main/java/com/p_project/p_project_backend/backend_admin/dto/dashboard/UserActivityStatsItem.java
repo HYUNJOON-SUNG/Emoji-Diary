@@ -15,10 +15,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserActivityStatsItem {
     private String date;
-    private Integer dau;      // 일일 활성 사용자 수
-    private Integer wau;      // 주간 활성 사용자 수
-    private Integer mau;      // 월간 활성 사용자 수
     private Integer newUsers; // 신규 가입자 수
-    private Double retentionRate; // 사용자 유지율 (백분율)
+    private Integer withdrawnUsers; // 탈퇴 사용자 수
 }
-
