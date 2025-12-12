@@ -89,6 +89,9 @@ export function useUserApp() {
       }
     }
     
+    // 세션별 위험 경고 표시 상태 초기화 (새로운 로그인 세션 시작)
+    sessionStorage.removeItem('riskAlertShown');
+    
     // 로그인 시에는 항상 다이어리로 바로 이동 (페르소나 설정 안 함)
     setAppState('diary');
   }, []);
@@ -112,6 +115,9 @@ export function useUserApp() {
         console.error('Failed to parse user data:', e);
       }
     }
+    
+    // 세션별 위험 경고 표시 상태 초기화
+    sessionStorage.removeItem('riskAlertShown');
     
     // 회원가입 직후에만 페르소나 설정 화면으로 이동
     setAppState('persona-setup');
@@ -137,6 +143,7 @@ export function useUserApp() {
   const handleLogout = useCallback(() => {
     TokenStorage.clearTokens();
     localStorage.removeItem('user');
+    sessionStorage.removeItem('riskAlertShown');
     setUser(null);
     setAppState('landing');
   }, []);

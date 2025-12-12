@@ -93,27 +93,19 @@ import { useState, useEffect } from 'react';
 import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diaryApi';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
+// HMR Force Update
 
-/**
- * KoBERT 감정 한글 → 이모지 변환 함수
- * 
- * [API 명세서 참고]
- * - API 응답에서 emotion은 한글로 반환됨: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오"
- * - UI 표시를 위해 이모지로 변환
- */
-const getEmotionEmoji = (emotion: string): string => {
-  const emotionEmojiMap: { [key: string]: string } = {
-    '행복': '😊',
-    '중립': '😐',
-    '당황': '😳',
-    '슬픔': '😢',
-    '분노': '😠',
-    '불안': '😰',
-    '혐오': '🤢',
-  };
-  // 이미 이모지인 경우 그대로 반환, 한글인 경우 변환
-  return emotionEmojiMap[emotion] || emotion || '😐';
-};
+import { getEmotionImage } from '../../utils/emotionImages';
+import { enumToPersona } from '../../utils/personaConverter';
+
+import friendIcon from '../../assets/친구.png';
+import parentIcon from '../../assets/부모님.png';
+import expertIcon from '../../assets/전문가.png';
+import mentorIcon from '../../assets/멘토.png';
+import therapistIcon from '../../assets/상담사.png';
+import poetIcon from '../../assets/시인.png';
+
+
 
 /**
  * 감정 한글 → 카테고리 변환 함수
@@ -332,12 +324,11 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
     );
   }
 
-  const formattedDate = selectedDate.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  });
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth() + 1;
+  const day = selectedDate.getDate();
+  const weekday = selectedDate.toLocaleDateString('ko-KR', { weekday: 'long' });
+  const formattedDate = `${year}. ${month}. ${day}. ${weekday}`;
 
   if (isLoading) {
     return (
@@ -369,7 +360,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
     // 일반 일기 보기 모드
     return (
-      <div className="h-full w-full overflow-y-auto p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
+      <div className="h-full w-full overflow-y-auto scrollbar-hide p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
         {/* 
           Date Header (플로우 6.3)
           
@@ -398,24 +389,168 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           
           <div className="flex items-start justify-between pr-10 pl-10">
             <div>
-              <div className="text-xs text-gray-500 mb-1 font-medium">오늘의 일기</div>
-              <div className="text-base text-gray-900 font-semibold">{formattedDate}</div>
+              <div className="text-xs text-stone-400 mb-1 font-medium">{formattedDate}</div>
+              <div className="text-base text-gray-900 font-semibold whitespace-normal leading-snug pr-2">{entry.title}</div>
+              
+              {/* 활동 태그 (Header로 이동) */}
+              {entry.activities && entry.activities.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {entry.activities.map((activity, index) => (
+                    <span
+                      key={index}
+                      className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg font-medium"
+                    >
+                      {activity}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center">
-              <span className="text-5xl">{getEmotionEmoji(entry.emotion)}</span>
+              <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-14 h-14 object-contain" />
             </div>
           </div>
         </div>
 
-        {/* Title Card */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-gray-900 font-semibold text-lg">{entry.title}</h3>
-        </div>
+
 
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
-        <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
-          {entry.images && entry.images.length > 0 ? (
+
+
+        {/* Mood & Weather Card - 2 Column */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
+          </div>
+
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
+            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
+          </div>
+        </div>
+
+        {/* Activities Card */}
+
+
+        {/* AI Generated Image */}
+        {entry.imageUrl && (
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
+            <div className="relative rounded-lg overflow-hidden bg-slate-100">
+              <img 
+                src={entry.imageUrl} 
+                alt="AI Generated Diary Illustration"
+                className="w-full rounded-lg"
+                style={{
+                  maxHeight: '400px',
+                  objectFit: 'contain',
+                  objectPosition: 'center'
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Content Card */}
+        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
+          <div className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap break-words" style={{ 
+            wordBreak: 'break-word', 
+            overflowWrap: 'break-word',
+            hyphens: 'auto'
+          }}>
+            {entry.content}
+          </div>
+        </div>
+
+        {/* AI Comment Card */}
+        {entry.aiComment && (
+          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
+            <div className="text-xs text-stone-800 mb-3 flex items-center gap-1.5 font-medium">
+              <span>{(() => {
+                // 1. 일기에 저장된 페르소나 (Enum String: 'BEST_FRIEND') -> 한글 변환
+                // 2. 없으면 현재 사용자 설정 (localStorage 'user') -> 이미 한글
+                // 3. 없으면 기본값 '베프'
+                
+                let currentPersona = '베프';
+                if (entry.persona) {
+                   currentPersona = enumToPersona(entry.persona);
+                } else {
+                   const userStr = localStorage.getItem('user');
+                   if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                   }
+                }
+
+                const personaImageMap: { [key: string]: string } = {
+                  '베프': friendIcon,
+                  '부모님': parentIcon,
+                  '전문가': expertIcon,
+                  '멘토': mentorIcon,
+                  '상담사': therapistIcon,
+                  '시인': poetIcon
+                };
+                const imageSrc = personaImageMap[currentPersona] || friendIcon;
+
+                return <img src={imageSrc} alt={currentPersona} className="w-5 h-5 object-contain" />;
+              })()}</span>
+              <span>{(() => {
+                let currentPersona = '베프';
+                if (entry.persona) {
+                   currentPersona = enumToPersona(entry.persona);
+                } else {
+                   const userStr = localStorage.getItem('user');
+                   if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                   }
+                }
+                return currentPersona;
+              })()}의 코멘트</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {entry.aiComment}
+            </p>
+          </div>
+        )}
+
+        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
+        {entry.recommendedFood && (
+          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
+            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
+              <span>🍽️</span>
+              <span>AI 음식 추천</span>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-bold text-slate-800">
+                {entry.recommendedFood.name}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {entry.recommendedFood.reason}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 
+          액션 버튼 영역 (플로우 4.1, 5.2)
+          
+          일기가 있을 때 표시되는 버튼:
+          1. 수정하기 (파란색) - 플로우 4.1, 5.2
+             - 클릭 시 일기 작성 페이지로 이동
+             - 기존 일기 데이터 자동 로드
+          2. 장소 추천 (초록색) - 플로우 5.2
+             - 클릭 시 장소 추천 화면으로 이동
+             - 감정 카테고리 기반으로 주변 장소 추천 (카카오맵)
+          3. 삭제 (빨간색) - 플로우 5.2
+             - 클릭 시 삭제 확인 모달 표시
+        */}
+        {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) - 위치 이동됨: 음식 추천 아래, 버튼 위 */}
+        {entry.images && entry.images.length > 0 && (
+          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+            <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
             <div className="relative">
               {/* 이미지 컨테이너 - 유동적 높이 */}
               <div className="relative rounded-lg overflow-hidden bg-slate-100 w-full" style={{ minHeight: '200px' }}>
@@ -477,141 +612,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
                 )}
               </div>
             </div>
-          ) : (
-            <div className="text-xs text-slate-400 py-8 text-center">
-              이미지
-            </div>
-          )}
-        </div>
-
-        {/* Mood & Weather Card - 2 Column */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
-          </div>
-
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
-          </div>
-        </div>
-
-        {/* Activities Card */}
-        {entry.activities && entry.activities.length > 0 && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-2 font-medium">활동 태그</div>
-            <div className="flex flex-wrap gap-1.5">
-              {entry.activities.map((activity, index) => (
-                <span
-                  key={index}
-                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
-                >
-                  {activity}
-                </span>
-              ))}
-            </div>
           </div>
         )}
 
-        {/* AI Generated Image */}
-        {entry.imageUrl && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
-            <div className="relative rounded-lg overflow-hidden bg-slate-100">
-              <img 
-                src={entry.imageUrl} 
-                alt="AI Generated Diary Illustration"
-                className="w-full rounded-lg"
-                style={{
-                  maxHeight: '400px',
-                  objectFit: 'contain',
-                  objectPosition: 'center'
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Content Card */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
-          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-          <div className="text-sm text-blue-600 leading-relaxed whitespace-pre-wrap break-words" style={{ 
-            wordBreak: 'break-word', 
-            overflowWrap: 'break-word',
-            hyphens: 'auto'
-          }}>
-            {entry.content}
-          </div>
-        </div>
-
-        {/* AI Comment Card */}
-        {entry.aiComment && (
-          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
-            <div className="text-xs text-blue-700 mb-3 flex items-center gap-1.5 font-medium">
-              <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const personaMap: { [key: string]: string } = {
-                  'friend': '💙',
-                  'parent': '🤗',
-                  'expert': '💼',
-                  'mentor': '🎯',
-                  'therapist': '🌸',
-                  'poet': '✨'
-                };
-                return personaMap[persona] || '✨';
-              })()}</span>
-              <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const nameMap: { [key: string]: string } = {
-                  'friend': '베프',
-                  'parent': '부모님',
-                  'expert': '전문가',
-                  'mentor': '멘토',
-                  'therapist': '상담사',
-                  'poet': '시인'
-                };
-                return nameMap[persona] || '베프';
-              })()}의 코멘트</span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              {entry.aiComment}
-            </p>
-          </div>
-        )}
-
-        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
-        {entry.recommendedFood && (
-          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
-              <span>🍽️</span>
-              <span>AI 음식 추천</span>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium text-slate-800">
-                {entry.recommendedFood.name}
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {entry.recommendedFood.reason}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* 
-          액션 버튼 영역 (플로우 4.1, 5.2)
-          
-          일기가 있을 때 표시되는 버튼:
-          1. 수정하기 (파란색) - 플로우 4.1, 5.2
-             - 클릭 시 일기 작성 페이지로 이동
-             - 기존 일기 데이터 자동 로드
-          2. 장소 추천 (초록색) - 플로우 5.2
-             - 클릭 시 장소 추천 화면으로 이동
-             - 감정 카테고리 기반으로 주변 장소 추천 (카카오맵)
-          3. 삭제 (빨간색) - 플로우 5.2
-             - 클릭 시 삭제 확인 모달 표시
-        */}
         <div className="grid grid-cols-3 gap-2">
           {/* 
             수정하기 버튼 (플로우 4.1, 5.2)
@@ -657,19 +660,19 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
               // 장소 추천 화면 표시
               setShowMapRecommendation(true);
               
-              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우)
-              if (onMapRecommendation) {
-                 // emotionCategory가 없으면 계산
-                 const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
-                 // 일기 ID 전달 (장소 추천 API 호출에 사용)
-                 onMapRecommendation(entry.emotion, emotionCategory, entry.id);
-              }
+              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우) - 중복 렌더링 방지를 위해 제거
+              // if (onMapRecommendation) {
+              //    // emotionCategory가 없으면 계산
+              //    const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
+              //    // 일기 ID 전달 (장소 추천 API 호출에 사용)
+              //    onMapRecommendation(entry.emotion, emotionCategory, entry.id);
+              // }
             }}
             className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
           >
             <MapPin className="w-3.5 h-3.5" />
             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-            <span className="text-blue-600">
+            <span className="text-teal-700 font-medium">
               {entry.recommendedFood?.name ? `${entry.recommendedFood.name} 맛집 추천` : '맛집 추천'}
             </span>
           </button>
@@ -847,7 +850,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
    * - 뒤로가기 버튼 클릭 → onBackToCalendar 호출 (플로우 6.3)
    */
   return (
-    <div className="min-h-full flex flex-col overflow-y-auto py-4">
+    <div className="min-h-full flex flex-col overflow-y-auto scrollbar-hide py-4">
       {/* 
         X 버튼 (플로우 6.3)
         

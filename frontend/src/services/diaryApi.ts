@@ -81,6 +81,7 @@ export interface DiaryDetail {
     name: string; // 추천 음식 이름
     reason: string; // 추천 근거
   };
+  persona?: string; // 작성 당시 페르소나 (Backend Enum: BEST_FRIEND, POET, ...)
   createdAt?: string; // 생성일시 (ERD: Diaries.created_at, DATETIME, ISO 8601 형식)
   updatedAt?: string; // 수정일시 (ERD: Diaries.updated_at, DATETIME, ISO 8601 형식)
 }
@@ -157,18 +158,7 @@ function getImageUrl(url: string | undefined): string | undefined {
   return `${baseUrlOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-/**
- * 감정 이모지 매핑 (캘린더 표시용)
- */
-const emotionEmojiMap: { [key: string]: string } = {
-  '행복': '😊',
-  '중립': '😐',
-  '당황': '😳',
-  '슬픔': '😢',
-  '분노': '😠',
-  '불안': '😰',
-  '혐오': '🤢',
-};
+
 
 /**
  * 감정 카테고리 매핑
@@ -231,7 +221,7 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
       // API 응답을 EmotionData 형식으로 변환
       return diaries.map((diary: { date: string; emotion: string }) => ({
         date: diary.date,
-        emotion: emotionEmojiMap[diary.emotion] || diary.emotion, // 한글 감정을 이모지로 변환 ("행복" -> "😊")
+        emotion: diary.emotion,
         emotionCategory: getEmotionCategory(diary.emotion),
       }));
     } else {
@@ -239,7 +229,7 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -285,7 +275,7 @@ export async function fetchDiaryById(diaryId: string): Promise<DiaryDetail | nul
       return null;
     }
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -339,7 +329,7 @@ export async function fetchDiaryDetails(date: string): Promise<DiaryDetail | nul
       return null;
     }
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -427,7 +417,7 @@ export async function createDiary(data: CreateDiaryRequest): Promise<DiaryDetail
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -505,7 +495,7 @@ export async function updateDiary(id: string, date: string, data: UpdateDiaryReq
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     if (error.response?.status === 404) {
@@ -538,7 +528,7 @@ export async function deleteDiary(id: string, date: string): Promise<void> {
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     if (error.response?.status === 404) {
@@ -691,7 +681,7 @@ export async function fetchRecentDiaries(startDate: string, endDate: string): Pr
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
@@ -845,7 +835,7 @@ export async function fetchChartStats(
     }
   } catch (error: any) {
     if (error.response?.status === 401) {
-      window.location.href = '/login';
+      window.location.href = '/';
       throw new Error('로그인이 필요합니다.');
     }
     throw error;
