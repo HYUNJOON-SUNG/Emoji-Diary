@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
+import { useState, useRef, forwardRef, useCallback, useImperativeHandle } from 'react';
 import { Sparkles, Loader2, Calendar, Plus, Tag, Image as ImageIcon, X, ArrowLeft } from 'lucide-react';
 import { createDiary, updateDiary, CreateDiaryRequest, UpdateDiaryRequest, DiaryDetail } from '../../services/diaryApi';
 import { uploadImage, deleteImage } from '../../services/uploadApi';
-import { BASE_URL } from '../../services/api';
-import { theme } from '../../styles/theme';
 import { apiClient } from '../../services/api';
 import { enumToPersona } from '../../utils/personaConverter';
 
@@ -71,8 +69,6 @@ interface DiaryWritingPageProps {
   }) => void;
   /** 취소 버튼 클릭 시 콜백 (캘린더로 돌아가기 또는 상세보기로) */
   onCancel: () => void;
-  /** 하단 내비게이션 바를 통한 취소 확인 시 콜백 (페이지 이동용) */
-  onNavigationCancel?: () => Promise<void>;
   /** AI 이미지 생성 함수 (나노바나나 API) - 새 작성 시만 사용 */
   onGenerateImage?: (content: string, emotion: string, weather?: string) => Promise<string>;
   /** 장소 추천 콜백 */
@@ -96,81 +92,68 @@ interface DiaryWritingPageProps {
     aiImage?: string;
     persona?: string; // 백엔드 Enum (BEST_FRIEND, etc.)
   };
+  /** 내비게이션 취소 핸들러 (선택) */
+  onNavigationCancel?: () => Promise<void>;
 }
 
 // DiaryWritingPage를 forwardRef로 감싸서 부모 컴포넌트에서 메서드 호출 가능하게 함
-export const DiaryWritingPage = forwardRef<{ 
+export const DiaryWritingPage = forwardRef<{
   handleNavigationCancel: () => Promise<void>;
   showCancelModal: () => void; // 하단 내비게이션 바 클릭 시 모달 표시용
-}, DiaryWritingPageProps>(({ 
-  selectedDate, 
-  onFinish, 
-  onCancel, 
-  onGenerateImage, 
-  onMapRecommendation, 
-  onWritingComplete, 
+  hasChanges: boolean;
+}, DiaryWritingPageProps>(({
+  selectedDate,
+  onFinish,
+  onCancel,
+  onWritingComplete,
   onSaveSuccess,
   isEditMode = false,
   existingDiary,
   onNavigationCancel
 }, ref) => {
   // ========== 기본 입력 상태 ==========
-  
+
   /** 제목 (필수) */
   const [title, setTitle] = useState(existingDiary?.title || '');
-  
-  /**
-   * KoBERT 감정 분석 결과 (플로우 3.3, 4.3)
-   * - 일기 저장 시 KoBERT API로 자동 분석됨
-   * - 수정 모드: 기존 일기의 감정 정보 (이모지 형식)
-   * - 새 작성 모드: null (저장 시 분석됨)
-   */
-  const [kobertEmotion, setKobertEmotion] = useState<string | null>(() => {
-    // 수정 모드: 기존 일기의 감정 이모지 사용
-    if (existingDiary?.emotion) {
-      return existingDiary.emotion;
-    }
-    return null;
-  });
-  
-  /** 기분 입력 (선택) */
+
+  /** 기분 (선택) */
   const [mood, setMood] = useState(existingDiary?.mood || '');
-  
+
   /** 날씨 선택 (선택) - 기본값: 맑음 */
   const [weather, setWeather] = useState<string>(existingDiary?.weather || '맑음');
-  
+
   /** 활동 목록 (선택) */
   const [activities, setActivities] = useState<string[]>(existingDiary?.activities || []);
-  
+
   /** 활동 입력 필드 */
   const [activityInput, setActivityInput] = useState('');
-  
+
   /** 이미지 목록 (선택) */
   const [images, setImages] = useState<{ url: string; file?: File }[]>(existingDiary?.images?.map(url => ({ url })) || []);
-  
+
   /** 본문 (필수) */
   const [content, setContent] = useState(existingDiary?.content || '');
-  
+
   /** 삭제할 이미지 URL 목록 (수정 모드에서 사용, 저장 시 일괄 삭제) */
   const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]);
-  
+
   // ========== UI 상태 ==========
-  
+
   /** 저장 중 로딩 상태 */
   const [isSaving, setIsSaving] = useState(false);
-  
+
   /** KoBERT 감정 분석 중 (백엔드 AI 처리 중) */
   const [isAnalyzingEmotion, setIsAnalyzingEmotion] = useState(false);
-  
+
   /** 에러 메시지 */
   const [error, setError] = useState('');
-  
+
   /** 파일 input ref */
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   /** 취소 확인 모달 표시 여부 (플로우 3.5) */
   const [showCancelModal, setShowCancelModal] = useState(false);
-  
+
   /**
    * 북마크 내비게이션 이동 시 이미지 삭제 처리 (요구사항 10)
    * handleCancelConfirm과 동일한 로직 사용
@@ -181,7 +164,7 @@ export const DiaryWritingPage = forwardRef<{
       // 플로우 4.4: 수정 모드 - 새로 추가한 이미지만 삭제
       const existingImageUrls = existingDiary.images || [];
       const newImages = images.filter(img => !existingImageUrls.includes(img.url));
-      
+
       if (newImages.length > 0) {
         try {
           for (const image of newImages) {
@@ -222,29 +205,29 @@ export const DiaryWritingPage = forwardRef<{
       }
     }
   };
-  
+
   // ref를 통해 부모 컴포넌트에서 handleNavigationCancel 호출 가능하게 함
   // useCallback으로 감싸서 의존성 배열 최적화
   const handleNavigationCancelMemoized = useCallback(async () => {
     await handleNavigationCancel();
   }, [images, isEditMode, existingDiary]);
-  
+
   // ========== 변경 감지 (Dirty Check) ==========
 
   const isDirty = (() => {
     // 1. 이미지 목록 비교
     const currentImageUrls = images.map(img => img.url);
     const initialImageUrls = existingDiary?.images || [];
-    
-    const isImagesChanged = 
+
+    const isImagesChanged =
       currentImageUrls.length !== initialImageUrls.length ||
       !currentImageUrls.every((url, index) => url === initialImageUrls[index]);
 
     // 2. 활동 목록 비교
     const currentActivities = activities;
     const initialActivities = existingDiary?.activities || [];
-    
-    const isActivitiesChanged = 
+
+    const isActivitiesChanged =
       currentActivities.length !== initialActivities.length ||
       !currentActivities.every((act, index) => act === initialActivities[index]);
 
@@ -279,21 +262,21 @@ export const DiaryWritingPage = forwardRef<{
     },
     hasChanges: isDirty
   }), [handleNavigationCancelMemoized, isDirty]);
-  
+
   // ========== 유효성 검증 ==========
-  
+
   /**
    * 필수 항목 검증 (플로우 3.3)
    * - 제목: 빈 값이 아닐 것
    * - 본문: 빈 값이 아닐 것
    * - 감정: KoBERT 자동 분석되므로 검증 불필요
    */
-  const isValid = 
-    title.trim() !== '' && 
+  const isValid =
+    title.trim() !== '' &&
     content.trim() !== '';
-  
+
   // ========== 이벤트 핸들러 ==========
-  
+
   /**
    * 취소 버튼 클릭 핸들러 (플로우 3.5, 4.4)
    * 
@@ -307,7 +290,7 @@ export const DiaryWritingPage = forwardRef<{
       onCancel();
     }
   };
-  
+
   /**
    * 취소 확인 핸들러 (플로우 3.5, 4.4)
    * 
@@ -328,36 +311,43 @@ export const DiaryWritingPage = forwardRef<{
   const handleCancelConfirm = async () => {
     // 수정 모드: 취소 시, '새로 추가된 이미지'는 삭제해야 함.
     // 기존 이미지는 건드리지 않음. (deletedImageUrls에 있는 것도 복구=무시)
-    
+
     // 삭제 대상: images에 있는 것 중 '새로 추가된 것' (기존에 없던 것)
     // AND deletedImageUrls에 있는 것 중 '새로 추가된 것' (추가했다가 지운 것) -> 이것도 지워야 함 (서버에 업로드되어 있으므로)
-    
+
     const initialRemoteUrls = existingDiary?.images || [];
-    
+
     // 1. 현재 목록에 있는 새 이미지들
     const newImagesInList = images
-       .map(img => img.url)
-       .filter(url => url && !url.startsWith('blob:') && !initialRemoteUrls.includes(url));
-       
+      .map(img => img.url)
+      .filter(url => url && !url.startsWith('blob:') && !initialRemoteUrls.includes(url));
+
     // 2. 추가했다가 삭제 목록으로 간 새 이미지들
     const newImagesInDeleted = deletedImageUrls
-       .filter(url => !initialRemoteUrls.includes(url));
-       
+      .filter(url => !initialRemoteUrls.includes(url));
+
     const allNewImagesToDelete = [...newImagesInList, ...newImagesInDeleted];
-    
+
     if (allNewImagesToDelete.length > 0) {
       console.log('[작성 취소] 새로 추가된 이미지 정리:', allNewImagesToDelete);
       for (const url of allNewImagesToDelete) {
         try {
-           await deleteImage({ imageUrl: url });
-        } catch(e) { console.error('이미지 정리 실패:', e); }
+          await deleteImage({ imageUrl: url });
+        } catch (e) { console.error('이미지 정리 실패:', e); }
       }
     }
-    
+
     setShowCancelModal(false);
-    onCancel(); // 캘린더 또는 상세보기로 이동
+
+    // 만약 북마크 내비게이션 취소인 경우 (onNavigationCancel이 존재)
+    if (onNavigationCancel) {
+      // 비동기 처리여도 모달 닫고 바로 실행
+      onNavigationCancel();
+    } else {
+      onCancel(); // 캘린더 또는 상세보기로 이동
+    }
   };
-  
+
   /**
    * 활동 추가 핸들러 (플로우 3.2)
    * 
@@ -376,7 +366,7 @@ export const DiaryWritingPage = forwardRef<{
       setActivityInput('');
     }
   };
-  
+
   /**
    * 활동 삭제 핸들러 (플로우 3.2)
    * 
@@ -385,7 +375,7 @@ export const DiaryWritingPage = forwardRef<{
   const handleRemoveActivity = (index: number) => {
     setActivities(activities.filter((_, i) => i !== index));
   };
-  
+
   /**
    * 이미지 업로드 핸들러 (플로우 3.2)
    * 
@@ -416,7 +406,7 @@ export const DiaryWritingPage = forwardRef<{
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    
+
     // 최대 이미지 개수 제한 (예: 5장)
     if (images.length + files.length > 5) {
       setError('이미지는 최대 5장까지 업로드할 수 있습니다.');
@@ -425,14 +415,14 @@ export const DiaryWritingPage = forwardRef<{
 
     // 각 파일을 순차적으로 업로드
     const newImages: { url: string; file: File }[] = [];
-    
+
     // 로딩 상태 표시는 개별적으로 하기 어려우므로 전체 에러만 관리하거나
     // 각 이미지별 로딩 상태를 관리해야 함. 여기서는 간단히 처리.
-    
+
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // 이미지 파일 검증
         if (!file.type.startsWith('image/')) {
           setError('이미지 파일만 업로드 가능합니다.');
@@ -445,7 +435,7 @@ export const DiaryWritingPage = forwardRef<{
         const url = response.imageUrl;
         newImages.push({ url, file });
       }
-      
+
       if (newImages.length > 0) {
         setImages(prev => [...prev, ...newImages]);
         setError('');
@@ -460,7 +450,7 @@ export const DiaryWritingPage = forwardRef<{
       }
     }
   };
-  
+
   /**
    * 이미지 삭제 핸들러 (플로우 3.2)
    * 
@@ -476,17 +466,17 @@ export const DiaryWritingPage = forwardRef<{
    */
   const handleRemoveImage = (index: number) => {
     const imageToRemove = images[index];
-    
+
     // 이미 서버에 있는 이미지(URL)라면 삭제 대기 목록에 추가 (API 호출 지연)
     if (imageToRemove.url && !imageToRemove.url.startsWith('blob:') && !imageToRemove.url.startsWith('data:')) {
-       console.log('[이미지 삭제] 삭제 대기 목록에 추가:', imageToRemove.url);
-       setDeletedImageUrls(prev => [...prev, imageToRemove.url]);
+      console.log('[이미지 삭제] 삭제 대기 목록에 추가:', imageToRemove.url);
+      setDeletedImageUrls(prev => [...prev, imageToRemove.url]);
     }
-    
+
     // 화면 목록에서 제거
     setImages(images.filter((_, i) => i !== index));
   };
-  
+
   /**
    * 위험 신호 분석 및 세션 저장
    * 
@@ -574,20 +564,20 @@ export const DiaryWritingPage = forwardRef<{
    */
   const handleSave = async () => {
     if (!isValid || !selectedDate) return;
-    
+
     setIsSaving(true);
     setIsAnalyzingEmotion(true);
     setError('');
-    
+
     try {
       // [API 명세서 Section 4.1, 4.2]
       // KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천은 모두 백엔드에서 자동으로 처리됩니다.
       // 프론트엔드는 일기 저장 API 호출 시 백엔드가 AI 서버와 통신하여 처리하고,
       // 응답에 emotion, imageUrl, aiComment, recommendedFood가 포함되어 반환됩니다.
-      
+
       // 로딩 상태 표시 (백엔드에서 AI 처리 중)
       setIsAnalyzingEmotion(true);
-      
+
       // 3. 사용자 업로드 이미지 URL 목록 준비
       // [API 명세서 Section 9.1]
       // 이미지 업로드는 handleImageUpload에서 이미 처리되었으므로,
@@ -595,54 +585,54 @@ export const DiaryWritingPage = forwardRef<{
       const imageUrls: string[] = images
         .map(image => image.url)
         .filter((url): url is string => !!url && !url.startsWith('blob:'));
-      
+
       // 4. 일기 저장 API 호출 (플로우 3.3, 4.3)
       // [API 명세서 Section 4.1, 4.2]
       // 백엔드가 자동으로 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성 처리
       // 로컬 시간대로 날짜 변환 (UTC 시간대 문제 방지)
       const dateKey = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-      
+
       let savedDiary: DiaryDetail | null = null;
-      
+
       // 수정 모드일 경우 변경 사항 확인 (플로우 4.3 최적화)
       if (isEditMode) {
         // 1. 컨텐츠 변경 여부 (Dirty Check) - 이미 계산됨 (isDirty)
-        
+
         // 2. 페르소나 변경 여부 확인
         let isPersonaChanged = false;
         if (existingDiary?.persona) {
-           const savedPersonaKorean = enumToPersona(existingDiary.persona);
-           const userStr = localStorage.getItem('user');
-           let currentPersonaKorean = '베프'; // 기본값
-           if (userStr) {
-              const user = JSON.parse(userStr);
-              currentPersonaKorean = user.persona || '베프';
-           }
-           
-           if (savedPersonaKorean !== currentPersonaKorean) {
-              isPersonaChanged = true;
-           }
+          const savedPersonaKorean = enumToPersona(existingDiary.persona);
+          const userStr = localStorage.getItem('user');
+          let currentPersonaKorean = '베프'; // 기본값
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            currentPersonaKorean = user.persona || '베프';
+          }
+
+          if (savedPersonaKorean !== currentPersonaKorean) {
+            isPersonaChanged = true;
+          }
         }
-        
+
         // 변경 사항이 없고 페르소나도 변경되지 않았으면 API 호출 없이 뒤로가기
         if (!isDirty && !isPersonaChanged) {
-           console.log('변경 사항 없음, 업데이트 건너뜀');
-           onCancel(); // 상세 보기로 복귀
-           setIsSaving(false);
-           setIsAnalyzingEmotion(false);
-           return;
+          console.log('변경 사항 없음, 업데이트 건너뜀');
+          onCancel(); // 상세 보기로 복귀
+          setIsSaving(false);
+          setIsAnalyzingEmotion(false);
+          return;
         }
       }
-      
+
       if (isEditMode) {
         // 수정 모드 (플로우 4.3)
         if (!existingDiary?.id) {
           throw new Error('일기 ID가 없습니다. 수정할 수 없습니다.');
         }
-        
+
         if (deletedImageUrls.length > 0) {
-           console.log('삭제 대기 중인 이미지 일괄 삭제:', deletedImageUrls);
-           await Promise.all(deletedImageUrls.map(url => deleteImage({ imageUrl: url }).catch(e => console.warn('이미지 삭제 실패(무시):', e))));
+          console.log('삭제 대기 중인 이미지 일괄 삭제:', deletedImageUrls);
+          await Promise.all(deletedImageUrls.map(url => deleteImage({ imageUrl: url }).catch(e => console.warn('이미지 삭제 실패(무시):', e))));
         }
 
         const updateRequest: UpdateDiaryRequest = {
@@ -654,7 +644,7 @@ export const DiaryWritingPage = forwardRef<{
           images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
           // imageUrl 필드는 제거됨 (백엔드가 자동으로 재생성)
         };
-        
+
         // PUT /api/diaries/{diaryId}
         // API 명세서: diaryId는 숫자 (BIGINT)
         // 백엔드가 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성 처리
@@ -673,19 +663,19 @@ export const DiaryWritingPage = forwardRef<{
           images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
           // emotion, imageUrl 필드는 제거됨 (백엔드가 자동으로 생성)
         };
-        
+
         // POST /api/diaries
         // 백엔드가 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성 처리
         savedDiary = await createDiary(createRequest);
         console.log('일기 저장 완료:', savedDiary);
       }
-      
+
       // 5. 저장 완료 후 처리
       // 백엔드 응답에서 emotion, imageUrl, aiComment, recommendedFood를 받음
       if (onWritingComplete && selectedDate) {
         onWritingComplete(selectedDate);
       }
-      
+
       // 6. 위험 신호 점수 계산 및 백엔드 전송 (비동기 처리, 에러 발생해도 일기 저장은 성공)
       // [프론트엔드 구현] 일기 작성/수정 후 위험 신호 점수 계산
       try {
@@ -694,7 +684,7 @@ export const DiaryWritingPage = forwardRef<{
         console.error('위험 신호 점수 계산 실패:', riskError);
         // 위험 신호 점수 계산 실패해도 일기 저장은 성공한 것으로 처리
       }
-      
+
       if (isEditMode && onSaveSuccess) {
         // 수정 모드: 바로 상세보기로 이동 (플로우 4.3)
         onSaveSuccess(dateKey);
@@ -713,20 +703,20 @@ export const DiaryWritingPage = forwardRef<{
           diaryId: savedDiary.id, // 일기 ID 전달 (장소 추천 기능에서 사용)
         });
       }
-      
+
     } catch (err: any) {
       console.error('일기 저장 실패:', err);
-      
+
       // AI 서버 오류 감지 및 처리
       const errorMessage = err?.message || '';
-      const isAIServerError = 
-        errorMessage.includes('AI') || 
-        errorMessage.includes('서버') || 
+      const isAIServerError =
+        errorMessage.includes('AI') ||
+        errorMessage.includes('서버') ||
         errorMessage.includes('timeout') ||
         errorMessage.includes('ECONNREFUSED') ||
         err?.response?.status === 503 ||
         err?.response?.status === 502;
-      
+
       if (isAIServerError) {
         setError('AI 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요. (AI 이미지 생성, 코멘트 생성, 음식 추천 기능이 일시적으로 사용 불가능할 수 있습니다.)');
       } else if (err?.response?.status === 401) {
@@ -744,51 +734,50 @@ export const DiaryWritingPage = forwardRef<{
       setIsAnalyzingEmotion(false);
     }
   };
-  
+
   // ========== 날짜 포맷팅 ==========
-  const formattedDate = selectedDate 
-    ? selectedDate.toLocaleDateString('ko-KR', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        weekday: 'long'
-      })
+  const formattedDate = selectedDate
+    ? selectedDate.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    })
     : '';
-  
+
   // ========== 렌더링 ==========
-  
+
   return (
-    <div className="flex flex-col h-full w-full bg-white"> {/* 전체 화면 모달 */}
+    <div className="flex flex-col h-full w-full bg-[#FAFAF9] dark:bg-stone-950"> {/* 전체 화면 모달 */}
       {/* 상단 헤더 - 고정 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-        {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-stone-900/80 backdrop-blur-xl border-b border-emerald-100/50 dark:border-emerald-900/30 px-4 py-3 flex items-center justify-between shadow-sm">
+        {/* 뒤로가기 버튼 */}
         <button
           onClick={handleCancelClick}
           disabled={isSaving}
-          className="text-blue-600 hover:text-blue-700 transition-colors px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="p-2 -ml-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-stone-600 dark:text-stone-300"
           aria-label="뒤로가기"
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
-        
-        {/* 제목 타이틀 수정: 파란색 -> 검정색 */}
-        <h1 className="text-lg text-stone-900 font-bold">
+
+        {/* 제목 타이틀 */}
+        <h1 className="text-lg text-emerald-950 dark:text-emerald-50 font-bold">
           {isEditMode ? '일기 수정' : '일기 작성'}
         </h1>
-        
+
         <button
           onClick={handleSave}
           disabled={!isValid || isSaving || isAnalyzingEmotion}
-          className={`px-4 py-2 rounded-lg transition-all min-h-[44px] flex items-center gap-2 ${
-            isValid && !isSaving && !isAnalyzingEmotion
-              ? 'bg-blue-500 text-white hover:bg-blue-600' // 활동 태그 추가 버튼과 동일한 색상으로 변경
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-          }`}
+          className={`px-4 py-2 rounded-xl transition-all min-h-[40px] flex items-center gap-2 font-medium shadow-sm ${isValid && !isSaving && !isAnalyzingEmotion
+            ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white hover:shadow-emerald-500/20 hover:shadow-lg active:scale-95'
+            : 'bg-stone-200 dark:bg-stone-800 text-stone-400 cursor-not-allowed'
+            }`}
         >
           {isAnalyzingEmotion || isSaving ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              {isAnalyzingEmotion ? 'AI 처리 중...' : '저장 중...'}
+              {isAnalyzingEmotion ? 'AI 분석 중...' : '저장 중...'}
             </>
           ) : (
             '완료'
@@ -797,283 +786,204 @@ export const DiaryWritingPage = forwardRef<{
       </div>
 
       {/* 스크롤 가능한 컨텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
-        <div className="p-4 space-y-6 pb-8">
-          {/* 날짜 표시 */}
-          <div className="flex items-center gap-2 text-slate-600">
-            <Calendar className="w-5 h-5" />
-            <span className="text-base">{formattedDate}</span>
-          </div>
-          
-          <div className="space-y-6">
-            {/* 1. 제목 입력 (필수) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                제목 <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="오늘의 제목을 입력하세요"
-                disabled={isSaving || isAnalyzingEmotion}
-                className={theme.input.base}
-              />
-            </div>
-            
-            {/* 
-              감정 분석 안내 (플로우 3.2)
-              
-              명세서 요구사항:
-              - 감정 선택 기능 없음
-              - 일기 저장 시 KoBERT가 자동으로 감정 분석
-              - 사용자에게는 안내 메시지만 표시
-            */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-stone-900 font-medium mb-1">
-                    AI가 감정을 자동으로 분석해드려요
-                  </p>
-                  <p className="text-xs text-stone-600">
-                    일기를 작성하고 저장하면, AI가 본문을 분석하여 감정을 자동으로 파악합니다.
-                  </p>
-                  </div>
-                  </div>
-            </div>
-            
-            {/* 3. 기분 입력 (선택) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                기분
-              </label>
-              <input
-                type="text"
-                value={mood}
-                onChange={(e) => setMood(e.target.value)}
-                placeholder="예: 행복, 평온"
-                disabled={isSaving || isAnalyzingEmotion}
-                className={theme.input.base}
-              />
-            </div>
-            
-            {/* 4. 날씨 선택 (선택) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                날씨
-              </label>
-              <select
-                value={weather}
-                onChange={(e) => setWeather(e.target.value)}
-                disabled={isSaving || isAnalyzingEmotion}
-                className={theme.input.base}
-              >
-                {/* 선택하세요 옵션 제거 */}
-                {WEATHER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.emoji} {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* 5. 활동 추가 (선택) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                활동 태그
-              </label>
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={activityInput}
-                  onChange={(e) => setActivityInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddActivity();
-                    }
-                  }}
-                  placeholder="활동 태그를 입력하세요"
-                  disabled={isSaving || isAnalyzingEmotion}
-                  className={`flex-1 ${theme.input.base}`}
-                />
-                <button
-                  onClick={handleAddActivity}
-                  disabled={isSaving || isAnalyzingEmotion}
-                  className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center disabled:bg-slate-300 disabled:cursor-not-allowed"
-                  aria-label="활동 태그 추가"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide bg-[#FAFAF9] dark:bg-stone-950">
+        <div className="p-5 pb-32 space-y-6 max-w-2xl mx-auto">
+          {/* 1. 날짜 및 날씨 - Glass Card */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-100 font-medium">
+                <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span>{formattedDate}</span>
               </div>
-              
-              {/* 활동 태그 목록 */}
-              {activities.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {activities.map((activity, index) => (
-                    <div
-                      key={index}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm border border-blue-300"
-                    >
-                      <Tag className="w-3.5 h-3.5" />
-                      <span>{activity}</span>
-                      <button
-                        onClick={() => handleRemoveActivity(index)}
-                        className="hover:text-blue-900 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-            
-            {/* 6. 이미지 추가 (선택) */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                이미지
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+
+            <div className="grid grid-cols-6 gap-2">
+              {WEATHER_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setWeather(option.value)}
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all aspect-square ${weather === option.value
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40 border-2 border-emerald-500 shadow-sm'
+                    : 'bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700'
+                    }`}
+                >
+                  <span className="text-2xl mb-1 filter drop-shadow-sm">{option.emoji}</span>
+                  <span className={`text-[10px] ${weather === option.value
+                    ? 'text-emerald-700 dark:text-emerald-300 font-bold'
+                    : 'text-stone-500 dark:text-stone-400'
+                    }`}>
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* 2. 제목 입력 - Clean Input */}
+          <section>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="제목을 입력하세요"
+              maxLength={50}
+              className="w-full px-4 py-4 text-lg font-bold bg-white dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-stone-400 shadow-sm"
+              autoFocus={!isEditMode}
+            />
+          </section>
+
+          {/* 3. 본문 입력 - Large Textarea */}
+          <section className="relative">
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="오늘 하루는 어떠셨나요? 자유롭게 기록해보세요."
+              className="w-full px-5 py-5 min-h-[300px] text-base leading-relaxed bg-white dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all resize-none placeholder:text-stone-400 shadow-sm"
+              style={{ lineHeight: '1.8' }}
+            />
+            {isAnalyzingEmotion && (
+              <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] rounded-2xl flex flex-col items-center justify-center z-10 transition-all">
+                <div className="bg-white dark:bg-stone-800 p-4 rounded-full shadow-2xl mb-4 animate-bounce">
+                  <Sparkles className="w-8 h-8 text-emerald-500" />
+                </div>
+                <p className="text-emerald-800 dark:text-emerald-200 font-medium animate-pulse">AI가 감정을 분석하고 있어요...</p>
+              </div>
+            )}
+          </section>
+
+          {/* 4. 사진 추가 (선택) */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm">
+            <h3 className="text-sm font-semibold text-emerald-900/70 dark:text-emerald-100/70 mb-3 flex items-center gap-2">
+              <ImageIcon className="w-4 h-4" />
+              사진 추가
+            </h3>
+
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isSaving || isAnalyzingEmotion}
-                className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all disabled:border-slate-300 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                disabled={images.length >= 5}
+                className={`flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all ${images.length >= 5
+                  ? 'border-stone-200 bg-stone-50 text-stone-300 cursor-not-allowed'
+                  : 'border-emerald-300 bg-emerald-50/50 text-emerald-600 hover:bg-emerald-100/50 hover:border-emerald-400'
+                  }`}
               >
-                <div className="flex items-center justify-center gap-2 text-slate-600">
-                  <ImageIcon className="w-5 h-5" />
-                  <span className="text-sm">이미지 추가</span>
+                <div className="p-2 rounded-full bg-white shadow-sm">
+                  <Plus className="w-5 h-5" />
                 </div>
+                <span className="text-xs font-medium">추가하기</span>
               </button>
-              
-              {/* 이미지 미리보기 */}
-              {images.length > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={(() => {
-                          if (!image.url) return '';
-                          if (image.url.startsWith('blob:') || image.url.startsWith('http')) return image.url;
-                          // 로컬 헬퍼 대신 직접 BASE_URL 조합
-                          // BASE_URL 예: http://localhost:8080/api
-                          const baseUrlOrigin = BASE_URL.endsWith('/api') ? BASE_URL.slice(0, -4) : BASE_URL;
-                          return `${baseUrlOrigin}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-                        })()}
-                        alt={`업로드 이미지 ${index + 1}`}
-                        className="w-full rounded-lg border border-blue-200"
-                        style={{ 
-                          maxHeight: '300px',
-                          objectFit: 'contain',
-                          objectPosition: 'center'
-                        }}
-                      />
-                      <button
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {/* 7. 본문 작성 */}
-            <div>
-              <label className="block text-sm text-slate-700 mb-2">
-                오늘의 이야기 <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="오늘 하루 어떤 일이 있었나요? 자유롭게 작성해보세요..."
-                rows={10}
-                disabled={isSaving || isAnalyzingEmotion}
-                className={`flex-1 w-full p-4 text-sm bg-white/50 border border-blue-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors resize-none disabled:bg-slate-100 disabled:cursor-not-allowed ${theme.textPrimary}`}
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                multiple
+                className="hidden"
               />
-            </div>
-          </div>
-          
-          {/* 필수 항목 안내 */}
-          {!isValid && (
-            <div className="mt-3 text-xs text-slate-500 text-right">
-              * 제목, 본문은 필수 항목입니다
-            </div>
-          )}
-          
-          {/* 에러 메시지 표시 */}
-          {error && (
-            <div className="mt-4 p-4 bg-rose-50 border-2 border-rose-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <span className="text-rose-600 text-lg">⚠️</span>
-                <div className="flex-1">
-                  <p className="text-sm text-rose-800 font-medium mb-1">오류 발생</p>
-                  <p className="text-xs text-rose-600 whitespace-pre-wrap">{error}</p>
+
+              {images.map((image, index) => (
+                <div key={index} className="relative flex-shrink-0 w-24 h-24 group">
+                  <img
+                    src={image.url}
+                    alt={`업로드된 이미지 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-2xl shadow-sm border border-black/5"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-2 -right-2 p-1.5 bg-white rounded-full shadow-md text-rose-500 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100 duration-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setError('')}
-                  className="text-rose-400 hover:text-rose-600 transition-colors"
+              ))}
+            </div>
+            {images.length > 0 && (
+              <p className="text-xs text-stone-500 mt-2 text-right">
+                {images.length} / 5 장
+              </p>
+            )}
+          </section>
+
+          {/* 5. 활동 태그 (선택) */}
+          <section className="bg-white/50 dark:bg-stone-900/50 backdrop-blur-sm rounded-2xl p-4 border border-emerald-100/50 dark:border-emerald-900/20 shadow-sm">
+            <h3 className="text-sm font-semibold text-emerald-900/70 dark:text-emerald-100/70 mb-3 flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              활동 태그
+            </h3>
+
+            <div className="flex flex-wrap gap-2 mb-3">
+              {activities.map((activity, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-emerald-200 text-emerald-700 text-sm font-medium shadow-sm animate-in zoom-in-50 duration-200"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  {activity}
+                  <button
+                    onClick={() => handleRemoveActivity(index)}
+                    className="hover:text-rose-500 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={activityInput}
+                onChange={(e) => setActivityInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault(); // 폼 제출 방지
+                    handleAddActivity();
+                  }
+                }}
+                placeholder="오늘 어떤 활동을 하셨나요?"
+                className="flex-1 px-4 py-2.5 bg-white dark:bg-stone-900/50 rounded-xl border border-stone-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm transition-all"
+              />
+              <button
+                onClick={handleAddActivity}
+                disabled={!activityInput.trim()}
+                className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl font-medium text-sm hover:bg-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                추가
+              </button>
+            </div>
+          </section>
+
+          {/* 에러 메시지 */}
+          {error && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-600 text-sm flex items-center gap-2 animate-in slide-in-from-bottom-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              {error}
             </div>
           )}
         </div>
       </div>
-      
-      {/* 
-        취소 확인 모달 (플로우 3.5)
-        
-        - 취소 버튼 클릭 시 표시
-        - "취소" 버튼 클릭 시 일기 작성 페이지 종료
-        - "계속 작성" 버튼 클릭 시 모달 닫기
-      */}
+
+      {/* 취소 확인 모달 */}
       {showCancelModal && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md overflow-hidden border-2 border-blue-200">
-            {/* 모달 헤더 */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-100 to-cyan-100 px-4 sm:px-6 py-4 border-b-2 border-blue-200 flex items-center justify-between">
-              <h3 className="text-base sm:text-lg text-slate-800">작성 중인 일기를 취소하시겠습니까?</h3>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 w-full max-w-sm shadow-2xl scale-100 border border-white/20">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-white mb-2 text-center">작성을 취소하시겠어요?</h3>
+            <p className="text-stone-600 dark:text-stone-400 text-center mb-6 text-sm">
+              작성 중인 내용은 저장되지 않으며,<br />
+              삭제된 내용은 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="p-1 hover:bg-blue-200 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            
-            {/* 모달 내용 */}
-            <div className="p-4 sm:p-6">
-              <p className="text-sm text-slate-700">
-                {isEditMode ? "수정한 내용이 사라집니다. 정말 취소하시겠습니까?" : "작성 중인 내용이 사라집니다. 정말 취소하시겠습니까?"}
-              </p>
-            </div>
-            
-            {/* 하단 버튼 영역 */}
-            <div className="px-4 sm:px-6 py-4 border-t-2 border-blue-200 flex gap-3">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 px-6 py-2.5 border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                className="flex-1 py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-xl font-semibold hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
               >
                 계속 작성
               </button>
-              
               <button
                 onClick={handleCancelConfirm}
-                className="flex-1 px-6 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:bg-rose-700 transition-colors"
+                className="flex-1 py-3 bg-rose-100 text-rose-600 rounded-xl font-semibold hover:bg-rose-200 transition-colors"
               >
-                취소
+                작성 취소
               </button>
             </div>
           </div>

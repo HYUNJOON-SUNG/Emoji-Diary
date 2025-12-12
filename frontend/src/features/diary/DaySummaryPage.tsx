@@ -90,7 +90,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diaryApi';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 // HMR Force Update
@@ -142,43 +142,43 @@ interface DaySummaryPageProps {
   onMapRecommendation?: (emotion: string, emotionCategory: string, diaryId?: string) => void; // 장소 추천 콜백 (diaryId 포함)
 }
 
-export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWriting, onBackToCalendar, onMapRecommendation }: DaySummaryPageProps) {
+export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWriting, onBackToCalendar }: DaySummaryPageProps) {
   // ========== 상태 관리 ==========
-  
+
   /**
    * 일기 데이터
    * - null: 일기 없음 (작성 안됨)
    * - DiaryDetail: 일기 데이터 (작성됨)
    */
   const [entry, setEntry] = useState<DiaryDetail | null>(null);
-  
+
   /**
    * 로딩 상태 (일기 조회 중 또는 삭제 중)
    */
   const [isLoading, setIsLoading] = useState(false);
-  
+
   /**
    * 삭제 확인 모달 표시 여부
    */
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+
   /**
    * 장소 추천 모달 표시 여부
    */
   const [showMapRecommendation, setShowMapRecommendation] = useState(false);
-  
+
   /**
    * 이미지 갤러리 모달 표시 여부
    */
   const [showImageGallery, setShowImageGallery] = useState(false);
-  
+
   /**
    * 이미지 갤러리에서 현재 보고 있는 이미지 인덱스
    */
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // ========== 데이터 로드 ==========
-  
+
   /**
    * 선택된 날짜가 변경되면 일기 데이터 로드
    */
@@ -232,7 +232,8 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
       if (error?.response?.status === 404) {
         setEntry(null);
         // 404는 정상적인 경우이므로 콘솔 로그만 출력 (에러 아님)
-        console.log('[일기 상세 조회] 해당 날짜에 작성된 일기가 없습니다:', dateKey);
+        const dateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        console.log('[일기 상세 조회] 해당 날짜에 작성된 일기가 없습니다:', dateString);
       } else {
         // 404가 아닌 다른 에러만 콘솔에 에러로 표시
         console.error('Failed to load diary details:', error);
@@ -244,7 +245,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
   };
 
   // ========== 이벤트 핸들러 ==========
-  
+
   /**
    * 일기 삭제 핸들러 (플로우 5.2, 13.1)
    * 
@@ -298,12 +299,12 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
       await deleteDiary(entry.id, dateKey);
       setEntry(null);
       setShowDeleteConfirm(false);
-      
+
       // 데이터 새로고침 (플로우 13.1)
       if (onDataChange) {
         onDataChange(); // DiaryBook의 handleDataChange() 호출 → refreshKey 증가 → CalendarPage 자동 업데이트
       }
-      
+
       // 삭제 후 캘린더로 돌아가기
       if (onBackToCalendar) {
         onBackToCalendar();
@@ -317,9 +318,11 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
   if (!selectedDate) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-stone-400 space-y-2 py-12">
-        <CalendarDays className="w-8 h-8" />
-        <p className="text-xs text-center">날짜를 선택하면<br />일기를 확인할 수 있어요</p>
+      <div className="h-full flex flex-col items-center justify-center text-stone-400 space-y-4 py-12">
+        <div className="p-4 rounded-full bg-stone-100/50 dark:bg-stone-800/50 backdrop-blur-sm">
+          <CalendarDays className="w-8 h-8 text-stone-300 dark:text-stone-600" />
+        </div>
+        <p className="text-sm text-center font-medium">날짜를 선택하면<br />일기를 확인할 수 있어요</p>
       </div>
     );
   }
@@ -332,9 +335,9 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3 py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <p className="text-xs">불러오는 중...</p>
+      <div className="h-full flex flex-col items-center justify-center text-emerald-600 space-y-4 py-12">
+        <Loader2 className="w-8 h-8 animate-spin" />
+        <p className="text-sm font-medium">소중한 추억을 불러오는 중...</p>
       </div>
     );
   }
@@ -360,73 +363,62 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
     // 일반 일기 보기 모드
     return (
-      <div className="h-full w-full overflow-y-auto scrollbar-hide p-4 space-y-4"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
+      <div className="h-full w-full overflow-y-auto scrollbar-hide p-6 space-y-6"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
         {/* 
           Date Header (플로우 6.3)
-          
-          구성:
-          - 좌측: "오늘의 일기" + 날짜
-          - 우측 상단: X 버튼 (뒤로가기)
-          - 중앙: 감정 이모지
-          
-          플로우 6.3 요구사항:
-          - X 버튼 클릭 시 onBackToCalendar 호출
-          - 이전 화면으로 복귀 (검색 페이지 또는 캘린더)
-          - 검색 키워드 및 필터 상태 유지
         */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="relative bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-sm border border-white/40 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10">
           {/* 뒤로가기 버튼 - 좌측 상단에 배치 */}
           {onBackToCalendar && (
             <button
               onClick={onBackToCalendar}
-              className="absolute top-4 left-4 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="absolute top-5 left-5 p-2 active:bg-black/5 dark:active:bg-white/10 rounded-full transition-colors text-stone-400 dark:text-stone-500 hover:text-stone-600 active:text-stone-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
               aria-label="뒤로가기"
             >
-              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
-          
-          <div className="flex items-start justify-between pr-10 pl-10">
-            <div>
-              <div className="text-xs text-stone-400 mb-1 font-medium">{formattedDate}</div>
-              <div className="text-base text-gray-900 font-semibold whitespace-normal leading-snug pr-2">{entry.title}</div>
-              
-              {/* 활동 태그 (Header로 이동) */}
-              {entry.activities && entry.activities.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {entry.activities.map((activity, index) => (
-                    <span
-                      key={index}
-                      className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg font-medium"
-                    >
-                      {activity}
-                    </span>
-                  ))}
-                </div>
-              )}
+
+          <div className="flex flex-col items-center justify-center text-center mt-2">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-emerald-400/20 dark:bg-emerald-400/10 blur-xl rounded-full scale-150" />
+              <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-24 h-24 object-contain relative z-10 drop-shadow-lg transform transition-transform hover:scale-105 duration-300" />
             </div>
-            <div className="flex items-center">
-              <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-14 h-14 object-contain" />
+
+            <div className="space-y-2">
+              <div className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-semibold tracking-wide uppercase">{formattedDate}</div>
+              <h2 className="text-xl text-stone-800 dark:text-stone-100 font-bold leading-tight px-4 break-keep">{entry.title}</h2>
             </div>
+
+            {/* 활동 태그 (Header로 이동) */}
+            {entry.activities && entry.activities.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {entry.activities.map((activity, index) => (
+                  <span
+                    key={index}
+                    className="text-xs px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full font-medium border border-emerald-100 dark:border-emerald-800/50"
+                  >
+                    {activity}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-
-
 
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
 
 
         {/* Mood & Weather Card - 2 Column */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">기분</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.mood || '-'}</div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">기분</div>
+            <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.mood || '-'}</div>
           </div>
 
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-1 font-medium">날씨</div>
-            <div className="text-sm text-gray-900 font-medium">{entry.weather || '맑음'}</div>
+          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">날씨</div>
+            <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.weather || '맑음'}</div>
           </div>
         </div>
 
@@ -435,13 +427,18 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
         {/* AI Generated Image */}
         {entry.imageUrl && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="text-xs text-gray-500 mb-3 font-medium">AI 그림 일기</div>
-            <div className="relative rounded-lg overflow-hidden bg-slate-100">
-              <img 
-                src={entry.imageUrl} 
+          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-5 shadow-sm border border-white/30 dark:border-white/5 overflow-hidden group">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-1.5 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="text-sm text-stone-600 dark:text-stone-300 font-semibold">AI 그림 일기</div>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden shadow-inner bg-stone-100 dark:bg-black/20">
+              <img
+                src={entry.imageUrl}
                 alt="AI Generated Diary Illustration"
-                className="w-full rounded-lg"
+                className="w-full h-auto transition-transform duration-700 group-hover:scale-105"
                 style={{
                   maxHeight: '400px',
                   objectFit: 'contain',
@@ -453,10 +450,13 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
         )}
 
         {/* Content Card */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="text-xs text-gray-500 mb-3 font-medium">오늘의 이야기</div>
-          <div className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap break-words" style={{ 
-            wordBreak: 'break-word', 
+        <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white/30 dark:border-white/5">
+          <div className="text-sm text-stone-500 dark:text-stone-400 mb-4 font-medium flex items-center gap-2">
+            <Quote className="w-4 h-4" />
+            오늘의 이야기
+          </div>
+          <div className="text-base text-stone-800 dark:text-stone-200 leading-loose whitespace-pre-wrap break-words font-medium" style={{
+            wordBreak: 'break-word',
             overflowWrap: 'break-word',
             hyphens: 'auto'
           }}>
@@ -466,22 +466,22 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
         {/* AI Comment Card */}
         {entry.aiComment && (
-          <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
-            <div className="text-xs text-stone-800 mb-3 flex items-center gap-1.5 font-medium">
+          <div className="relative bg-emerald-50/50 dark:bg-emerald-900/20 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-emerald-100/50 dark:border-emerald-800/30">
+            <div className="text-sm text-emerald-800 dark:text-emerald-200 mb-4 flex items-center gap-2 font-bold">
               <span>{(() => {
                 // 1. 일기에 저장된 페르소나 (Enum String: 'BEST_FRIEND') -> 한글 변환
                 // 2. 없으면 현재 사용자 설정 (localStorage 'user') -> 이미 한글
                 // 3. 없으면 기본값 '베프'
-                
+
                 let currentPersona = '베프';
                 if (entry.persona) {
-                   currentPersona = enumToPersona(entry.persona);
+                  currentPersona = enumToPersona(entry.persona);
                 } else {
-                   const userStr = localStorage.getItem('user');
-                   if (userStr) {
-                      const user = JSON.parse(userStr);
-                      currentPersona = user.persona || '베프';
-                   }
+                  const userStr = localStorage.getItem('user');
+                  if (userStr) {
+                    const user = JSON.parse(userStr);
+                    currentPersona = user.persona || '베프';
+                  }
                 }
 
                 const personaImageMap: { [key: string]: string } = {
@@ -494,23 +494,23 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
                 };
                 const imageSrc = personaImageMap[currentPersona] || friendIcon;
 
-                return <img src={imageSrc} alt={currentPersona} className="w-5 h-5 object-contain" />;
+                return <img src={imageSrc} alt={currentPersona} className="w-6 h-6 object-contain drop-shadow-sm" />;
               })()}</span>
               <span>{(() => {
                 let currentPersona = '베프';
                 if (entry.persona) {
-                   currentPersona = enumToPersona(entry.persona);
+                  currentPersona = enumToPersona(entry.persona);
                 } else {
-                   const userStr = localStorage.getItem('user');
-                   if (userStr) {
-                      const user = JSON.parse(userStr);
-                      currentPersona = user.persona || '베프';
-                   }
+                  const userStr = localStorage.getItem('user');
+                  if (userStr) {
+                    const user = JSON.parse(userStr);
+                    currentPersona = user.persona || '베프';
+                  }
                 }
                 return currentPersona;
               })()}의 코멘트</span>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 leading-relaxed font-medium">
               {entry.aiComment}
             </p>
           </div>
@@ -518,16 +518,16 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
         {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
         {entry.recommendedFood && (
-          <div className="relative bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
-            <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5">
-              <span>🍽️</span>
+          <div className="relative bg-amber-50/50 dark:bg-amber-900/20 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+            <div className="text-xs text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5 font-semibold">
+              <span className="text-lg">🍽️</span>
               <span>AI 음식 추천</span>
             </div>
             <div className="space-y-2">
-              <div className="text-sm font-bold text-slate-800">
+              <div className="text-sm font-bold text-stone-800 dark:text-stone-200">
                 {entry.recommendedFood.name}
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                 {entry.recommendedFood.reason}
               </p>
             </div>
@@ -536,24 +536,17 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
         {/* 
           액션 버튼 영역 (플로우 4.1, 5.2)
-          
-          일기가 있을 때 표시되는 버튼:
-          1. 수정하기 (파란색) - 플로우 4.1, 5.2
-             - 클릭 시 일기 작성 페이지로 이동
-             - 기존 일기 데이터 자동 로드
-          2. 장소 추천 (초록색) - 플로우 5.2
-             - 클릭 시 장소 추천 화면으로 이동
-             - 감정 카테고리 기반으로 주변 장소 추천 (카카오맵)
-          3. 삭제 (빨간색) - 플로우 5.2
-             - 클릭 시 삭제 확인 모달 표시
         */}
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) - 위치 이동됨: 음식 추천 아래, 버튼 위 */}
         {entry.images && entry.images.length > 0 && (
-          <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
-            <div className="text-xs text-gray-500 mb-3 font-medium">📷 내가 올린 사진</div>
+          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 mb-6">
+            <div className="text-xs text-stone-500 dark:text-stone-400 mb-3 font-medium flex items-center gap-1.5">
+              <span>📷</span>
+              <span>내가 올린 사진</span>
+            </div>
             <div className="relative">
               {/* 이미지 컨테이너 - 유동적 높이 */}
-              <div className="relative rounded-lg overflow-hidden bg-slate-100 w-full" style={{ minHeight: '200px' }}>
+              <div className="relative rounded-xl overflow-hidden bg-stone-100 dark:bg-black/20 w-full shadow-inner" style={{ minHeight: '200px' }}>
                 <img
                   src={entry.images[currentImageIndex]}
                   alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
@@ -569,19 +562,19 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
                     target.style.display = 'none';
                   }}
                 />
-                
+
                 {/* 이전 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
                 {entry.images.length > 1 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCurrentImageIndex((prev) => 
+                      setCurrentImageIndex((prev) =>
                         prev === 0 ? entry.images!.length - 1 : prev - 1
                       );
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors z-10 shadow-lg"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
                     aria-label="이전 이미지"
-                    style={{ minWidth: '40px', minHeight: '40px' }}
+                    style={{ minWidth: '36px', minHeight: '36px' }}
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -592,13 +585,13 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setCurrentImageIndex((prev) => 
+                      setCurrentImageIndex((prev) =>
                         prev === entry.images!.length - 1 ? 0 : prev + 1
                       );
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors z-10 shadow-lg"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
                     aria-label="다음 이미지"
-                    style={{ minWidth: '40px', minHeight: '40px' }}
+                    style={{ minWidth: '36px', minHeight: '36px' }}
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -606,7 +599,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
                 {/* 이미지 인덱스 표시 (2장 이상인 경우) - 이미지 박스 안에 */}
                 {entry.images.length > 1 && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/70 text-white text-xs rounded-full backdrop-blur-sm shadow-lg z-10">
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs rounded-full backdrop-blur-md shadow-sm z-10 border border-white/10">
                     {currentImageIndex + 1} / {entry.images.length}
                   </div>
                 )}
@@ -615,79 +608,41 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-3">
           {/* 
             수정하기 버튼 (플로우 4.1, 5.2)
-            
-            동작:
-            - 클릭 시 onEdit 콜백 호출
-            - DiaryBook에서 일기 작성 모드(writing)로 전환
-            - DiaryWritingPage에서 기존 데이터 자동 로드
           */}
           <button
             onClick={onEdit}
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-700 hover:text-blue-800 transition-colors px-4 py-3 bg-blue-100 rounded-xl hover:bg-blue-200"
+            className="flex items-center justify-center gap-1.5 text-xs text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 transition-colors px-4 py-3 bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl hover:bg-white/80 dark:hover:bg-white/10 border border-white/20 dark:border-white/5 shadow-sm"
           >
             <Edit className="w-3.5 h-3.5" />
             수정하기
           </button>
-          
+
           {/* 
             장소 추천 버튼 (플로우 5.2, 8.1 경로 B)
-            
-            동작 (플로우 8.1):
-            - 클릭 시 onMapRecommendation 콜백 호출
-            - DiaryBook의 handleMapRecommendationFromReading 실행
-            - setShowMapRecommendation(true) 설정
-            - viewMode = 'reading' 유지
-            - 좌측: 카카오 지도 / 우측: 장소 리스트 표시
-            
-            전달 데이터:
-            - emotion: entry.emotion (일기에 저장된 감정 이모지)
-            - emotionCategory: entry.emotionCategory (AI 분석 감정 카테고리)
-            
-            플로우 5.2 요구사항:
-            - 일기 있는 경우에만 표시
-            - 감정 카테고리 기반 장소 추천
-            
-            플로우 8.1 요구사항 (경로 B):
-            - 일기 상세보기 화면에서 "장소 추천" 버튼 클릭
-            - 해당 일기의 감정 카테고리 기반으로 장소 추천
-            - → 장소 추천 화면으로 이동
           */}
           <button
             onClick={() => {
               // 장소 추천 화면 표시
               setShowMapRecommendation(true);
-              
-              // 부모 컴포넌트에 알림 (DiaryBook에서 상태 관리하는 경우) - 중복 렌더링 방지를 위해 제거
-              // if (onMapRecommendation) {
-              //    // emotionCategory가 없으면 계산
-              //    const emotionCategory = entry.emotionCategory || getEmotionCategory(entry.emotion);
-              //    // 일기 ID 전달 (장소 추천 API 호출에 사용)
-              //    onMapRecommendation(entry.emotion, emotionCategory, entry.id);
-              // }
             }}
-            className="flex items-center justify-center gap-1.5 text-xs text-teal-700 hover:text-teal-800 transition-colors px-4 py-3 bg-teal-100 rounded-xl hover:bg-teal-200"
+            className="flex items-center justify-center gap-1.5 text-xs text-white transition-all px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
           >
             <MapPin className="w-3.5 h-3.5" />
             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-            <span className="text-teal-700 font-medium">
-              {entry.recommendedFood?.name ? `${entry.recommendedFood.name} 맛집 추천` : '맛집 추천'}
+            <span className="font-semibold">
+              {entry.recommendedFood?.name ? `맛집 추천` : '장소 추천'}
             </span>
           </button>
-          
+
           {/* 
             삭제 버튼 (플로우 5.2)
-            
-            동작:
-            - 클릭 시 삭제 확인 모달 표시
-            - 확인 시 일기 삭제 API 호출
-            - 삭제 성공 시 캘린더로 이동 + 감정 이모지 자동 제거
           */}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center justify-center gap-1.5 text-xs text-rose-700 hover:text-rose-800 transition-colors px-4 py-3 bg-rose-100 rounded-xl hover:bg-rose-200"
+            className="flex items-center justify-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors px-4 py-3 bg-rose-50/50 dark:bg-rose-900/20 backdrop-blur-sm rounded-2xl hover:bg-rose-100/50 dark:hover:bg-rose-900/40 border border-rose-100/50 dark:border-rose-800/30"
           >
             <Trash2 className="w-3.5 h-3.5" />
             삭제
@@ -712,25 +667,25 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           - 캘린더로 이동
         */}
         {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-[9999] backdrop-blur-sm">
-            <div className="bg-white rounded-xl p-4 shadow-xl max-w-xs w-full">
-              <h4 className="text-stone-800 mb-2">일기 삭제</h4>
-              <p className="text-sm text-stone-600 mb-4">
+          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+            <div className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20 dark:border-white/10 max-w-xs w-full transform scale-100 animate-in fade-in zoom-in duration-200">
+              <h4 className="text-lg font-bold text-stone-800 dark:text-stone-100 mb-2">일기 삭제</h4>
+              <p className="text-sm text-stone-600 dark:text-stone-400 mb-6 leading-relaxed">
                 정말 이 일기를 삭제하시겠어요?<br />
                 삭제하면 복구할 수 없어요.
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 {/* 취소 버튼 - 모달 닫기 */}
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 text-sm px-3 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200"
+                  className="flex-1 text-sm font-semibold px-4 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
                 >
                   취소
                 </button>
                 {/* 삭제 버튼 - 일기 삭제 실행 */}
                 <button
                   onClick={handleDelete}
-                  className="flex-1 text-sm px-3 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700"
+                  className="flex-1 text-sm font-semibold px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-colors shadow-lg shadow-rose-500/20"
                 >
                   삭제
                 </button>
@@ -771,7 +726,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
               {entry.images.length > 1 && (
                 <button
                   onClick={() => {
-                    setCurrentImageIndex((prev) => 
+                    setCurrentImageIndex((prev) =>
                       prev === 0 ? entry.images!.length - 1 : prev - 1
                     );
                   }}
@@ -809,7 +764,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
               {entry.images.length > 1 && (
                 <button
                   onClick={() => {
-                    setCurrentImageIndex((prev) => 
+                    setCurrentImageIndex((prev) =>
                       prev === entry.images!.length - 1 ? 0 : prev + 1
                     );
                   }}
@@ -862,23 +817,25 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
           <button
             onClick={onBackToCalendar}
-            className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors text-stone-600 dark:text-stone-300 hover:text-emerald-600 dark:hover:text-emerald-400 min-w-[44px] min-h-[44px] flex items-center justify-center border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900"
             aria-label="뒤로가기"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
         </div>
       )}
-      
-      <div className="flex-1 flex flex-col items-center justify-center text-stone-400 space-y-3">
-        <CalendarDays className="w-8 h-8" />
+
+      <div className="flex-1 flex flex-col items-center justify-center text-stone-400 space-y-4">
+        <div className="p-4 rounded-full bg-stone-100 dark:bg-stone-900 shadow-inner">
+          <CalendarDays className="w-8 h-8 text-stone-300 dark:text-stone-600" />
+        </div>
         <div className="text-center">
-          <div className="text-sm text-stone-600 mb-3">
+          <div className="text-sm font-medium text-stone-500 dark:text-stone-400 mb-4">
             아직 작성된 일기가 없어요
           </div>
-          <button 
+          <button
             onClick={onStartWriting}
-            className="text-xs text-blue-700 hover:text-blue-800 transition-colors px-4 py-2 bg-blue-100/50 rounded-lg hover:bg-blue-100"
+            className="text-sm font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-all px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 rounded-xl"
           >
             일기 작성하기
           </button>

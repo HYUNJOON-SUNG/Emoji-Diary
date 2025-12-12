@@ -45,12 +45,12 @@ interface EmotionStatsPageProps {
 export type StatsViewMode = 'calendar' | 'timeline' | 'chart';
 
 const emotionColors: { [key: string]: string } = {
-  happy: 'bg-sky-200',
-  love: 'bg-blue-200',
-  excited: 'bg-indigo-200',
+  happy: 'bg-emerald-200',
+  love: 'bg-green-200',
+  excited: 'bg-teal-200',
   calm: 'bg-cyan-200',
-  grateful: 'bg-teal-200',
-  hopeful: 'bg-sky-300',
+  grateful: 'bg-lime-200',
+  hopeful: 'bg-emerald-300',
   tired: 'bg-rose-200',
   sad: 'bg-red-200',
   angry: 'bg-rose-300',
@@ -65,7 +65,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<StatsViewMode>(savedViewMode || 'calendar');
   const [selectedDate, setSelectedDate] = useState<Date | null>(selectedDateFromParent || null);
-  const [periodType, setPeriodType] = useState<'week' | 'month'>('week'); // 주간/월간 선택
+
 
   // 부모에서 전달받은 선택된 날짜가 변경되면 동기화
   useEffect(() => {
@@ -105,10 +105,10 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
 
   const handleDateClick = (date: Date) => {
     // 이미 선택된 날짜를 클릭하면 선택 해제 (토글)
-    if (selectedDate && 
-        date.getDate() === selectedDate.getDate() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getFullYear() === selectedDate.getFullYear()) {
+    if (selectedDate &&
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear()) {
       setSelectedDate(null);
       if (onSelectedDateChange) {
         onSelectedDateChange(null);
@@ -145,7 +145,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const stats = getStatsForDate(date);
-      const isToday = 
+      const isToday =
         date.getDate() === new Date().getDate() &&
         date.getMonth() === new Date().getMonth() &&
         date.getFullYear() === new Date().getFullYear();
@@ -154,25 +154,23 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
         <button
           key={day}
           onClick={() => handleDateClick(date)}
-          className={`aspect-square rounded-lg border transition-all relative group p-1 ${ 
-            isToday ? 'ring-2 ring-blue-600' : ''
-          } ${
-            stats
-              ? `${emotionColors[stats.emotionCategory]} border-blue-400`
-              : 'bg-white/50 border-stone-300'
-          }`}
+          className={`aspect-square rounded-xl border transition-all relative group p-1 ${isToday ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''
+            } ${stats
+              ? `${emotionColors[stats.emotionCategory]} border-emerald-200/50 dark:border-emerald-700/50 shadow-sm`
+              : 'bg-white/40 dark:bg-black/20 border-white/20 dark:border-white/10 hover:bg-white/60 dark:hover:bg-white/10'
+            }`}
         >
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-sm ${isToday ? 'font-bold text-blue-800' : 'text-stone-700'}`}>
+            <span className={`text-sm ${isToday ? 'font-bold text-emerald-700 dark:text-emerald-300' : 'text-stone-600 dark:text-stone-400'}`}>
               {day}
             </span>
           </div>
-          
+
           {stats && (
-            <img 
+            <img
               src={getEmotionImage(stats.emotion)}
               alt={stats.emotion}
-              className="absolute top-0.5 right-0.5 w-4 h-4 object-contain"
+              className="absolute top-0.5 right-0.5 w-4 h-4 object-contain filter drop-shadow-sm"
             />
           )}
         </button>
@@ -189,9 +187,8 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
           {['일', '월', '화', '수', '목', '금', '토'].map((day, i) => (
             <div
               key={day}
-              className={`text-center text-xs ${
-                i === 0 ? 'text-rose-600' : i === 6 ? 'text-blue-600' : 'text-stone-600'
-              }`}
+              className={`text-center text-xs ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-emerald-500' : 'text-stone-500 dark:text-stone-400'
+                }`}
             >
               {day}
             </div>
@@ -220,7 +217,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
         {dailyStats.map((stat) => {
           const date = new Date(stat.date);
           // 선택된 상태 확인
-          const isSelected = selectedDate && 
+          const isSelected = selectedDate &&
             date.getDate() === selectedDate.getDate() &&
             date.getMonth() === selectedDate.getMonth() &&
             date.getFullYear() === selectedDate.getFullYear();
@@ -230,13 +227,13 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
               <button
                 onClick={() => handleDateClick(date)}
                 className={`w-full flex items-center gap-4 p-3 rounded-lg border transition-all shadow-sm text-left
-                  ${isSelected 
-                    ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-md' 
+                  ${isSelected
+                    ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500 shadow-md'
                     : 'bg-white/60 hover:bg-white/90 border-stone-300'
                   }`}
               >
                 <div className="flex flex-col items-center min-w-[50px]">
-                  <span className={`text-xs ${isSelected ? 'text-blue-600 font-bold' : 'text-stone-500'}`}>
+                  <span className={`text-xs ${isSelected ? 'text-emerald-600 font-bold' : 'text-stone-500'}`}>
                     {date.getDate()}일
                   </span>
                   <span className="text-xs text-stone-400">
@@ -245,15 +242,15 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
                 </div>
 
                 <div className={`w-10 h-10 rounded-full ${emotionColors[stat.emotionCategory]} flex items-center justify-center overflow-hidden shrink-0`}>
-                  <img 
-                    src={getEmotionImage(stat.emotion)} 
+                  <img
+                    src={getEmotionImage(stat.emotion)}
                     alt={stat.emotion}
                     className="w-7 h-7 object-contain"
                   />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${isSelected ? 'text-blue-900 font-medium' : 'text-stone-800'}`}>
+                  <p className={`text-sm truncate ${isSelected ? 'text-emerald-900 font-medium' : 'text-stone-800'}`}>
                     {stat.title}
                   </p>
                 </div>
@@ -283,42 +280,45 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
     });
 
     return (
-      <div className="mt-4 p-4 sm:p-6 bg-blue-50 border border-blue-200 rounded-xl shadow-sm animate-in slide-in-from-bottom-2">
+      <div className="mt-4 p-4 sm:p-6 bg-emerald-50/80 dark:bg-emerald-900/30 border border-emerald-200/50 dark:border-emerald-700/30 rounded-2xl shadow-sm animate-in slide-in-from-bottom-2 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm text-stone-700 whitespace-nowrap">{dateString}</h3>
+          <h3 className="text-sm text-stone-700 dark:text-stone-300 whitespace-nowrap">{dateString}</h3>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            className="text-xs text-stone-400 hover:text-stone-600 bg-white px-3 py-2 rounded border border-stone-200 min-h-[44px] flex items-center"
+            className="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 bg-white/50 dark:bg-black/30 px-3 py-2 rounded-lg border border-white/20 dark:border-white/10 min-h-[44px] flex items-center transition-colors"
           >
             닫기
           </button>
         </div>
-        
+
         {stats ? (
           <div className="flex items-center gap-4">
-            <img 
-              src={getEmotionImage(stats.emotion)} 
-              alt={stats.emotion}
-              className="w-16 h-16 object-contain filter drop-shadow-md"
-            />
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/40 dark:bg-white/10 blur-xl rounded-full" />
+              <img
+                src={getEmotionImage(stats.emotion)}
+                alt={stats.emotion}
+                className="relative w-16 h-16 object-contain filter drop-shadow-md"
+              />
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-base font-bold text-stone-900 mb-2 line-clamp-1">{stats.title}</p>
+              <p className="text-base font-bold text-emerald-900 dark:text-emerald-100 mb-2 line-clamp-1">{stats.title}</p>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDateClick && onDateClick(date);
                 }}
-                className="text-xs text-stone-900 bg-blue-200 hover:bg-blue-300 px-4 py-2 rounded-full transition-colors shadow-sm min-h-[44px] flex items-center font-medium"
+                className="text-xs text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-full transition-all shadow-lg shadow-emerald-500/20 min-h-[44px] flex items-center font-medium"
               >
                 일기 보러가기
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-stone-500">작성된 일기가 없습니다.</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">작성된 일기가 없습니다.</p>
         )}
       </div>
     );
@@ -327,26 +327,26 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   return (
     <div className="min-h-full flex flex-col space-y-4">
       {/* Header - 뒤로가기 버튼 포함 */}
-      <div className="relative text-center space-y-1 pb-2 border-b border-stone-200/60">
+      <div className="relative text-center space-y-1 pb-2 border-b border-white/20">
         {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-0 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
-        <div className="flex items-center justify-center gap-2 text-blue-700">
+        <div className="flex items-center justify-center gap-2 text-emerald-800 dark:text-emerald-300">
           <Activity className="w-5 h-5" />
           <span className="font-bold">감정 통계</span>
         </div>
-        <p className="text-xs text-stone-500">나의 감정 흐름을 확인해보세요</p>
+        <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">나의 감정 흐름을 확인해보세요</p>
       </div>
 
       {/* View Toggle */}
-      <div className="flex p-1 bg-stone-100 rounded-xl">
+      <div className="flex p-1 bg-white/40 dark:bg-black/20 backdrop-blur-sm rounded-xl border border-white/20">
         {[
           { id: 'calendar', icon: CalendarDays, label: '캘린더' },
           { id: 'timeline', icon: Activity, label: '타임라인' },
@@ -362,11 +362,10 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
               }
               setSelectedDate(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs transition-all ${
-              viewMode === mode.id
-                ? 'bg-white text-blue-600 shadow-sm font-medium'
-                : 'text-stone-500 hover:text-stone-700'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs transition-all ${viewMode === mode.id
+              ? 'bg-white/80 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 shadow-sm font-medium ring-1 ring-black/5'
+              : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
+              }`}
           >
             <mode.icon className="w-3.5 h-3.5" />
             <span>{mode.label}</span>
@@ -376,15 +375,15 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
 
       {/* Month Navigation */}
       {viewMode !== 'chart' && (
-        <div className="flex items-center justify-between bg-white/50 p-2 rounded-lg border border-stone-200">
-          <button onClick={handlePrevMonth} className="p-1.5 rounded-md hover:bg-stone-100">
-            <ChevronLeft className="w-4 h-4 text-stone-600" />
+        <div className="flex items-center justify-between bg-white/40 dark:bg-black/20 p-2 rounded-lg border border-white/30 dark:border-white/10 backdrop-blur-sm shadow-sm">
+          <button onClick={handlePrevMonth} className="p-1.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+            <ChevronLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </button>
-          <h3 className="text-sm font-medium text-stone-800">
+          <h3 className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
             {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
           </h3>
-          <button onClick={handleNextMonth} className="p-1.5 rounded-md hover:bg-stone-100">
-            <ChevronRight className="w-4 h-4 text-stone-600" />
+          <button onClick={handleNextMonth} className="p-1.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
+            <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </button>
         </div>
       )}
@@ -392,7 +391,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
       {/* Loading & Error */}
       {isLoading && viewMode !== 'chart' && (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
         </div>
       )}
       {error && viewMode !== 'chart' && (
@@ -406,7 +405,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
         {!isLoading && !error && viewMode !== 'chart' && (
           <div className="space-y-4">
             {viewMode === 'calendar' ? renderCalendarView() : renderTimelineView()}
-            
+
             {/* Selected Date Summary (Only shown for calendar view) */}
             {selectedDate && viewMode === 'calendar' && renderSummaryCard(
               getStatsForDate(selectedDate),
@@ -416,28 +415,28 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
 
             {/* Legend / Info (Only shown when nothing selected) */}
             {!selectedDate && viewMode === 'calendar' && (
-               <div className="mt-6 p-4 bg-stone-50 rounded-xl border border-stone-200">
-                  <h4 className="text-xs font-medium text-stone-600 mb-3 flex items-center gap-1">
-                    <Info className="w-3 h-3" /> 감정 범례
-                  </h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      '행복', '중립', '당황', '슬픔', 
-                      '분노', '불안', '혐오'
-                    ].map((emotionName) => (
-                      <div key={emotionName} className="text-center p-1.5 bg-white rounded border border-stone-100 flex flex-col items-center">
-                        <div className="w-8 h-8 flex items-center justify-center mb-1">
-                          <img 
-                            src={getEmotionImage(emotionName)} 
-                            alt={emotionName} 
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="text-[10px] text-stone-500">{emotionName}</div>
+              <div className="mt-6 p-4 bg-stone-50 rounded-xl border border-stone-200">
+                <h4 className="text-xs font-medium text-stone-600 mb-3 flex items-center gap-1">
+                  <Info className="w-3 h-3" /> 감정 범례
+                </h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    '행복', '중립', '당황', '슬픔',
+                    '분노', '불안', '혐오'
+                  ].map((emotionName) => (
+                    <div key={emotionName} className="text-center p-1.5 bg-white rounded border border-stone-100 flex flex-col items-center">
+                      <div className="w-8 h-8 flex items-center justify-center mb-1">
+                        <img
+                          src={getEmotionImage(emotionName)}
+                          alt={emotionName}
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                    ))}
-                  </div>
-               </div>
+                      <div className="text-[10px] text-stone-500">{emotionName}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -446,8 +445,8 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
         {viewMode === 'chart' && (
           <div className="space-y-4">
             <EmotionChartView />
-            <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-              <h4 className="text-xs font-medium text-blue-800 mb-2">💡 차트 활용 팁</h4>
+            <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
+              <h4 className="text-xs font-medium text-emerald-800 mb-2">💡 차트 활용 팁</h4>
               <p className="text-xs text-stone-600 leading-relaxed">
                 그래프를 통해 나의 감정 변화 추이를 한눈에 파악할 수 있습니다.
                 주간/월간 버튼을 눌러 기간을 변경해보세요.

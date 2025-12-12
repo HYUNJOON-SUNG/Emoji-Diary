@@ -78,7 +78,7 @@ export function KakaoMapRecommendation({
   const markersRef = useRef<any[]>([]);
   const currentLocationMarkerRef = useRef<any>(null); // 현재 위치 마커
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
+
   // 정렬 옵션 (플로우 8.2)
   const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance'); // 기본값: 거리순
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null); // 선택된 장소 (상세 정보 표시용)
@@ -110,7 +110,7 @@ export function KakaoMapRecommendation({
       // 1. 일기 조회하여 recommendedFood 정보 가져오기
       console.log('[KakaoMapRecommendation] 일기 조회:', { diaryId });
       const diary = await fetchDiaryById(diaryId);
-      
+
       if (!diary) {
         throw new Error('일기를 찾을 수 없습니다.');
       }
@@ -124,12 +124,12 @@ export function KakaoMapRecommendation({
       const foodName = diary.recommendedFood.name;
 
       // 2. 카카오 로컬 API로 장소 검색
-      console.log('[KakaoMapRecommendation] 카카오 로컬 API 호출:', { 
-        keyword: foodName, 
-        lat: location.lat, 
-        lng: location.lng 
+      console.log('[KakaoMapRecommendation] 카카오 로컬 API 호출:', {
+        keyword: foodName,
+        lat: location.lat,
+        lng: location.lng
       });
-      
+
       const places = await searchPlacesWithKakaoLocalAPI(
         foodName,
         location.lat,
@@ -138,16 +138,16 @@ export function KakaoMapRecommendation({
       );
 
       console.log('[KakaoMapRecommendation] 검색된 장소 목록:', places);
-      
+
       // 정렬 적용 (기본값: 거리순)
       const sortedPlaces = sortPlaces(places, sortBy);
       setPlaces(sortedPlaces);
     } catch (err: any) {
       console.error('[KakaoMapRecommendation] 장소 추천 가져오기 실패:', err);
-      
+
       // 에러 메시지 개선
       let errorMessage = '장소 추천을 가져오는데 실패했습니다.';
-      
+
       if (err.message) {
         errorMessage = err.message;
       } else if (err.response?.status === 500) {
@@ -157,7 +157,7 @@ export function KakaoMapRecommendation({
       } else if (err.isNetworkError || !err.response) {
         errorMessage = '서버에 연결할 수 없습니다. 네트워크 연결을 확인해주세요.';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -194,7 +194,7 @@ export function KakaoMapRecommendation({
     radius: number = 5000
   ): Promise<Place[]> => {
     const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY;
-    
+
     if (!KAKAO_REST_API_KEY) {
       throw new Error('카카오 REST API 키가 설정되지 않았습니다. 환경 변수 VITE_KAKAO_REST_API_KEY를 설정해주세요.');
     }
@@ -265,12 +265,12 @@ export function KakaoMapRecommendation({
       return places;
     } catch (error: any) {
       console.error('[KakaoMapRecommendation] 카카오 로컬 API 호출 실패:', error);
-      
+
       // CORS 에러 감지
       if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
         throw new Error('CORS 오류가 발생했습니다. 카카오 개발자 콘솔에서 플랫폼 설정을 확인하거나, 백엔드 프록시를 사용해주세요.');
       }
-      
+
       throw error;
     }
   };
@@ -288,7 +288,7 @@ export function KakaoMapRecommendation({
     const R = 6371000; // 지구 반경 (미터)
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = 
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLng / 2) * Math.sin(dLng / 2);
@@ -309,27 +309,27 @@ export function KakaoMapRecommendation({
    */
   const sortPlaces = (placesToSort: Place[], sortType: 'distance' | 'name'): Place[] => {
     const sorted = [...placesToSort];
-    
+
     switch (sortType) {
       case 'distance':
         // 거리순 정렬 (숫자 기준 오름차순)
         return sorted.sort((a, b) => {
           // distance가 문자열인 경우 숫자로 변환 (하위 호환성)
-          const distanceA = typeof a.distance === 'string' 
-            ? parseFloat((a.distance as string).replace(/[^0-9.]/g, '')) || 0 
+          const distanceA = typeof a.distance === 'string'
+            ? parseFloat((a.distance as string).replace(/[^0-9.]/g, '')) || 0
             : (a.distance || 0);
-          const distanceB = typeof b.distance === 'string' 
-            ? parseFloat((b.distance as string).replace(/[^0-9.]/g, '')) || 0 
+          const distanceB = typeof b.distance === 'string'
+            ? parseFloat((b.distance as string).replace(/[^0-9.]/g, '')) || 0
             : (b.distance || 0);
           return distanceA - distanceB;
         });
-      
 
-      
+
+
       case 'name':
         // 이름순 정렬 (가나다순)
         return sorted.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-      
+
       default:
         return sorted;
     }
@@ -401,7 +401,7 @@ export function KakaoMapRecommendation({
     }
 
     const container = mapContainerRef.current;
-    
+
     // getBoundingClientRect를 사용하여 실제 렌더링된 크기 확인
     const rect = container.getBoundingClientRect();
     const containerWidth = rect.width || container.offsetWidth;
@@ -420,7 +420,7 @@ export function KakaoMapRecommendation({
       setTimeout(() => initMap(centerLat, centerLng, placesToShow), 200);
       return false;
     }
-    
+
     console.log('[KakaoMapRecommendation] 컨테이너 크기 확인:', {
       width: containerWidth,
       height: containerHeight,
@@ -447,7 +447,7 @@ export function KakaoMapRecommendation({
       placesToShow.forEach(place => {
         bounds.extend(new window.kakao.maps.LatLng(place.y, place.x));
       });
-      
+
       const mapOption = {
         center: new window.kakao.maps.LatLng(lat, lng),
         level: 5,
@@ -456,7 +456,7 @@ export function KakaoMapRecommendation({
       try {
         mapRef.current = new window.kakao.maps.Map(container, mapOption);
         mapRef.current.setBounds(bounds); // 모든 장소가 보이도록 조정
-        
+
         window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
           mapRef.current.relayout();
         });
@@ -475,7 +475,7 @@ export function KakaoMapRecommendation({
 
       try {
         mapRef.current = new window.kakao.maps.Map(container, mapOption);
-        
+
         window.kakao.maps.event.addListener(mapRef.current, 'resize', () => {
           mapRef.current.relayout();
         });
@@ -571,10 +571,10 @@ export function KakaoMapRecommendation({
         });
         infowindow.open(mapRef.current, marker);
         marker.infowindow = infowindow;
-        
+
         // 해당 장소 항목 강조 표시 및 상세 정보 표시
         setSelectedPlace(place);
-        
+
         // 지도 중심을 해당 장소로 이동
         const moveLatLon = new window.kakao.maps.LatLng(place.y, place.x);
         mapRef.current.setCenter(moveLatLon);
@@ -650,7 +650,7 @@ export function KakaoMapRecommendation({
         if (currentLocation) {
           addCurrentLocationMarker(currentLocation.lat, currentLocation.lng);
         }
-        
+
         // 장소가 있으면 마커 추가
         if (places.length > 0) {
           addPlaceMarkers(places);
@@ -670,7 +670,7 @@ export function KakaoMapRecommendation({
               if (mapContainerRef.current) {
                 const width = mapContainerRef.current.offsetWidth;
                 const height = mapContainerRef.current.offsetHeight;
-                
+
                 if (width > 0 && height > 0) {
                   console.log('[KakaoMapRecommendation] 컨테이너 준비 완료:', { width, height });
                   initializeMap();
@@ -683,7 +683,7 @@ export function KakaoMapRecommendation({
                 setTimeout(checkContainer, 100);
               }
             };
-            
+
             // 초기 지연 후 컨테이너 확인
             setTimeout(checkContainer, 200);
           });
@@ -693,7 +693,7 @@ export function KakaoMapRecommendation({
             if (mapContainerRef.current) {
               const width = mapContainerRef.current.offsetWidth;
               const height = mapContainerRef.current.offsetHeight;
-              
+
               if (width > 0 && height > 0) {
                 initializeMap();
               } else {
@@ -703,7 +703,7 @@ export function KakaoMapRecommendation({
               setTimeout(checkContainer, 100);
             }
           };
-          
+
           setTimeout(checkContainer, 200);
         }
         return true;
@@ -766,19 +766,19 @@ export function KakaoMapRecommendation({
    */
   const handlePlaceSelect = (place: Place) => {
     setSelectedPlace(place);
-    
+
     // 지도 중심을 해당 장소로 이동
     if (mapRef.current && window.kakao && window.kakao.maps) {
       const moveLatLon = new window.kakao.maps.LatLng(place.y, place.x);
       mapRef.current.setCenter(moveLatLon);
       mapRef.current.setLevel(3);
-      
+
       // 해당 마커의 인포윈도우 열기
       const marker = markersRef.current.find(m => {
         const markerPos = m.getPosition();
         return markerPos && Math.abs(markerPos.getLat() - place.y) < 0.0001 && Math.abs(markerPos.getLng() - place.x) < 0.0001;
       });
-      
+
       if (marker && marker.infowindow) {
         // 다른 인포윈도우 닫기
         markersRef.current.forEach(m => {
@@ -833,7 +833,7 @@ export function KakaoMapRecommendation({
    * - 일반지도, 스카이뷰, 하이브리드 전환
    */
   const [mapType, setMapType] = useState<'ROADMAP' | 'SKYVIEW' | 'HYBRID'>('ROADMAP');
-  
+
   const handleMapTypeChange = () => {
     if (mapRef.current && window.kakao && window.kakao.maps) {
       // 지도 타입 순환: ROADMAP -> SKYVIEW -> HYBRID -> ROADMAP
@@ -846,12 +846,12 @@ export function KakaoMapRecommendation({
   const handleReloadLocation = async () => {
     const location = await getCurrentLocation();
     setCurrentLocation(location);
-    
+
     if (mapRef.current && window.kakao && window.kakao.maps) {
       const moveLatLon = new window.kakao.maps.LatLng(location.lat, location.lng);
       mapRef.current.setCenter(moveLatLon);
       mapRef.current.setLevel(5);
-      
+
       // 현재 위치 마커 업데이트
       addCurrentLocationMarker(location.lat, location.lng);
     }
@@ -866,7 +866,7 @@ export function KakaoMapRecommendation({
           <div className="flex items-start gap-3">
             <button
               onClick={onClose}
-              className="mt-0.5 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 active:bg-blue-50 shrink-0"
+              className="mt-0.5 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-emerald-600 hover:text-emerald-700 active:bg-emerald-50 shrink-0"
               aria-label="뒤로가기"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -897,7 +897,7 @@ export function KakaoMapRecommendation({
               ref={mapContainerRef}
               className="w-full h-full bg-stone-100"
             />
-            
+
             {/* 지도 컨트롤 버튼들 (플로우 8.2) - 지도 우측 상단에 배치 */}
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-50 pointer-events-auto">
               {/* 줌 인/아웃 */}
@@ -925,7 +925,7 @@ export function KakaoMapRecommendation({
                   aria-label="현재 위치 재확인"
                   title="현재 위치 재확인"
                 >
-                  <Navigation className="w-4 h-4 text-blue-600" />
+                  <Navigation className="w-4 h-4 text-emerald-600" />
                 </button>
               </div>
             </div>
@@ -975,53 +975,50 @@ export function KakaoMapRecommendation({
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-stone-600 font-medium">정렬:</span>
                   <div className="flex bg-stone-100 p-1 rounded-lg">
-                <button
-                  onClick={() => handleSortChange('distance')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    sortBy === 'distance'
-                      ? 'bg-white text-stone-800 shadow-sm'
-                      : 'text-stone-500 hover:text-stone-700'
-                  }`}
-                >
-                  거리순
-                </button>
-                <button
-                  onClick={() => handleSortChange('name')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                    sortBy === 'name'
-                      ? 'bg-white text-stone-800 shadow-sm'
-                      : 'text-stone-500 hover:text-stone-700'
-                  }`}
-                >
-                  이름순
-                </button>
-              </div>
+                    <button
+                      onClick={() => handleSortChange('distance')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${sortBy === 'distance'
+                          ? 'bg-white text-stone-800 shadow-sm'
+                          : 'text-stone-500 hover:text-stone-700'
+                        }`}
+                    >
+                      거리순
+                    </button>
+                    <button
+                      onClick={() => handleSortChange('name')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${sortBy === 'name'
+                          ? 'bg-white text-stone-800 shadow-sm'
+                          : 'text-stone-500 hover:text-stone-700'
+                        }`}
+                    >
+                      이름순
+                    </button>
+                  </div>
                 </div>
 
                 {/* 장소 목록 */}
                 <div className="space-y-3">
                   {places.map((place) => {
                     // 거리 포맷팅 (표시용)
-                    const distanceStr = typeof place.distance === 'string' 
-                      ? place.distance 
-                      : place.distance < 1000 
-                        ? `${Math.round(place.distance)}m` 
+                    const distanceStr = typeof place.distance === 'string'
+                      ? place.distance
+                      : place.distance < 1000
+                        ? `${Math.round(place.distance)}m`
                         : `${(place.distance / 1000).toFixed(1)}km`;
-                    
+
                     const isSelected = selectedPlace?.id === place.id;
-                    
+
                     return (
                       <div
                         key={place.id}
-                        className={`bg-stone-50 rounded-lg p-4 border transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50 border-blue-400 shadow-md'
-                            : 'border-stone-200 hover:bg-stone-100 hover:border-blue-300'
-                        }`}
+                        className={`bg-stone-50 rounded-lg p-4 border transition-all cursor-pointer ${isSelected
+                            ? 'bg-emerald-50 border-emerald-400 shadow-md'
+                            : 'border-stone-200 hover:bg-stone-100 hover:border-emerald-300'
+                          }`}
                         onClick={() => handlePlaceSelect(place)}
                       >
                         <div className="flex items-start gap-3">
-                          <MapPin className={`w-5 h-5 mt-0.5 shrink-0 ${isSelected ? 'text-blue-600' : 'text-blue-600'}`} />
+                          <MapPin className={`w-5 h-5 mt-0.5 shrink-0 ${isSelected ? 'text-emerald-600' : 'text-emerald-600'}`} />
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-stone-800 mb-1 truncate">{place.name}</h4>
                             {place.category && (
@@ -1030,7 +1027,7 @@ export function KakaoMapRecommendation({
                             <p className="text-sm text-stone-600 mb-1 line-clamp-2">
                               {place.roadAddress || place.address}
                             </p>
-                            
+
                             {/* 상세 정보 (플로우 8.2) - 선택된 장소에만 확장 표시 */}
                             {isSelected && (
                               <div className="mt-3 pt-3 border-t border-stone-200 space-y-2 animate-in slide-in-from-top-2">
@@ -1058,7 +1055,7 @@ export function KakaoMapRecommendation({
                                       e.stopPropagation();
                                       handleViewOnMap(place);
                                     }}
-                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                                    className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1 px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
                                   >
                                     카카오맵에서 자세히 보기
                                     <ExternalLink className="w-3 h-3" />
@@ -1066,7 +1063,7 @@ export function KakaoMapRecommendation({
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* 기본 정보 (선택되지 않은 경우) */}
                             {!isSelected && (
                               <div className="flex items-center justify-between mt-2">
@@ -1106,7 +1103,7 @@ export function KakaoMapRecommendation({
           <div className="flex items-start gap-3">
             <button
               onClick={onClose}
-              className="mt-1 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 active:bg-blue-50 shrink-0"
+              className="mt-1 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-emerald-600 hover:text-emerald-700 active:bg-emerald-50 shrink-0"
               aria-label="뒤로가기"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -1137,7 +1134,7 @@ export function KakaoMapRecommendation({
               ref={mapContainerRef}
               className="w-full h-full"
             />
-            
+
             {/* 지도 컨트롤 버튼들 (플로우 8.2) - 지도 우측 상단에 배치 */}
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-50">
               {/* 줌 인/아웃 */}
@@ -1165,7 +1162,7 @@ export function KakaoMapRecommendation({
                   aria-label="현재 위치 재확인"
                   title="현재 위치 재확인"
                 >
-                  <Navigation className="w-4 h-4 text-blue-600" />
+                  <Navigation className="w-4 h-4 text-emerald-600" />
                 </button>
               </div>
             </div>
@@ -1192,7 +1189,7 @@ export function KakaoMapRecommendation({
                   {places.map((place) => (
                     <div
                       key={place.id}
-                      className="bg-stone-50 rounded-lg p-4 border border-stone-200 hover:bg-stone-100 hover:border-blue-300 transition-all cursor-pointer"
+                      className="bg-stone-50 rounded-lg p-4 border border-stone-200 hover:bg-stone-100 hover:border-emerald-300 transition-all cursor-pointer"
                       onClick={() => {
                         // 클릭 시 해당 장소로 지도 이동
                         if (mapRef.current) {
@@ -1203,7 +1200,7 @@ export function KakaoMapRecommendation({
                       }}
                     >
                       <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                        <MapPin className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-stone-800 mb-1 truncate">{place.name}</h4>
                           <p className="text-sm text-stone-600 mb-1 line-clamp-2">
@@ -1230,7 +1227,7 @@ export function KakaoMapRecommendation({
                                 e.stopPropagation();
                                 handleViewOnMap(place);
                               }}
-                              className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                              className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                             >
                               지도에서 보기
                               <ExternalLink className="w-3 h-3" />
