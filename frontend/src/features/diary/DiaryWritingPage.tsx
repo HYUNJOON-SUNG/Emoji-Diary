@@ -5,6 +5,7 @@ import { uploadImage, deleteImage } from '../../services/uploadApi';
 import { BASE_URL } from '../../services/api';
 import { theme } from '../../styles/theme';
 import { apiClient } from '../../services/api';
+import { enumToPersona } from '../../utils/personaConverter';
 
 /**
  * KoBERT 감정 분석 결과 매핑 (플로우 3.3, 3.4)
@@ -93,6 +94,7 @@ interface DiaryWritingPageProps {
     activities?: string[];
     images?: string[];
     aiImage?: string;
+    persona?: string; // 백엔드 Enum (BEST_FRIEND, etc.)
   };
 }
 
@@ -148,6 +150,9 @@ export const DiaryWritingPage = forwardRef<{
   
   /** 본문 (필수) */
   const [content, setContent] = useState(existingDiary?.content || '');
+  
+  /** 삭제할 이미지 URL 목록 (수정 모드에서 사용, 저장 시 일괄 삭제) */
+  const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]);
   
   // ========== UI 상태 ==========
   
@@ -321,49 +326,31 @@ export const DiaryWritingPage = forwardRef<{
    * Response: { success: boolean }
    */
   const handleCancelConfirm = async () => {
-    // 이미지 삭제 API 호출 (서버에 업로드된 이미지만 삭제)
-    if (isEditMode && existingDiary) {
-      // 플로우 4.4: 수정 모드 - 새로 추가한 이미지만 삭제
-      const existingImageUrls = existingDiary.images || [];
-      const newImages = images.filter(img => !existingImageUrls.includes(img.url));
-      
-      if (newImages.length > 0) {
+    // 수정 모드: 취소 시, '새로 추가된 이미지'는 삭제해야 함.
+    // 기존 이미지는 건드리지 않음. (deletedImageUrls에 있는 것도 복구=무시)
+    
+    // 삭제 대상: images에 있는 것 중 '새로 추가된 것' (기존에 없던 것)
+    // AND deletedImageUrls에 있는 것 중 '새로 추가된 것' (추가했다가 지운 것) -> 이것도 지워야 함 (서버에 업로드되어 있으므로)
+    
+    const initialRemoteUrls = existingDiary?.images || [];
+    
+    // 1. 현재 목록에 있는 새 이미지들
+    const newImagesInList = images
+       .map(img => img.url)
+       .filter(url => url && !url.startsWith('blob:') && !initialRemoteUrls.includes(url));
+       
+    // 2. 추가했다가 삭제 목록으로 간 새 이미지들
+    const newImagesInDeleted = deletedImageUrls
+       .filter(url => !initialRemoteUrls.includes(url));
+       
+    const allNewImagesToDelete = [...newImagesInList, ...newImagesInDeleted];
+    
+    if (allNewImagesToDelete.length > 0) {
+      console.log('[작성 취소] 새로 추가된 이미지 정리:', allNewImagesToDelete);
+      for (const url of allNewImagesToDelete) {
         try {
-          for (const image of newImages) {
-            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
-            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
-              try {
-                await deleteImage({ imageUrl: image.url });
-                console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);
-              } catch (err) {
-                console.error('[일기 작성 취소] 이미지 삭제 실패:', image.url, err);
-                // 삭제 실패해도 계속 진행 (이미지는 서버에 남아있을 수 있음)
-              }
-            }
-          }
-        } catch (err) {
-          console.error('[일기 작성 취소] 이미지 삭제 중 오류:', err);
-        }
-      }
-    } else {
-      // 플로우 3.5: 새 작성 모드 - 모든 이미지 삭제
-      if (images.length > 0) {
-        try {
-          for (const image of images) {
-            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
-            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
-              try {
-                await deleteImage({ imageUrl: image.url });
-                console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);
-              } catch (err) {
-                console.error('[일기 작성 취소] 이미지 삭제 실패:', image.url, err);
-                // 삭제 실패해도 계속 진행 (이미지는 서버에 남아있을 수 있음)
-              }
-            }
-          }
-        } catch (err) {
-          console.error('[일기 작성 취소] 이미지 삭제 중 오류:', err);
-        }
+           await deleteImage({ imageUrl: url });
+        } catch(e) { console.error('이미지 정리 실패:', e); }
       }
     }
     
@@ -487,37 +474,17 @@ export const DiaryWritingPage = forwardRef<{
    * 
    * @param index - 삭제할 이미지의 인덱스
    */
-  const handleRemoveImage = async (index: number) => {
+  const handleRemoveImage = (index: number) => {
     const imageToRemove = images[index];
     
-    try {
-      // DELETE /api/upload/image
-      // 이미 서버에 업로드된 이미지인 경우에만 삭제 API 호출
-      // [디버깅용] 이미지 삭제 API 호출 로그 (F12 관리자도구에서 확인 가능)
-      if (imageToRemove.url && !imageToRemove.url.startsWith('blob:') && !imageToRemove.url.startsWith('data:')) {
-        console.log('[이미지 삭제] API 호출 시작:', imageToRemove.url);
-        try {
-          await deleteImage({ imageUrl: imageToRemove.url });
-          console.log('[이미지 삭제] API 호출 성공');
-        } catch (deleteErr: any) {
-          // [디버깅용] 이미지 삭제 에러 상세 로그
-          console.warn('[이미지 삭제] API 호출 실패 (무시하고 계속 진행):', deleteErr);
-          // 이미지가 이미 삭제되었거나 존재하지 않는 경우 등은 정상적인 상황일 수 있음
-          // 기능상 문제가 없으므로 에러를 무시하고 계속 진행
-        }
-      } else {
-        console.log('[이미지 삭제] 로컬 이미지 (blob/data URL) - API 호출 불필요');
-      }
-      
-      // 이미지 목록에서 제거 (로컬 상태 정리)
-      setImages(images.filter((_, i) => i !== index));
-    } catch (err: any) {
-      // 예상치 못한 에러인 경우에만 로그 출력
-      console.error('[이미지 삭제] 예상치 못한 에러:', err);
-      // 삭제 실패해도 목록에서 제거 (로컬 상태 정리)
-      setImages(images.filter((_, i) => i !== index));
-      // 사용자에게 에러 메시지를 표시하지 않음 (기능은 정상 작동)
+    // 이미 서버에 있는 이미지(URL)라면 삭제 대기 목록에 추가 (API 호출 지연)
+    if (imageToRemove.url && !imageToRemove.url.startsWith('blob:') && !imageToRemove.url.startsWith('data:')) {
+       console.log('[이미지 삭제] 삭제 대기 목록에 추가:', imageToRemove.url);
+       setDeletedImageUrls(prev => [...prev, imageToRemove.url]);
     }
+    
+    // 화면 목록에서 제거
+    setImages(images.filter((_, i) => i !== index));
   };
   
   /**
@@ -637,12 +604,47 @@ export const DiaryWritingPage = forwardRef<{
       
       let savedDiary: DiaryDetail | null = null;
       
+      // 수정 모드일 경우 변경 사항 확인 (플로우 4.3 최적화)
+      if (isEditMode) {
+        // 1. 컨텐츠 변경 여부 (Dirty Check) - 이미 계산됨 (isDirty)
+        
+        // 2. 페르소나 변경 여부 확인
+        let isPersonaChanged = false;
+        if (existingDiary?.persona) {
+           const savedPersonaKorean = enumToPersona(existingDiary.persona);
+           const userStr = localStorage.getItem('user');
+           let currentPersonaKorean = '베프'; // 기본값
+           if (userStr) {
+              const user = JSON.parse(userStr);
+              currentPersonaKorean = user.persona || '베프';
+           }
+           
+           if (savedPersonaKorean !== currentPersonaKorean) {
+              isPersonaChanged = true;
+           }
+        }
+        
+        // 변경 사항이 없고 페르소나도 변경되지 않았으면 API 호출 없이 뒤로가기
+        if (!isDirty && !isPersonaChanged) {
+           console.log('변경 사항 없음, 업데이트 건너뜀');
+           onCancel(); // 상세 보기로 복귀
+           setIsSaving(false);
+           setIsAnalyzingEmotion(false);
+           return;
+        }
+      }
+      
       if (isEditMode) {
         // 수정 모드 (플로우 4.3)
         if (!existingDiary?.id) {
           throw new Error('일기 ID가 없습니다. 수정할 수 없습니다.');
         }
         
+        if (deletedImageUrls.length > 0) {
+           console.log('삭제 대기 중인 이미지 일괄 삭제:', deletedImageUrls);
+           await Promise.all(deletedImageUrls.map(url => deleteImage({ imageUrl: url }).catch(e => console.warn('이미지 삭제 실패(무시):', e))));
+        }
+
         const updateRequest: UpdateDiaryRequest = {
           title: title.trim(),
           content: content.trim(), // API 명세서: content

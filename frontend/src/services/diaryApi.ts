@@ -81,6 +81,7 @@ export interface DiaryDetail {
     name: string; // 추천 음식 이름
     reason: string; // 추천 근거
   };
+  persona?: string; // 작성 당시 페르소나 (Backend Enum: BEST_FRIEND, POET, ...)
   createdAt?: string; // 생성일시 (ERD: Diaries.created_at, DATETIME, ISO 8601 형식)
   updatedAt?: string; // 수정일시 (ERD: Diaries.updated_at, DATETIME, ISO 8601 형식)
 }

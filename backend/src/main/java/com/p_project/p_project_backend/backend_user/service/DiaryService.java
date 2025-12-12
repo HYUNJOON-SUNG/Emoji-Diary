@@ -54,8 +54,19 @@ public class DiaryService {
     public DiaryResponse updateDiary(User user, Long diaryId, DiaryUpdateRequest request) {
         Diary diary = getOwnedDiary(user, diaryId);
 
-        AiServiceResult aiResult = analyzeDiaryContent(user, request.getContent(), request.getWeather());
-        updateDiaryEntity(diary, request, aiResult);
+        // Check if content, weather, or persona has changed
+        boolean contentChanged = !diary.getContent().equals(request.getContent());
+        boolean weatherChanged = diary.getWeather() != request.getWeather();
+        boolean personaChanged = diary.getPersona() != user.getPersona();
+
+        if (contentChanged || weatherChanged || personaChanged) {
+            // If any critical field changed, trigger AI analysis (Smart Update)
+            AiServiceResult aiResult = analyzeDiaryContent(user, request.getContent(), request.getWeather());
+            updateDiaryEntity(diary, request, aiResult);
+        } else {
+            // Only metadata changed (title, mood, activities, images), skip AI
+            updateDiaryEntityPartial(diary, request);
+        }
 
         deleteDiaryContents(diary);
         saveDiaryContents(diary, request.getActivities(), request.getImages());
@@ -148,10 +159,37 @@ public class DiaryService {
         diary.setContent(request.getContent());
         diary.setMood(request.getMood());
         diary.setWeather(request.getWeather());
+        // Save user's current persona as snapshot
+        diary.setPersona(diary.getUser().getPersona());
+
         diary.setEmotion(Emotion.valueOf(aiResult.getEmotion()));
         diary.setAiComment(aiResult.getAiComment());
         diary.setRecommendedFood(convertToJson(aiResult.getRecommendedFood()));
         diary.setImageUrl(aiResult.getImageUrl());
+        diary.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private void updateDiaryEntityPartial(Diary diary, DiaryUpdateRequest request) {
+        // Update only metadata fields, skip AI fields
+        diary.setTitle(request.getTitle());
+        diary.setContent(request.getContent()); // Content is same, but set it anyway or just metadata?
+        // Actually if content didn't change, we still update it just in case text
+        // encoding quirks? No need if checked equality.
+        // But the partial update is for when AI inputs (content/weather/persona) are
+        // NOT changed.
+        // Wait, if content IS same, we don't need to set it?
+        // Logic says: if !contentChanged && !weatherChanged && !personaChanged ->
+        // partial.
+
+        diary.setTitle(request.getTitle());
+        // Content, Weather are same effectively, but let's set them to be safe or if
+        // there are minor diffs ignored?
+        // Actually if they are equal, setting them is fine (no-op).
+        diary.setContent(request.getContent());
+        diary.setMood(request.getMood());
+        diary.setWeather(request.getWeather());
+        // Persona is same, no need to update or just set it.
+
         diary.setUpdatedAt(LocalDateTime.now());
     }
 
@@ -183,6 +221,7 @@ public class DiaryService {
                 .content(request.getContent())
                 .mood(request.getMood())
                 .weather(request.getWeather())
+                .persona(user.getPersona()) // Save snapshot of persona
                 .emotion(Emotion.valueOf(aiResult.getEmotion()))
                 .aiComment(aiResult.getAiComment())
                 .recommendedFood(convertToJson(aiResult.getRecommendedFood()))
@@ -224,6 +263,7 @@ public class DiaryService {
                 .recommendedFood(convertFromJson(savedDiary.getRecommendedFood()))
                 .createdAt(savedDiary.getCreatedAt())
                 .updatedAt(savedDiary.getUpdatedAt())
+                .persona(savedDiary.getPersona() != null ? savedDiary.getPersona().name() : null)
                 .build();
     }
 

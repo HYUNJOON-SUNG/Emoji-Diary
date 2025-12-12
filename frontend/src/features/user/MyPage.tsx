@@ -777,7 +777,9 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
                       : 'border-stone-200 hover:bg-stone-50'
                   } ${isUpdatingPersona ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <div className="text-2xl mb-1">{persona.icon}</div>
+                  <div className="w-16 h-16 mb-2 mx-auto">
+                    <img src={persona.icon} alt={persona.name} className="w-full h-full object-contain" />
+                  </div>
                   <div className="font-medium text-sm text-stone-800 text-blue-600">{persona.name}</div>
                   <div className="text-[10px] text-stone-500 text-blue-600">{persona.style}</div>
                   {isUpdatingPersona && currentPersona === persona.id && (

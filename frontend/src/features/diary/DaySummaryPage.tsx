@@ -96,6 +96,14 @@ import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 // HMR Force Update
 
 import { getEmotionImage } from '../../utils/emotionImages';
+import { enumToPersona } from '../../utils/personaConverter';
+
+import friendIcon from '../../assets/친구.png';
+import parentIcon from '../../assets/부모님.png';
+import expertIcon from '../../assets/전문가.png';
+import mentorIcon from '../../assets/멘토.png';
+import therapistIcon from '../../assets/상담사.png';
+import poetIcon from '../../assets/시인.png';
 
 
 
@@ -461,28 +469,45 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           <div className="relative bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
             <div className="text-xs text-stone-800 mb-3 flex items-center gap-1.5 font-medium">
               <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const personaMap: { [key: string]: string } = {
-                  'friend': '💙',
-                  'parent': '🤗',
-                  'expert': '💼',
-                  'mentor': '🎯',
-                  'therapist': '🌸',
-                  'poet': '✨'
+                // 1. 일기에 저장된 페르소나 (Enum String: 'BEST_FRIEND') -> 한글 변환
+                // 2. 없으면 현재 사용자 설정 (localStorage 'user') -> 이미 한글
+                // 3. 없으면 기본값 '베프'
+                
+                let currentPersona = '베프';
+                if (entry.persona) {
+                   currentPersona = enumToPersona(entry.persona);
+                } else {
+                   const userStr = localStorage.getItem('user');
+                   if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                   }
+                }
+
+                const personaImageMap: { [key: string]: string } = {
+                  '베프': friendIcon,
+                  '부모님': parentIcon,
+                  '전문가': expertIcon,
+                  '멘토': mentorIcon,
+                  '상담사': therapistIcon,
+                  '시인': poetIcon
                 };
-                return personaMap[persona] || '✨';
+                const imageSrc = personaImageMap[currentPersona] || friendIcon;
+
+                return <img src={imageSrc} alt={currentPersona} className="w-5 h-5 object-contain" />;
               })()}</span>
               <span>{(() => {
-                const persona = localStorage.getItem('aiPersona') || 'friend';
-                const nameMap: { [key: string]: string } = {
-                  'friend': '베프',
-                  'parent': '부모님',
-                  'expert': '전문가',
-                  'mentor': '멘토',
-                  'therapist': '상담사',
-                  'poet': '시인'
-                };
-                return nameMap[persona] || '베프';
+                let currentPersona = '베프';
+                if (entry.persona) {
+                   currentPersona = enumToPersona(entry.persona);
+                } else {
+                   const userStr = localStorage.getItem('user');
+                   if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                   }
+                }
+                return currentPersona;
               })()}의 코멘트</span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">

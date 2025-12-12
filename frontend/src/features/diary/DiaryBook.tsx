@@ -328,6 +328,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           activities: diaryData.activities,
           images: diaryData.images || [], // 이미지 목록 추가
           aiImage: diaryData.imageUrl,
+          persona: diaryData.persona, // 페르소나 추가
         });
         setIsEditMode(true);
       }
