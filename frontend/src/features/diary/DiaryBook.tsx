@@ -31,7 +31,7 @@ import { EmotionAnalysisModal } from '../analysis/EmotionAnalysisModal';
 import { BottomNav } from '../../components/BottomNav';
 import { TabType } from './BottomTabBar'; // Keeping TabType for compatibility if needed, or better move it.
 import { analyzeRiskSignals } from '../../services/riskDetection';
-import { KakaoMapRecommendation } from './KakaoMapRecommendation';
+
 // HMR Update
 import { type User } from '../../types';
 import { type RiskAnalysis } from '../../services/riskDetection';
@@ -40,7 +40,7 @@ import { MobileLayout } from '../../components/MobileLayout';
 /**
  * 뷰 모드 타입 정의
  */
-type ViewMode = 'home' | 'writing' | 'reading' | 'mypage' | 'stats' | 'list' | 'support' | 'map';
+type ViewMode = 'home' | 'writing' | 'reading' | 'mypage' | 'stats' | 'list' | 'support';
 
 /**
  * DiaryBook 컴포넌트 Props
@@ -79,10 +79,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   // 페이지 전환 애니메이션 상태
   // const [isFlipping, setIsFlipping] = useState(false); // Unused
   const [direction, setDirection] = useState(0);
-  // const [showMapRecommendation, setShowMapRecommendation] = useState(false); // Unused
-  const [mapEmotion, setMapEmotion] = useState('');
-  const [mapEmotionCategory, setMapEmotionCategory] = useState('');
-  const [mapDiaryId, setMapDiaryId] = useState<string | undefined>(undefined); // 일기 ID (장소 추천 API 호출에 사용)
+
+  const [showMapOnReadingLoad, setShowMapOnReadingLoad] = useState(false);
+
 
   // 수정 모드 상태
   const [isEditMode, setIsEditMode] = useState(false);
@@ -156,6 +155,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     }
 
     // setShowMapRecommendation(false); // Removed
+    setShowMapOnReadingLoad(false); // 일반 상세 조회 시에는 지도 표시 안 함
     setViewMode('reading');
   };
 
@@ -219,8 +219,8 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setAnalysisImageUrl(emotionData.imageUrl || null);
     setAnalysisDate(emotionData.date);
 
-    // 일기 ID 저장 (장소 추천 기능에서 사용)
-    setMapDiaryId(emotionData.diaryId);
+    // 일기 ID 저장 (장소 추천 기능에서 사용) - 제거됨
+    // setMapDiaryId(emotionData.diaryId);
 
     // 일기 작성 화면을 닫고 감정 분석 모달 표시 (플로우 변경)
     // [수정] 바로 상세 조회로 가지 않고, 홈(캘린더) 위에서 모달 표시
@@ -296,8 +296,6 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   // 감정 분석 모달에서 장소 추천 (플로우 8.1 경로 A: 일기 저장 후 감정 분석 모달에서)
   const handleEmotionAnalysisMapRecommendation = () => {
     setShowEmotionAnalysis(false);
-    setMapEmotion(analysisEmotion);
-    setMapEmotionCategory(analysisEmotionCategory);
     // mapDiaryId는 이미 handleFinishWriting에서 설정됨
 
     if (analysisDate) {
@@ -306,8 +304,8 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       setCurrentMonth(selectedMonth);
     }
 
-    setViewMode('map');
-    // setShowMapRecommendation(true); // Deprecated in favor of viewMode
+    setShowMapOnReadingLoad(true); // 상세 조회 진입 시 지도 자동 표시
+    setViewMode('reading');
   };
 
   // 일기 수정 핸들러
@@ -353,7 +351,9 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       setIsEditMode(false);
       setExistingDiaryData(null);
       setSelectedDate(null);
+      setSelectedDate(null);
       // setShowMapRecommendation(false); // Removed
+      setShowMapOnReadingLoad(false);
 
       setViewMode(targetView);
 
@@ -540,6 +540,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     if (viewMode === 'list') return 'list';
     if (viewMode === 'stats') return 'stats';
     if (viewMode === 'mypage') return 'mypage';
+    if (viewMode === 'support') return 'mypage'; // 상담 연결 리소스는 마이페이지 탭 유지
     return 'home';
   };
 
@@ -580,45 +581,51 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
           {/* Main Content */}
           <div className="w-full mx-auto">
-            {/* View Rendering Logic */}
-            {viewMode === 'home' && (
-              <div className="w-full px-4 py-2 overflow-x-hidden">
-                <AnimatePresence mode="wait" custom={direction} initial={false}>
-                  <motion.div
-                    key={currentMonth.toISOString()}
-                    custom={direction}
-                    variants={slideVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={{ type: 'tween', duration: 0.2 }}
-                    className="w-full"
-                  >
-                    <CalendarPage
-                      onDateSelect={handleDateSelect}
-                      selectedDate={selectedDate}
-                      currentMonth={currentMonth}
-                      onMonthChange={handleMonthChange}
-                      refreshKey={refreshKey}
-                      showBothButtons={true}
-                      isRightPage={false}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {/* View Rendering Logic */}
+              {viewMode === 'home' && (
+                <motion.div
+                  key="home"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full px-4 py-2 overflow-x-hidden"
+                >
+                  <AnimatePresence mode="wait" custom={direction} initial={false}>
+                    <motion.div
+                      key={currentMonth.toISOString()}
+                      custom={direction}
+                      variants={slideVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ type: 'tween', duration: 0.2 }}
+                      className="w-full"
+                    >
+                      <CalendarPage
+                        onDateSelect={handleDateSelect}
+                        selectedDate={selectedDate}
+                        currentMonth={currentMonth}
+                        onMonthChange={handleMonthChange}
+                        refreshKey={refreshKey}
+                        showBothButtons={true}
+                        isRightPage={false}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </motion.div>
+              )}
 
-            {/* Writing View - 전체 화면 모달 */}
-            <AnimatePresence>
+              {/* Writing View - 전체 화면 모달 */}
               {viewMode === 'writing' && !showEmotionAnalysis && (
                 <motion.div
+                  key="writing"
                   className="absolute inset-0 bg-white z-50 overflow-y-auto scrollbar-hide"
                   initial={{ y: '100%' }}
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                // paddingBottom no longer strictly needed if footer is hidden, but safe to keep or remove.
-                // Since footer is null in writing mode, the main area extends to bottom.
                 >
                   <DiaryWritingPage
                     ref={writingPageRef}
@@ -626,11 +633,8 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                     onFinish={handleFinishWriting}
                     onCancel={handleBackToCalendar}
                     onGenerateImage={(content, emotion, weather) => handleGenerateImage(content, emotion, weather || '')}
-                    onMapRecommendation={(emotion, emotionCategory) => {
-                      setMapEmotion(emotion);
-                      setMapEmotionCategory(emotionCategory);
+                    onMapRecommendation={() => {
                       setViewMode('reading');
-                      // setShowMapRecommendation(true); // Removed
                     }}
                     isEditMode={isEditMode}
                     existingDiary={existingDiaryData}
@@ -644,12 +648,11 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                   />
                 </motion.div>
               )}
-            </AnimatePresence>
 
-            {/* Reading View */}
-            <AnimatePresence>
+              {/* Reading View */}
               {viewMode === 'reading' && (
                 <motion.div
+                  key="reading"
                   className="absolute inset-0 bg-white z-40 overflow-hidden flex flex-col"
                   initial={{ x: '100%' }}
                   animate={{ x: 0 }}
@@ -662,91 +665,99 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                     onEdit={handleEdit}
                     onStartWriting={() => handleStartWriting(selectedDate || new Date())}
                     onBackToCalendar={handleBackToCalendar}
-                    onMapRecommendation={(emotion, emotionCategory, diaryId) => {
-                      setMapEmotion(emotion);
-                      setMapEmotionCategory(emotionCategory);
-                      setMapDiaryId(diaryId);
-                      // setShowMapRecommendation(true); // Removed
+                    initialShowMap={showMapOnReadingLoad}
+                  />
+                </motion.div>
+              )}
+
+              {/* List View */}
+              {viewMode === 'list' && (
+                <motion.div
+                  key="list"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full px-4 py-4"
+                >
+                  <DiaryListPage
+                    onDiaryClick={(date) => {
+                      setPreviousViewMode('list');
+                      setSelectedDate(date);
+                      setViewMode('reading');
                     }}
                   />
                 </motion.div>
               )}
+
+              {/* Stats View */}
+              {viewMode === 'stats' && (
+                <motion.div
+                  key="stats"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full"
+                >
+                  <EmotionStatsPage
+                    onDateClick={handleDateSelect}
+                    selectedDateFromParent={statsSelectedDate}
+                    onSelectedDateChange={(date) => setStatsSelectedDate(date)}
+                    savedViewMode={statsViewMode}
+                    onViewModeChange={setStatsViewMode}
+                  />
+                </motion.div>
+              )}
+
+              {/* My Page View */}
+              {viewMode === 'mypage' && (
+                <motion.div
+                  key="mypage"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full px-4 py-4"
+                >
+                  <MyPage
+                    onModalStateChange={setShowPersonaModal}
+                    onAccountDeleted={onAccountDeleted || (() => { })}
+                    onGoToSupport={handleGoToSupport}
+                    onLogout={handleLogout}
+                    onUserUpdate={(user) => {
+                      if (onUserUpdate) onUserUpdate(user);
+                    }}
+                  />
+                </motion.div>
+              )}
+
+              {/* Support View */}
+              {viewMode === 'support' && (
+                <motion.div
+                  key="support"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full px-4 py-4"
+                >
+                  <SupportResourcesPage
+                    onBack={() => {
+                      const target = previousViewMode || 'home';
+                      setDirection(-1); // For animation
+                      setTimeout(() => {
+                        setViewMode(target);
+                        setPreviousViewMode(null);
+                        setDirection(0);
+                      }, 200);
+                    }}
+                  />
+                </motion.div>
+              )}
+
+
             </AnimatePresence>
-
-            {/* List View */}
-            {viewMode === 'list' && (
-              <div className="w-full px-4 py-4">
-                <DiaryListPage
-                  onDiaryClick={(date) => {
-                    setPreviousViewMode('list');
-                    setSelectedDate(date);
-                    setViewMode('reading');
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Stats View */}
-            {viewMode === 'stats' && (
-              <div className="w-full">
-                <EmotionStatsPage
-                  onDateClick={handleDateSelect}
-                  selectedDateFromParent={statsSelectedDate}
-                  onSelectedDateChange={(date) => setStatsSelectedDate(date)}
-                  savedViewMode={statsViewMode}
-                  onViewModeChange={setStatsViewMode}
-                />
-              </div>
-            )}
-
-            {/* My Page View */}
-            {viewMode === 'mypage' && (
-              <div className="w-full px-4 py-4">
-                <MyPage
-                  onModalStateChange={setShowPersonaModal}
-                  onAccountDeleted={onAccountDeleted || (() => { })}
-                  onGoToSupport={handleGoToSupport}
-                  onLogout={handleLogout}
-                  onUserUpdate={(user) => {
-                    if (onUserUpdate) onUserUpdate(user);
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Support View */}
-            {viewMode === 'support' && (
-              <div className="w-full px-4 py-4">
-                <SupportResourcesPage
-                  onBack={() => {
-                    const target = previousViewMode || 'home';
-                    setDirection(-1); // For animation
-                    setTimeout(() => {
-                      setViewMode(target);
-                      setPreviousViewMode(null);
-                      setDirection(0);
-                    }, 200);
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Map Recommendation View (Inline Full Page) */}
-            {viewMode === 'map' && (
-              <div className="w-full h-full absolute inset-0 bg-white z-10">
-                <KakaoMapRecommendation
-                  isOpen={true}
-                  onClose={() => {
-                    // 뒤로 가기 시 읽기 모드로 복귀 (혹은 이전 뷰)
-                    setViewMode('reading');
-                  }}
-                  emotion={mapEmotion}
-                  emotionCategory={mapEmotionCategory}
-                  diaryId={mapDiaryId} // 일기 ID 전달
-                  isInline={true}
-                />
-              </div>
-            )}
           </div>
         </div>
 

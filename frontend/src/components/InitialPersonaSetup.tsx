@@ -174,7 +174,7 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
                 말투 미리보기
               </h3>
               <div className="text-sm text-stone-600 dark:text-stone-300 italic p-3 bg-stone-50 dark:bg-black rounded-xl border border-stone-100 dark:border-stone-800 leading-relaxed text-center relative">
-                <Quote size={16} className="absolute top-2 left-2 text-stone-300" />
+
                 {selectedPersona === 'friend' && '"오늘 하루 어땠어? 너의 감정을 이렇게 솔직하게 적어줘서 정말 고마워! 내가 항상 네 이야기에 귀 기울여 줄게."'}
                 {selectedPersona === 'parent' && '"힘든 일이 있었구나. 괜찮아, 천천히 해도 돼. 엄마/아빠는 네가 자랑스러워."'}
                 {selectedPersona === 'expert' && '"오늘의 감정 패턴을 분석한 결과, 스트레스 관리가 필요해 보입니다. 규칙적인 휴식과 수면을 취해보는 것이 좋겠습니다."'}
@@ -219,24 +219,5 @@ export function InitialPersonaSetup({ onComplete }: InitialPersonaSetupProps) {
   );
 }
 
-// 아이콘을 위한 dummy component (lucide-react import 필요)
-function Quote({ size, className }: { size?: number, className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size || 24}
-      height={size || 24}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="none"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
-      <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
-    </svg>
-  );
-}
+
 

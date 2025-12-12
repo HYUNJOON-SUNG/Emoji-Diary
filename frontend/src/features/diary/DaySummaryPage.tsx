@@ -90,6 +90,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diaryApi';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
@@ -140,9 +141,10 @@ interface DaySummaryPageProps {
   onStartWriting?: () => void; // "일기 작성하기" 버튼 클릭 콜백
   onBackToCalendar?: () => void; // 뒤로가기 콜백 (플로우 6.3: 이전 화면으로 복귀)
   onMapRecommendation?: (emotion: string, emotionCategory: string, diaryId?: string) => void; // 장소 추천 콜백 (diaryId 포함)
+  initialShowMap?: boolean; // 초기 장소 추천 모달 표시 여부 (플로우 4.1 완료 후 진입 시)
 }
 
-export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWriting, onBackToCalendar }: DaySummaryPageProps) {
+export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWriting, onBackToCalendar, initialShowMap = false }: DaySummaryPageProps) {
   // ========== 상태 관리 ==========
 
   /**
@@ -165,7 +167,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
   /**
    * 장소 추천 모달 표시 여부
    */
-  const [showMapRecommendation, setShowMapRecommendation] = useState(false);
+  const [showMapRecommendation, setShowMapRecommendation] = useState(initialShowMap);
 
   /**
    * 이미지 갤러리 모달 표시 여부
@@ -344,312 +346,302 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
 
   // View Mode - Entry exists
   if (entry) {
-    // 장소 추천 모드
-    if (showMapRecommendation) {
-      return (
-        <div className="h-full w-full flex flex-col">
-          <KakaoMapRecommendation
-            isOpen={true}
-            onClose={() => setShowMapRecommendation(false)}
-            diaryId={entry.id} // 일기 ID 전달 (장소 추천 API 호출에 사용)
-            emotion={entry.emotion}
-            emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
-            isInline={true}
-            hideFoodRecommendation={true} // 일기 상세 조회에서는 AI 음식 추천 숨김 (중복 방지)
-          />
-        </div>
-      );
-    }
+    // View Mode - Entry exists
 
     // 일반 일기 보기 모드
     return (
-      <div className="h-full w-full overflow-y-auto scrollbar-hide p-6 space-y-6"> {/* 모바일 최적화: 패딩 추가, 스크롤 가능 */}
-        {/* 
+      <div className="h-full w-full relative overflow-hidden bg-transparent">
+        <div className="h-full w-full overflow-y-auto scrollbar-hide p-6 space-y-6">
+          {/* 
           Date Header (플로우 6.3)
         */}
-        <div className="relative bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-sm border border-white/40 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10">
-          {/* 뒤로가기 버튼 - 좌측 상단에 배치 */}
-          {onBackToCalendar && (
-            <button
-              onClick={onBackToCalendar}
-              className="absolute top-5 left-5 p-2 active:bg-black/5 dark:active:bg-white/10 rounded-full transition-colors text-stone-400 dark:text-stone-500 hover:text-stone-600 active:text-stone-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
-              aria-label="뒤로가기"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-
-          <div className="flex flex-col items-center justify-center text-center mt-2">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-emerald-400/20 dark:bg-emerald-400/10 blur-xl rounded-full scale-150" />
-              <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-24 h-24 object-contain relative z-10 drop-shadow-lg transform transition-transform hover:scale-105 duration-300" />
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-semibold tracking-wide uppercase">{formattedDate}</div>
-              <h2 className="text-xl text-stone-800 dark:text-stone-100 font-bold leading-tight px-4 break-keep">{entry.title}</h2>
-            </div>
-
-            {/* 활동 태그 (Header로 이동) */}
-            {entry.activities && entry.activities.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {entry.activities.map((activity, index) => (
-                  <span
-                    key={index}
-                    className="text-xs px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full font-medium border border-emerald-100 dark:border-emerald-800/50"
-                  >
-                    {activity}
-                  </span>
-                ))}
-              </div>
+          <div className="relative bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl rounded-[2rem] p-6 shadow-sm border border-white/40 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10">
+            {/* 뒤로가기 버튼 - 좌측 상단에 배치 */}
+            {onBackToCalendar && (
+              <button
+                onClick={onBackToCalendar}
+                className="absolute top-5 left-5 p-2 active:bg-black/5 dark:active:bg-white/10 rounded-full transition-colors text-stone-400 dark:text-stone-500 hover:text-stone-600 active:text-stone-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+                aria-label="뒤로가기"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
             )}
-          </div>
-        </div>
 
-        {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
-
-
-        {/* Mood & Weather Card - 2 Column */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
-            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">기분</div>
-            <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.mood || '-'}</div>
-          </div>
-
-          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
-            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">날씨</div>
-            <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.weather || '맑음'}</div>
-          </div>
-        </div>
-
-        {/* Activities Card */}
-
-
-        {/* AI Generated Image */}
-        {entry.imageUrl && (
-          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-5 shadow-sm border border-white/30 dark:border-white/5 overflow-hidden group">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-1.5 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="w-4 h-4" />
+            <div className="flex flex-col items-center justify-center text-center mt-2">
+              <div className="relative mb-2">
+                <div className="absolute inset-0 bg-emerald-400/20 dark:bg-emerald-400/10 blur-xl rounded-full scale-150" />
+                <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-24 h-24 object-contain relative z-10 drop-shadow-lg transform transition-transform hover:scale-105 duration-300" />
               </div>
-              <div className="text-sm text-stone-600 dark:text-stone-300 font-semibold">AI 그림 일기</div>
-            </div>
-            <div className="relative rounded-2xl overflow-hidden shadow-inner bg-stone-100 dark:bg-black/20">
-              <img
-                src={entry.imageUrl}
-                alt="AI Generated Diary Illustration"
-                className="w-full h-auto transition-transform duration-700 group-hover:scale-105"
-                style={{
-                  maxHeight: '400px',
-                  objectFit: 'contain',
-                  objectPosition: 'center'
-                }}
-              />
-            </div>
-          </div>
-        )}
 
-        {/* Content Card */}
-        <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white/30 dark:border-white/5">
-          <div className="text-sm text-stone-500 dark:text-stone-400 mb-4 font-medium flex items-center gap-2">
-            <Quote className="w-4 h-4" />
-            오늘의 이야기
-          </div>
-          <div className="text-base text-stone-800 dark:text-stone-200 leading-loose whitespace-pre-wrap break-words font-medium" style={{
-            wordBreak: 'break-word',
-            overflowWrap: 'break-word',
-            hyphens: 'auto'
-          }}>
-            {entry.content}
-          </div>
-        </div>
-
-        {/* AI Comment Card */}
-        {entry.aiComment && (
-          <div className="relative bg-emerald-50/50 dark:bg-emerald-900/20 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-emerald-100/50 dark:border-emerald-800/30">
-            <div className="text-sm text-emerald-800 dark:text-emerald-200 mb-4 flex items-center gap-2 font-bold">
-              <span>{(() => {
-                // 1. 일기에 저장된 페르소나 (Enum String: 'BEST_FRIEND') -> 한글 변환
-                // 2. 없으면 현재 사용자 설정 (localStorage 'user') -> 이미 한글
-                // 3. 없으면 기본값 '베프'
-
-                let currentPersona = '베프';
-                if (entry.persona) {
-                  currentPersona = enumToPersona(entry.persona);
-                } else {
-                  const userStr = localStorage.getItem('user');
-                  if (userStr) {
-                    const user = JSON.parse(userStr);
-                    currentPersona = user.persona || '베프';
-                  }
-                }
-
-                const personaImageMap: { [key: string]: string } = {
-                  '베프': friendIcon,
-                  '부모님': parentIcon,
-                  '전문가': expertIcon,
-                  '멘토': mentorIcon,
-                  '상담사': therapistIcon,
-                  '시인': poetIcon
-                };
-                const imageSrc = personaImageMap[currentPersona] || friendIcon;
-
-                return <img src={imageSrc} alt={currentPersona} className="w-6 h-6 object-contain drop-shadow-sm" />;
-              })()}</span>
-              <span>{(() => {
-                let currentPersona = '베프';
-                if (entry.persona) {
-                  currentPersona = enumToPersona(entry.persona);
-                } else {
-                  const userStr = localStorage.getItem('user');
-                  if (userStr) {
-                    const user = JSON.parse(userStr);
-                    currentPersona = user.persona || '베프';
-                  }
-                }
-                return currentPersona;
-              })()}의 코멘트</span>
-            </div>
-            <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 leading-relaxed font-medium">
-              {entry.aiComment}
-            </p>
-          </div>
-        )}
-
-        {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
-        {entry.recommendedFood && (
-          <div className="relative bg-amber-50/50 dark:bg-amber-900/20 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
-            <div className="text-xs text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5 font-semibold">
-              <span className="text-lg">🍽️</span>
-              <span>AI 음식 추천</span>
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-bold text-stone-800 dark:text-stone-200">
-                {entry.recommendedFood.name}
+              <div className="text-lg font-bold text-stone-700 dark:text-stone-300 mb-6 relative z-10 animate-in fade-in slide-in-from-bottom-2">
+                {entry.emotion}
               </div>
-              <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
-                {entry.recommendedFood.reason}
-              </p>
+
+              <div className="space-y-2">
+                <div className="text-sm text-emerald-600/80 dark:text-emerald-400/80 font-semibold tracking-wide uppercase">{formattedDate}</div>
+                <h2 className="text-xl text-stone-800 dark:text-stone-100 font-bold leading-tight px-4 break-keep">{entry.title}</h2>
+              </div>
+
+              {/* 활동 태그 (Header로 이동) */}
+              {entry.activities && entry.activities.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                  {entry.activities.map((activity, index) => (
+                    <span
+                      key={index}
+                      className="text-xs px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full font-medium border border-emerald-100 dark:border-emerald-800/50"
+                    >
+                      {activity}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* 
-          액션 버튼 영역 (플로우 4.1, 5.2)
-        */}
-        {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) - 위치 이동됨: 음식 추천 아래, 버튼 위 */}
-        {entry.images && entry.images.length > 0 && (
-          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 mb-6">
-            <div className="text-xs text-stone-500 dark:text-stone-400 mb-3 font-medium flex items-center gap-1.5">
-              <span>📷</span>
-              <span>내가 올린 사진</span>
+          {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
+
+
+          {/* Mood & Weather Card - 2 Column */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
+              <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">기분</div>
+              <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.mood || '-'}</div>
             </div>
-            <div className="relative">
-              {/* 이미지 컨테이너 - 유동적 높이 */}
-              <div className="relative rounded-xl overflow-hidden bg-stone-100 dark:bg-black/20 w-full shadow-inner" style={{ minHeight: '200px' }}>
+
+            <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 flex flex-col items-center justify-center gap-2">
+              <div className="text-xs text-stone-500 dark:text-stone-400 font-medium">날씨</div>
+              <div className="text-base text-stone-800 dark:text-stone-200 font-semibold">{entry.weather || '맑음'}</div>
+            </div>
+          </div>
+
+          {/* Activities Card */}
+
+
+          {/* AI Generated Image */}
+          {entry.imageUrl && (
+            <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-5 shadow-sm border border-white/30 dark:border-white/5 overflow-hidden group">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="text-sm text-stone-600 dark:text-stone-300 font-semibold">AI 그림 일기</div>
+              </div>
+              <div className="relative rounded-2xl overflow-hidden shadow-inner bg-stone-100 dark:bg-black/20">
                 <img
-                  src={entry.images[currentImageIndex]}
-                  alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
-                  className="w-full h-auto rounded-lg"
+                  src={entry.imageUrl}
+                  alt="AI Generated Diary Illustration"
+                  className="w-full h-auto transition-transform duration-700 group-hover:scale-105"
                   style={{
+                    maxHeight: '400px',
                     objectFit: 'contain',
-                    objectPosition: 'center',
-                    display: 'block'
-                  }}
-                  onError={(e) => {
-                    // 이미지 로드 실패 시 대체 처리
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
+                    objectPosition: 'center'
                   }}
                 />
-
-                {/* 이전 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
-                {entry.images.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex((prev) =>
-                        prev === 0 ? entry.images!.length - 1 : prev - 1
-                      );
-                    }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
-                    aria-label="이전 이미지"
-                    style={{ minWidth: '36px', minHeight: '36px' }}
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                )}
-
-                {/* 다음 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
-                {entry.images.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex((prev) =>
-                        prev === entry.images!.length - 1 ? 0 : prev + 1
-                      );
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
-                    aria-label="다음 이미지"
-                    style={{ minWidth: '36px', minHeight: '36px' }}
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                )}
-
-                {/* 이미지 인덱스 표시 (2장 이상인 경우) - 이미지 박스 안에 */}
-                {entry.images.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs rounded-full backdrop-blur-md shadow-sm z-10 border border-white/10">
-                    {currentImageIndex + 1} / {entry.images.length}
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="grid grid-cols-3 gap-3">
+          {/* Content Card */}
+          <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white/30 dark:border-white/5">
+            <div className="text-sm text-stone-500 dark:text-stone-400 mb-4 font-medium flex items-center gap-2">
+              <Quote className="w-4 h-4" />
+              오늘의 이야기
+            </div>
+            <div className="text-base text-stone-800 dark:text-stone-200 leading-loose whitespace-pre-wrap break-words font-medium" style={{
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto'
+            }}>
+              {entry.content}
+            </div>
+          </div>
+
+          {/* AI Comment Card */}
+          {entry.aiComment && (
+            <div className="relative bg-emerald-50/50 dark:bg-emerald-900/20 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-emerald-100/50 dark:border-emerald-800/30">
+              <div className="text-sm text-emerald-800 dark:text-emerald-200 mb-4 flex items-center gap-2 font-bold">
+                <span>{(() => {
+                  // 1. 일기에 저장된 페르소나 (Enum String: 'BEST_FRIEND') -> 한글 변환
+                  // 2. 없으면 현재 사용자 설정 (localStorage 'user') -> 이미 한글
+                  // 3. 없으면 기본값 '베프'
+
+                  let currentPersona = '베프';
+                  if (entry.persona) {
+                    currentPersona = enumToPersona(entry.persona);
+                  } else {
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                    }
+                  }
+
+                  const personaImageMap: { [key: string]: string } = {
+                    '베프': friendIcon,
+                    '부모님': parentIcon,
+                    '전문가': expertIcon,
+                    '멘토': mentorIcon,
+                    '상담사': therapistIcon,
+                    '시인': poetIcon
+                  };
+                  const imageSrc = personaImageMap[currentPersona] || friendIcon;
+
+                  return <img src={imageSrc} alt={currentPersona} className="w-6 h-6 object-contain drop-shadow-sm" />;
+                })()}</span>
+                <span>{(() => {
+                  let currentPersona = '베프';
+                  if (entry.persona) {
+                    currentPersona = enumToPersona(entry.persona);
+                  } else {
+                    const userStr = localStorage.getItem('user');
+                    if (userStr) {
+                      const user = JSON.parse(userStr);
+                      currentPersona = user.persona || '베프';
+                    }
+                  }
+                  return currentPersona;
+                })()}의 코멘트</span>
+              </div>
+              <p className="text-sm text-emerald-900/80 dark:text-emerald-100/80 leading-relaxed font-medium">
+                {entry.aiComment}
+              </p>
+            </div>
+          )}
+
+          {/* 음식 추천 카드 (플로우 3.3, 4.3) */}
+          {entry.recommendedFood && (
+            <div className="relative bg-amber-50/50 dark:bg-amber-900/20 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100/50 dark:border-amber-800/30">
+              <div className="text-xs text-amber-700 dark:text-amber-400 mb-2 flex items-center gap-1.5 font-semibold">
+                <span className="text-lg">🍽️</span>
+                <span>AI 음식 추천</span>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                  {entry.recommendedFood.name}
+                </div>
+                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                  {entry.recommendedFood.reason}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 
+          액션 버튼 영역 (플로우 4.1, 5.2)
+        */}
+          {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) - 위치 이동됨: 음식 추천 아래, 버튼 위 */}
+          {entry.images && entry.images.length > 0 && (
+            <div className="relative bg-white/40 dark:bg-stone-900/40 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/30 dark:border-white/5 mb-6">
+              <div className="text-xs text-stone-500 dark:text-stone-400 mb-3 font-medium flex items-center gap-1.5">
+                <span>📷</span>
+                <span>내가 올린 사진</span>
+              </div>
+              <div className="relative">
+                {/* 이미지 컨테이너 - 유동적 높이 */}
+                <div className="relative rounded-xl overflow-hidden bg-stone-100 dark:bg-black/20 w-full shadow-inner" style={{ minHeight: '200px' }}>
+                  <img
+                    src={entry.images[currentImageIndex]}
+                    alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
+                    className="w-full h-auto rounded-lg"
+                    style={{
+                      objectFit: 'contain',
+                      objectPosition: 'center',
+                      display: 'block'
+                    }}
+                    onError={(e) => {
+                      // 이미지 로드 실패 시 대체 처리
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+
+                  {/* 이전 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
+                  {entry.images.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) =>
+                          prev === 0 ? entry.images!.length - 1 : prev - 1
+                        );
+                      }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
+                      aria-label="이전 이미지"
+                      style={{ minWidth: '36px', minHeight: '36px' }}
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* 다음 이미지 버튼 (2장 이상인 경우) - 이미지 박스 안에 */}
+                  {entry.images.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex((prev) =>
+                          prev === entry.images!.length - 1 ? 0 : prev + 1
+                        );
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors z-10 backdrop-blur-sm"
+                      aria-label="다음 이미지"
+                      style={{ minWidth: '36px', minHeight: '36px' }}
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {/* 이미지 인덱스 표시 (2장 이상인 경우) - 이미지 박스 안에 */}
+                  {entry.images.length > 1 && (
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 text-white text-xs rounded-full backdrop-blur-md shadow-sm z-10 border border-white/10">
+                      {currentImageIndex + 1} / {entry.images.length}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
+            {/* 
             수정하기 버튼 (플로우 4.1, 5.2)
           */}
-          <button
-            onClick={onEdit}
-            className="flex items-center justify-center gap-1.5 text-xs text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 transition-colors px-4 py-3 bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl hover:bg-white/80 dark:hover:bg-white/10 border border-white/20 dark:border-white/5 shadow-sm"
-          >
-            <Edit className="w-3.5 h-3.5" />
-            수정하기
-          </button>
+            <button
+              onClick={onEdit}
+              className="flex items-center justify-center gap-1.5 text-xs text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 transition-colors px-4 py-3 bg-white/50 dark:bg-white/5 backdrop-blur-sm rounded-2xl hover:bg-white/80 dark:hover:bg-white/10 border border-white/20 dark:border-white/5 shadow-sm"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              수정하기
+            </button>
 
-          {/* 
+            {/* 
             장소 추천 버튼 (플로우 5.2, 8.1 경로 B)
           */}
-          <button
-            onClick={() => {
-              // 장소 추천 화면 표시
-              setShowMapRecommendation(true);
-            }}
-            className="flex items-center justify-center gap-1.5 text-xs text-white transition-all px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-            <span className="font-semibold">
-              {entry.recommendedFood?.name ? `맛집 추천` : '장소 추천'}
-            </span>
-          </button>
+            <button
+              onClick={() => {
+                // 장소 추천 화면 표시
+                setShowMapRecommendation(true);
+              }}
+              className="flex items-center justify-center gap-1.5 text-xs text-white transition-all px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+              <span className="font-semibold">
+                {entry.recommendedFood?.name ? `맛집 추천` : '장소 추천'}
+              </span>
+            </button>
 
-          {/* 
+            {/* 
             삭제 버튼 (플로우 5.2)
           */}
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center justify-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors px-4 py-3 bg-rose-50/50 dark:bg-rose-900/20 backdrop-blur-sm rounded-2xl hover:bg-rose-100/50 dark:hover:bg-rose-900/40 border border-rose-100/50 dark:border-rose-800/30"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            삭제
-          </button>
-        </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center justify-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors px-4 py-3 bg-rose-50/50 dark:bg-rose-900/20 backdrop-blur-sm rounded-2xl hover:bg-rose-100/50 dark:hover:bg-rose-900/40 border border-rose-100/50 dark:border-rose-800/30"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              삭제
+            </button>
+          </div>
 
-        {/* 
+          {/* 
           삭제 확인 모달 (플로우 5.2)
           
           표시 조건:
@@ -666,125 +658,155 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           - 삭제 성공 시 해당 날짜의 감정 이모지 자동 제거
           - 캘린더로 이동
         */}
-        {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-            <div className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20 dark:border-white/10 max-w-xs w-full transform scale-100 animate-in fade-in zoom-in duration-200">
-              <h4 className="text-lg font-bold text-stone-800 dark:text-stone-100 mb-2">일기 삭제</h4>
-              <p className="text-sm text-stone-600 dark:text-stone-400 mb-6 leading-relaxed">
-                정말 이 일기를 삭제하시겠어요?<br />
-                삭제하면 복구할 수 없어요.
-              </p>
-              <div className="flex gap-3">
-                {/* 취소 버튼 - 모달 닫기 */}
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 text-sm font-semibold px-4 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-                >
-                  취소
-                </button>
-                {/* 삭제 버튼 - 일기 삭제 실행 */}
-                <button
-                  onClick={handleDelete}
-                  className="flex-1 text-sm font-semibold px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-colors shadow-lg shadow-rose-500/20"
-                >
-                  삭제
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Map Recommendation Modal */}
-        {showMapRecommendation && entry && (
-          <KakaoMapRecommendation
-            isOpen={showMapRecommendation}
-            onClose={() => setShowMapRecommendation(false)}
-            diaryId={entry.id} // 일기 ID 전달 (권장 방식)
-            emotion={entry.emotion} // 하위 호환성 (diaryId가 없을 때 사용)
-            emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)} // 하위 호환성
-            hideFoodRecommendation={true} // 일기 상세 조회에서는 AI 음식 추천 숨김 (중복 방지)
-          />
-        )}
-
-        {/* 이미지 갤러리 모달 */}
-        {showImageGallery && entry && entry.images && entry.images.length > 0 && (
-          <div className="absolute inset-0 bg-black/90 z-[9999] flex items-center justify-center overflow-hidden">
-            <div className="relative w-full h-full flex items-center justify-center" style={{ padding: '16px' }}>
-              {/* 닫기 버튼 - 우측 상단, 항상 보이도록 */}
-              <button
-                onClick={() => {
-                  setShowImageGallery(false);
-                }}
-                className="absolute top-4 right-4 p-3 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
-                aria-label="닫기"
-                style={{ minWidth: '44px', minHeight: '44px' }}
+          {/* 삭제 확인 모달 (플로우 5.2) */}
+          <AnimatePresence>
+            {showDeleteConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
               >
-                <X className="w-6 h-6" />
-              </button>
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0, y: 10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: 10 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  className="bg-white/90 dark:bg-stone-900/90 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20 dark:border-white/10 max-w-xs w-full"
+                >
+                  <h4 className="text-lg font-bold text-stone-800 dark:text-stone-100 mb-2">일기 삭제</h4>
+                  <p className="text-sm text-stone-600 dark:text-stone-400 mb-6 leading-relaxed">
+                    정말 이 일기를 삭제하시겠어요?<br />
+                    삭제하면 복구할 수 없어요.
+                  </p>
+                  <div className="flex gap-3">
+                    {/* 취소 버튼 - 모달 닫기 */}
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 text-sm font-semibold px-4 py-3 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                    >
+                      취소
+                    </button>
+                    {/* 삭제 버튼 - 일기 삭제 실행 */}
+                    <button
+                      onClick={handleDelete}
+                      className="flex-1 text-sm font-semibold px-4 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-colors shadow-lg shadow-rose-500/20"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* 이전 이미지 버튼 - 좌측 중앙, 항상 보이도록 */}
-              {entry.images.length > 1 && (
+
+
+          {/* 이미지 갤러리 모달 */}
+          {showImageGallery && entry && entry.images && entry.images.length > 0 && (
+            <div className="absolute inset-0 bg-black/90 z-[9999] flex items-center justify-center overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center" style={{ padding: '16px' }}>
+                {/* 닫기 버튼 - 우측 상단, 항상 보이도록 */}
                 <button
                   onClick={() => {
-                    setCurrentImageIndex((prev) =>
-                      prev === 0 ? entry.images!.length - 1 : prev - 1
-                    );
+                    setShowImageGallery(false);
                   }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
-                  aria-label="이전 이미지"
-                  style={{ minWidth: '48px', minHeight: '48px' }}
+                  className="absolute top-4 right-4 p-3 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                  aria-label="닫기"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <X className="w-6 h-6" />
                 </button>
-              )}
 
-              {/* 현재 이미지 - 박스 크기를 넘지 않도록 엄격히 제한 */}
-              <div className="relative flex items-center justify-center w-full h-full overflow-hidden">
-                <img
-                  src={entry.images[currentImageIndex]}
-                  alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
-                  className="object-contain rounded-lg"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    width: 'auto',
-                    height: 'auto',
-                    display: 'block',
-                    margin: 'auto'
-                  }}
-                  onError={(e) => {
-                    // 이미지 로드 실패 시 대체 처리
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-              </div>
+                {/* 이전 이미지 버튼 - 좌측 중앙, 항상 보이도록 */}
+                {entry.images.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setCurrentImageIndex((prev) =>
+                        prev === 0 ? entry.images!.length - 1 : prev - 1
+                      );
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                    aria-label="이전 이미지"
+                    style={{ minWidth: '48px', minHeight: '48px' }}
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                )}
 
-              {/* 다음 이미지 버튼 - 우측 중앙, 항상 보이도록 */}
-              {entry.images.length > 1 && (
-                <button
-                  onClick={() => {
-                    setCurrentImageIndex((prev) =>
-                      prev === entry.images!.length - 1 ? 0 : prev + 1
-                    );
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
-                  aria-label="다음 이미지"
-                  style={{ minWidth: '48px', minHeight: '48px' }}
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </button>
-              )}
-
-              {/* 이미지 인덱스 표시 (2장 이상인 경우) - 하단 중앙, 항상 보이도록 */}
-              {entry.images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full backdrop-blur-sm border-2 border-white/50 shadow-lg z-50">
-                  {currentImageIndex + 1} / {entry.images.length}
+                {/* 현재 이미지 - 박스 크기를 넘지 않도록 엄격히 제한 */}
+                <div className="relative flex items-center justify-center w-full h-full overflow-hidden">
+                  <img
+                    src={entry.images[currentImageIndex]}
+                    alt={`사용자 업로드 이미지 ${currentImageIndex + 1}`}
+                    className="object-contain rounded-lg"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      width: 'auto',
+                      height: 'auto',
+                      display: 'block',
+                      margin: 'auto'
+                    }}
+                    onError={(e) => {
+                      // 이미지 로드 실패 시 대체 처리
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
                 </div>
-              )}
+
+                {/* 다음 이미지 버튼 - 우측 중앙, 항상 보이도록 */}
+                {entry.images.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setCurrentImageIndex((prev) =>
+                        prev === entry.images!.length - 1 ? 0 : prev + 1
+                      );
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-black/80 hover:bg-black text-white rounded-full transition-colors z-50 shadow-lg border-2 border-white/50"
+                    aria-label="다음 이미지"
+                    style={{ minWidth: '48px', minHeight: '48px' }}
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                )}
+
+                {/* 이미지 인덱스 표시 (2장 이상인 경우) - 하단 중앙, 항상 보이도록 */}
+                {entry.images.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full backdrop-blur-sm border-2 border-white/50 shadow-lg z-50">
+                    {currentImageIndex + 1} / {entry.images.length}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          {/* 이미지 갤러리 모달은 showImageGallery 상태가 변경될 때 표시 */}
+        </div>
+
+        {/* Map Recommendation Modal - Overlay */}
+        <AnimatePresence>
+          {showMapRecommendation && (
+            <motion.div
+              key="map"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="absolute inset-0 bg-white dark:bg-black z-50 flex flex-col"
+            >
+              <KakaoMapRecommendation
+                isOpen={true}
+                onClose={() => setShowMapRecommendation(false)}
+                diaryId={entry.id}
+                emotion={entry.emotion}
+                emotionCategory={entry.emotionCategory || getEmotionCategory(entry.emotion)}
+                isInline={true}
+                hideFoodRecommendation={true}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

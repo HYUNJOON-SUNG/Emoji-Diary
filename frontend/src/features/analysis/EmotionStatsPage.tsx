@@ -28,6 +28,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CalendarDays, Activity, Loader2, TrendingUp, Info, ArrowLeft } from 'lucide-react';
 import { fetchDailyStats, DailyStats } from '../../services/diaryApi';
 import { EmotionChartView } from './EmotionChartView';
@@ -65,6 +66,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<StatsViewMode>(savedViewMode || 'calendar');
   const [selectedDate, setSelectedDate] = useState<Date | null>(selectedDateFromParent || null);
+  const [direction, setDirection] = useState(0); // -1: prev, 1: next
 
 
   // 부모에서 전달받은 선택된 날짜가 변경되면 동기화
@@ -96,10 +98,12 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
   };
 
   const handlePrevMonth = () => {
+    setDirection(-1);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
+    setDirection(1);
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
@@ -321,7 +325,30 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
           <p className="text-sm text-stone-500 dark:text-stone-400">작성된 일기가 없습니다.</p>
         )}
       </div>
+
     );
+  };
+
+  // 슬라이드 애니메이션 변수 define
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : -50,
+      opacity: 0
+    }),
+    center: {
+      x: 0,
+      opacity: 1
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -50 : 50,
+      opacity: 0
+    })
+  };
+
+  const tabVariants = {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -10 }
   };
 
   return (
@@ -355,6 +382,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
           <button
             key={mode.id}
             onClick={() => {
+              if (mode.id === viewMode) return;
               const newMode = mode.id as StatsViewMode;
               setViewMode(newMode);
               if (onViewModeChange) {
@@ -362,13 +390,23 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
               }
               setSelectedDate(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs transition-all ${viewMode === mode.id
-              ? 'bg-white/80 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 shadow-sm font-medium ring-1 ring-black/5'
+            className={`relative flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs transition-all ${viewMode === mode.id
+              ? 'text-emerald-700 dark:text-emerald-300 font-medium'
               : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
               }`}
           >
-            <mode.icon className="w-3.5 h-3.5" />
-            <span>{mode.label}</span>
+            {viewMode === mode.id && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white/80 dark:bg-emerald-950/50 rounded-lg shadow-sm ring-1 ring-black/5"
+                initial={false}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1.5">
+              <mode.icon className="w-3.5 h-3.5" />
+              <span>{mode.label}</span>
+            </span>
           </button>
         ))}
       </div>
@@ -401,59 +439,99 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
-        {!isLoading && !error && viewMode !== 'chart' && (
-          <div className="space-y-4">
-            {viewMode === 'calendar' ? renderCalendarView() : renderTimelineView()}
+      <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 relative">
+        <AnimatePresence mode="wait">
+          {!isLoading && !error && viewMode !== 'chart' && (
+            <motion.div
+              key={viewMode} // calendar or timeline
+              variants={tabVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <AnimatePresence mode="wait" custom={direction} initial={false}>
+                <motion.div
+                  key={currentDate.toISOString()}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ type: 'tween', duration: 0.2 }}
+                >
+                  {viewMode === 'calendar' ? renderCalendarView() : renderTimelineView()}
+                </motion.div>
+              </AnimatePresence>
 
-            {/* Selected Date Summary (Only shown for calendar view) */}
-            {selectedDate && viewMode === 'calendar' && renderSummaryCard(
-              getStatsForDate(selectedDate),
-              selectedDate,
-              () => setSelectedDate(null)
-            )}
+              {/* Selected Date Summary (Only shown for calendar view) */}
+              <AnimatePresence>
+                {selectedDate && viewMode === 'calendar' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                  >
+                    {renderSummaryCard(
+                      getStatsForDate(selectedDate),
+                      selectedDate,
+                      () => setSelectedDate(null)
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            {/* Legend / Info (Only shown when nothing selected) */}
-            {!selectedDate && viewMode === 'calendar' && (
-              <div className="mt-6 p-4 bg-stone-50 rounded-xl border border-stone-200">
-                <h4 className="text-xs font-medium text-stone-600 mb-3 flex items-center gap-1">
-                  <Info className="w-3 h-3" /> 감정 범례
-                </h4>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    '행복', '중립', '당황', '슬픔',
-                    '분노', '불안', '혐오'
-                  ].map((emotionName) => (
-                    <div key={emotionName} className="text-center p-1.5 bg-white rounded border border-stone-100 flex flex-col items-center">
-                      <div className="w-8 h-8 flex items-center justify-center mb-1">
-                        <img
-                          src={getEmotionImage(emotionName)}
-                          alt={emotionName}
-                          className="w-full h-full object-contain"
-                        />
+              {/* Legend / Info (Only shown when nothing selected) */}
+              {!selectedDate && viewMode === 'calendar' && (
+                <div className="mt-6 p-4 bg-stone-50 rounded-xl border border-stone-200">
+                  <h4 className="text-xs font-medium text-stone-600 mb-3 flex items-center gap-1">
+                    <Info className="w-3 h-3" /> 감정 범례
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      '행복', '중립', '당황', '슬픔',
+                      '분노', '불안', '혐오'
+                    ].map((emotionName) => (
+                      <div key={emotionName} className="text-center p-1.5 bg-white rounded border border-stone-100 flex flex-col items-center">
+                        <div className="w-8 h-8 flex items-center justify-center mb-1">
+                          <img
+                            src={getEmotionImage(emotionName)}
+                            alt={emotionName}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="text-[10px] text-stone-500">{emotionName}</div>
                       </div>
-                      <div className="text-[10px] text-stone-500">{emotionName}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </motion.div>
+          )}
 
-        {/* Chart View */}
-        {viewMode === 'chart' && (
-          <div className="space-y-4">
-            <EmotionChartView />
-            <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
-              <h4 className="text-xs font-medium text-emerald-800 mb-2">💡 차트 활용 팁</h4>
-              <p className="text-xs text-stone-600 leading-relaxed">
-                그래프를 통해 나의 감정 변화 추이를 한눈에 파악할 수 있습니다.
-                주간/월간 버튼을 눌러 기간을 변경해보세요.
-              </p>
-            </div>
-          </div>
-        )}
+          {/* Chart View */}
+          {viewMode === 'chart' && (
+            <motion.div
+              key="chart"
+              variants={tabVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <EmotionChartView />
+              <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                <h4 className="text-xs font-medium text-emerald-800 mb-2">💡 차트 활용 팁</h4>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  그래프를 통해 나의 감정 변화 추이를 한눈에 파악할 수 있습니다.
+                  주간/월간 버튼을 눌러 기간을 변경해보세요.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
