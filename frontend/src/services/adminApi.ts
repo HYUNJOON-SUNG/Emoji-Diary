@@ -259,25 +259,18 @@ export async function getDiaryTrend(params: DiaryTrendRequest): Promise<DiaryTre
  */
 export interface UserActivityStatsRequest {
   period: 'weekly' | 'monthly' | 'yearly';
-  year?: number;
-  month?: number;
-  metrics?: string; // 쉼표로 구분: dau,wau,mau,newUsers,retentionRate
+  metrics?: string; // 쉼표로 구분: newUsers,withdrawnUsers
 }
 
 export interface UserActivityStatsResponse {
   success: true;
   data: {
     period: string;
-    year?: number;
-    month?: number;
     metrics: string[];
     trend: Array<{
       date: string;
-      dau?: number;
-      wau?: number;
-      mau?: number;
       newUsers?: number;
-      retentionRate?: number;
+      withdrawnUsers?: number;
     }>;
   };
 }
@@ -290,9 +283,12 @@ export interface UserActivityStatsResponse {
  */
 export async function getUserActivityStats(params: UserActivityStatsRequest): Promise<UserActivityStatsResponse> {
   const queryParams: Record<string, string | number | string> = { period: params.period };
-  if (params.year !== undefined) queryParams.year = params.year;
-  if (params.month !== undefined) queryParams.month = params.month;
-  if (params.metrics) queryParams.metrics = params.metrics;
+  if (params.metrics) {
+    queryParams.metrics = params.metrics;
+  } else {
+    // Default metrics if not specified
+    queryParams.metrics = 'newUsers,withdrawnUsers';
+  }
 
   const response = await adminApiClient.get('/dashboard/user-activity-stats', { params: queryParams });
 
@@ -309,16 +305,12 @@ export async function getUserActivityStats(params: UserActivityStatsRequest): Pr
  */
 export interface RiskLevelDistributionRequest {
   period: 'weekly' | 'monthly' | 'yearly';
-  year?: number;
-  month?: number;
 }
 
 export interface RiskLevelDistributionResponse {
   success: true;
   data: {
     period: string;
-    year?: number;
-    month?: number;
     distribution: {
       high: {
         count: number;
@@ -349,8 +341,6 @@ export interface RiskLevelDistributionResponse {
  */
 export async function getRiskLevelDistribution(params: RiskLevelDistributionRequest): Promise<RiskLevelDistributionResponse> {
   const queryParams: Record<string, string | number> = { period: params.period };
-  if (params.year !== undefined) queryParams.year = params.year;
-  if (params.month !== undefined) queryParams.month = params.month;
 
   const response = await adminApiClient.get('/dashboard/risk-level-distribution', { params: queryParams });
 

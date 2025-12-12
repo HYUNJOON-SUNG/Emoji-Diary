@@ -66,9 +66,9 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 로그인, 회원가입, 비밀번호 재설정 관련 API는 토큰을 보내지 않음
-    if (config.url?.includes('/auth/login') || 
-        config.url?.includes('/auth/register') ||
-        config.url?.includes('/auth/password-reset')) {
+    if (config.url?.includes('/auth/login') ||
+      config.url?.includes('/auth/register') ||
+      config.url?.includes('/auth/password-reset')) {
       return config;
     }
 
@@ -76,7 +76,7 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error: AxiosError) => {
@@ -106,12 +106,12 @@ apiClient.interceptors.response.use(
     // 401 또는 403 에러 (인증 실패 또는 권한 없음) 처리
     // 토큰 만료로 인한 403도 처리하기 위해 403도 포함
     // 로그인/회원가입 API는 인증이 필요 없으므로 interceptor를 건너뜀
-    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
-                           originalRequest?.url?.includes('/auth/register') ||
-                           originalRequest?.url?.includes('/auth/password-reset');
-    
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/register') ||
+      originalRequest?.url?.includes('/auth/password-reset');
+
     const isTokenError = error.response?.status === 401 || error.response?.status === 403;
-    
+
     if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
@@ -155,7 +155,7 @@ apiClient.interceptors.response.use(
         console.error('토큰 재발급 실패:', refreshError);
         TokenStorage.clearTokens();
         localStorage.removeItem('user');
-        
+
         // 사용자에게 피드백 제공
         if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
           // Refresh token도 만료된 경우
@@ -164,7 +164,7 @@ apiClient.interceptors.response.use(
           // 네트워크 오류 등 기타 오류
           alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
         }
-        
+
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -186,21 +186,21 @@ apiClient.interceptors.response.use(
 
     // 기타 에러 처리
     const errorData = error.response.data as { error?: { message?: string; code?: string }; message?: string };
-    
+
     // 백엔드 에러 메시지 추출 (여러 형식 지원)
     let errorMessage = '요청 처리 중 오류가 발생했습니다.';
-    
+
     if (errorData?.error?.message) {
       errorMessage = errorData.error.message;
     } else if (errorData?.message) {
       errorMessage = errorData.message;
     }
-    
+
     // "No static resource" 에러인 경우 더 명확한 메시지 제공
     if (errorMessage.includes('No static resource') || errorMessage.includes('NoResourceFoundException')) {
       errorMessage = '요청한 API 엔드포인트가 백엔드에 구현되지 않았습니다.';
     }
-    
+
     throw new Error(errorMessage);
   }
 );
@@ -220,6 +220,25 @@ export const adminApiClient: AxiosInstance = axios.create({
   },
 });
 
+// Mutex 관련 변수
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
 /**
  * 관리자 API Request Interceptor
  * 관리자 JWT 토큰 자동 추가
@@ -231,7 +250,7 @@ adminApiClient.interceptors.request.use(
     if (adminToken && config.headers) {
       config.headers.Authorization = `Bearer ${adminToken}`;
     }
-    
+
     return config;
   },
   (error: AxiosError) => {
@@ -242,6 +261,7 @@ adminApiClient.interceptors.request.use(
 /**
  * 관리자 API Response Interceptor
  * 401 에러 시 리프레시 토큰으로 재발급 시도, 실패 시 관리자 로그인 페이지로 리다이렉트
+ * Mutex 패턴 적용으로 동시 다발적인 토큰 갱신 요청 방지
  */
 adminApiClient.interceptors.response.use(
   (response: AxiosResponse) => {
@@ -252,11 +272,28 @@ adminApiClient.interceptors.response.use(
 
     // 401 또는 403 에러 (인증 실패) 처리
     const isTokenError = error.response?.status === 401 || error.response?.status === 403;
-    const isAuthEndpoint = originalRequest?.url?.includes('/admin/auth/login') || 
-                          originalRequest?.url?.includes('/admin/auth/refresh');
-    
+    // [수정] url이 상대 경로('/auth/login')일 경우를 대비해 '/admin' prefix 제거하고 체크
+    const isAuthEndpoint = originalRequest?.url?.includes('auth/login') ||
+      originalRequest?.url?.includes('auth/refresh');
+
     if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
+            return adminApiClient(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
         const refreshToken = localStorage.getItem('admin_refresh_token');
@@ -281,6 +318,9 @@ adminApiClient.interceptors.response.use(
           localStorage.setItem('admin_refresh_token', newRefreshToken);
           console.log('관리자 토큰 재발급 성공. 원래 요청을 재시도합니다.');
 
+          processQueue(null, accessToken);
+          isRefreshing = false;
+
           // 원래 요청 재시도
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -290,28 +330,31 @@ adminApiClient.interceptors.response.use(
           throw new Error('토큰 재발급에 실패했습니다.');
         }
       } catch (refreshError: any) {
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
         // 토큰 재발급 실패 시 관리자 로그인 페이지로 리다이렉트
         console.error('관리자 토큰 재발급 실패:', refreshError);
         // [명세서 1.1] 관리자 Access Token 및 Refresh Token 삭제
         localStorage.removeItem('admin_access_token');
         localStorage.removeItem('admin_refresh_token');
-        
-        // 사용자에게 피드백 제공
+
+        // 사용자에게 피드백 제공 (중복 alert 방지는 브라우저가 어느정도 처리하나, 명시적으로는 추가 state 필요)
+        // 여기서는 에러 발생 시 즉시 리다이렉트
         if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
-          // Refresh token도 만료된 경우
           alert('세션이 만료되었습니다. 다시 로그인해주세요.');
         } else {
-          // 네트워크 오류 등 기타 오류
           alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
         }
-        
+
         window.location.href = '/admin/login';
         return Promise.reject(refreshError);
       }
     }
 
     // 기타 에러 처리
-    if (isTokenError && !originalRequest?._retry) {
+    // [수정] 로그인/토큰갱신 요청 실패 시에는 리다이렉트 하지 않음 (!isAuthEndpoint 추가)
+    if (isTokenError && !originalRequest?._retry && !isAuthEndpoint) {
       // [명세서 1.1] 관리자 Access Token 및 Refresh Token 제거
       localStorage.removeItem('admin_access_token');
       localStorage.removeItem('admin_refresh_token');

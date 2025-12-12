@@ -39,10 +39,8 @@ public class AdminDashboardController {
      */
     @GetMapping("/risk-level-distribution")
     public ResponseEntity<?> getRiskLevelDistribution(
-            @RequestParam(required = false, defaultValue = "monthly") String period,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month) {
-        RiskLevelDistributionResponse response = adminDashboardService.getRiskLevelDistribution(period, year, month);
+            @RequestParam(required = false, defaultValue = "monthly") String period) {
+        RiskLevelDistributionResponse response = adminDashboardService.getRiskLevelDistribution(period);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
@@ -66,10 +64,8 @@ public class AdminDashboardController {
     @GetMapping("/user-activity-stats")
     public ResponseEntity<?> getUserActivityStats(
             @RequestParam(required = false, defaultValue = "monthly") String period,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month,
             @RequestParam(required = false) String metrics) {
-        UserActivityStatsResponse response = adminDashboardService.getUserActivityStats(period, year, month, metrics);
+        UserActivityStatsResponse response = adminDashboardService.getUserActivityStats(period, metrics);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 }

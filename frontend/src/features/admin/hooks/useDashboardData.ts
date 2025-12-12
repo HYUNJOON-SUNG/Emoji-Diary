@@ -29,11 +29,8 @@ interface DashboardStats {
   weeklyData: Array<{ day: string; diaries: number }>;
   userActivityData: Array<{
     date: string;
-    dau: number;
-    wau: number;
-    mau: number;
     newUsers: number;
-    retentionRate: number;
+    withdrawnUsers: number;
   }>;
   riskDistributionData: Array<{
     level: string;
@@ -86,8 +83,8 @@ export function useDashboardData(
           newUserPeriod: newUserPeriod || 'daily'
         }),
         getDiaryTrend({ period: diaryTrendPeriodParam, year: currentYear, month: currentMonth }),
-        getUserActivityStats({ period: userActivityPeriodParam, year: currentYear, month: currentMonth, metrics: selectedMetrics.join(',') }),
-        getRiskLevelDistribution({ period: riskDistributionPeriodParam, year: currentYear, month: currentMonth })
+        getUserActivityStats({ period: userActivityPeriodParam, metrics: selectedMetrics.join(',') }),
+        getRiskLevelDistribution({ period: riskDistributionPeriodParam })
       ]);
 
       if (!statsRes?.data || !trendRes?.data || !activityRes?.data || !riskRes?.data) {
@@ -142,11 +139,8 @@ export function useDashboardData(
 
       const userActivityData = activity.map((item: any) => ({
         date: item?.date || '',
-        dau: item?.dau ?? 0,
-        wau: item?.wau ?? 0,
-        mau: item?.mau ?? 0,
         newUsers: item?.newUsers ?? 0,
-        retentionRate: item?.retentionRate ?? 0
+        withdrawnUsers: item?.withdrawnUsers ?? 0
       }));
 
       // 위험 레벨 분포 데이터 매핑

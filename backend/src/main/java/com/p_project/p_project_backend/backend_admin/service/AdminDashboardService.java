@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,11 +40,6 @@ public class AdminDashboardService {
     private static final double PERCENTAGE_ROUNDING_FACTOR = 10.0;
 
     private static final String ERROR_MESSAGE_INVALID_PERIOD = "Invalid period: %s. Must be weekly, monthly, or yearly.";
-    private static final String ERROR_MESSAGE_INVALID_MONTH = "Invalid month: %d. Must be between 1 and 12.";
-
-    // 월 유효성 검증 상수
-    private static final int MIN_MONTH = 1;
-    private static final int MAX_MONTH = 12;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -61,15 +57,12 @@ public class AdminDashboardService {
     private static final int RESULT_INDEX_COUNT = 2;
 
     // Metrics 상수
-    private static final String METRIC_DAU = "dau";
-    private static final String METRIC_WAU = "wau";
-    private static final String METRIC_MAU = "mau";
     private static final String METRIC_NEW_USERS = "newUsers";
-    private static final String METRIC_RETENTION_RATE = "retentionRate";
+    private static final String METRIC_WITHDRAWN_USERS = "withdrawnUsers";
 
     // 기본 metrics 목록
     private static final List<String> DEFAULT_METRICS = List.of(
-            METRIC_DAU, METRIC_WAU, METRIC_MAU, METRIC_NEW_USERS, METRIC_RETENTION_RATE);
+            METRIC_NEW_USERS, METRIC_WITHDRAWN_USERS);
 
     // ActiveUserType 상수 (기본값)
     private static final String ACTIVE_USER_TYPE_DAU = "dau";
@@ -85,12 +78,9 @@ public class AdminDashboardService {
      * 위험 레벨 분포 통계 조회
      */
     @Transactional(readOnly = true)
-    public RiskLevelDistributionResponse getRiskLevelDistribution(
-            String period,
-            Integer year,
-            Integer month) {
+    public RiskLevelDistributionResponse getRiskLevelDistribution(String period) {
         // 기간 계산
-        PeriodRange periodRange = calculatePeriodRange(period, year, month);
+        PeriodRange periodRange = calculatePeriodRange(period);
         LocalDateTime startDate = periodRange.getStartDate();
         LocalDateTime endDate = periodRange.getEndDate();
 
@@ -103,7 +93,7 @@ public class AdminDashboardService {
 
         // 비율 계산 및 Response 생성
         return buildRiskLevelDistributionResponse(
-                period, year, month, riskLevelCounts, totalUsers);
+                period, riskLevelCounts, totalUsers);
     }
 
     /**
@@ -235,14 +225,12 @@ public class AdminDashboardService {
     @Transactional(readOnly = true)
     public UserActivityStatsResponse getUserActivityStats(
             String period,
-            Integer year,
-            Integer month,
             String metrics) {
         // metrics 파라미터 파싱
         List<String> metricsList = parseMetrics(metrics);
 
-        // 기간 계산 (LocalDate 사용)
-        DatePeriodRange datePeriodRange = calculateDatePeriodRange(period, year, month);
+        // 기간 계산 (롤링 윈도우 사용)
+        DatePeriodRange datePeriodRange = calculateRollingDatePeriodRange(period);
         LocalDate startDate = datePeriodRange.getStartDate();
         LocalDate endDate = datePeriodRange.getEndDate();
 
@@ -256,11 +244,8 @@ public class AdminDashboardService {
             trend = buildDailyUserActivityTrend(startDate, endDate, metricsList);
         }
 
-        Integer resolvedYear = getDefaultYearIfNull(year);
         return UserActivityStatsResponse.builder()
                 .period(period)
-                .year(resolvedYear)
-                .month(month)
                 .metrics(metricsList)
                 .trend(trend)
                 .build();
@@ -269,16 +254,15 @@ public class AdminDashboardService {
     /**
      * 기간 범위 계산
      */
-    private PeriodRange calculatePeriodRange(String period, Integer year, Integer month) {
-        Integer resolvedYear = getDefaultYearIfNull(year);
+    private PeriodRange calculatePeriodRange(String period) {
         String periodLower = period.toLowerCase();
         switch (periodLower) {
             case PERIOD_WEEKLY:
-                return calculateWeeklyRange(resolvedYear, month);
+                return calculateWeeklyRange();
             case PERIOD_MONTHLY:
-                return calculateMonthlyRange(resolvedYear, month);
+                return calculateMonthlyRange();
             case PERIOD_YEARLY:
-                return calculateYearlyRange(resolvedYear);
+                return calculateYearlyRange();
             default:
                 throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
         }
@@ -300,6 +284,34 @@ public class AdminDashboardService {
             default:
                 throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
         }
+    }
+
+    /**
+     * LocalDate 롤링 윈도우 기간 범위 계산 (최근 7일/30일/1년)
+     */
+    private DatePeriodRange calculateRollingDatePeriodRange(String period) {
+        String periodLower = period.toLowerCase();
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate;
+
+        switch (periodLower) {
+            case PERIOD_WEEKLY:
+                // 최근 7일 (오늘 포함)
+                startDate = endDate.minusDays(WEEKLY_DAYS - 1);
+                break;
+            case PERIOD_MONTHLY:
+                // 최근 30일 (오늘 포함)
+                startDate = endDate.minusDays(MONTHLY_DAYS - 1);
+                break;
+            case PERIOD_YEARLY:
+                // 최근 1년 (오늘 포함)
+                startDate = endDate.minusYears(1).plusDays(1);
+                break;
+            default:
+                throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
+        }
+
+        return new DatePeriodRange(startDate, endDate);
     }
 
     /**
@@ -334,34 +346,32 @@ public class AdminDashboardService {
     }
 
     /**
-     * 주간 기간 범위 계산
+     * 주간 기간 범위 계산 (최근 7일)
      */
-    private PeriodRange calculateWeeklyRange(Integer year, Integer month) {
-        Integer resolvedMonth = getDefaultMonthIfNull(month);
-        LocalDate startDate = LocalDate.of(year, resolvedMonth, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = startDate.plusDays(WEEKLY_DAYS);
-        if (endDate.getMonthValue() != resolvedMonth) {
-            endDate = YearMonth.of(year, resolvedMonth).atEndOfMonth().plusDays(DAYS_INCREMENT);
-        }
+    private PeriodRange calculateWeeklyRange() {
+        LocalDate now = LocalDate.now();
+        LocalDate startDate = now.minusDays(6);
+        LocalDate endDate = now.plusDays(1);
         return new PeriodRange(startDate.atStartOfDay(), endDate.atStartOfDay());
     }
 
     /**
-     * 월간 기간 범위 계산
+     * 월간 기간 범위 계산 (최근 30일)
      */
-    private PeriodRange calculateMonthlyRange(Integer year, Integer month) {
-        Integer resolvedMonth = getDefaultMonthIfNull(month);
-        LocalDate startDate = LocalDate.of(year, resolvedMonth, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = YearMonth.of(year, resolvedMonth).atEndOfMonth().plusDays(DAYS_INCREMENT);
+    private PeriodRange calculateMonthlyRange() {
+        LocalDate now = LocalDate.now();
+        LocalDate startDate = now.minusDays(29);
+        LocalDate endDate = now.plusDays(1);
         return new PeriodRange(startDate.atStartOfDay(), endDate.atStartOfDay());
     }
 
     /**
-     * 연간 기간 범위 계산
+     * 연간 기간 범위 계산 (최근 1년)
      */
-    private PeriodRange calculateYearlyRange(Integer year) {
-        LocalDate startDate = LocalDate.of(year, FIRST_MONTH_OF_YEAR, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = LocalDate.of(year + 1, FIRST_MONTH_OF_YEAR, FIRST_DAY_OF_MONTH);
+    private PeriodRange calculateYearlyRange() {
+        LocalDate now = LocalDate.now();
+        LocalDate startDate = now.minusYears(1);
+        LocalDate endDate = now.plusDays(1);
         return new PeriodRange(startDate.atStartOfDay(), endDate.atStartOfDay());
     }
 
@@ -370,8 +380,6 @@ public class AdminDashboardService {
      */
     private RiskLevelDistributionResponse buildRiskLevelDistributionResponse(
             String period,
-            Integer year,
-            Integer month,
             Map<RiskDetectionSession.RiskLevel, Long> riskLevelCounts,
             long totalUsers) {
         RiskLevelDistributionResponse.RiskLevelDistribution distribution = buildDistribution(riskLevelCounts,
@@ -379,8 +387,6 @@ public class AdminDashboardService {
 
         return RiskLevelDistributionResponse.builder()
                 .period(period)
-                .year(year)
-                .month(month)
                 .distribution(distribution)
                 .total(totalUsers)
                 .build();
@@ -427,29 +433,12 @@ public class AdminDashboardService {
     }
 
     /**
-     * month 기본값 설정 (null이면 현재 월)
-     * 유효성 검증 포함 (1~12 범위)
-     */
-    private Integer getDefaultMonthIfNull(Integer month) {
-        if (month == null) {
-            return LocalDate.now().getMonthValue();
-        }
-        if (month < MIN_MONTH || month > MAX_MONTH) {
-            throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_MONTH, month));
-        }
-        return month;
-    }
-
-    /**
      * 주간 LocalDate 기간 범위 계산
      */
     private DatePeriodRange calculateWeeklyDateRange(Integer year, Integer month) {
-        Integer resolvedMonth = getDefaultMonthIfNull(month);
-        LocalDate startDate = LocalDate.of(year, resolvedMonth, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = startDate.plusDays(WEEKLY_DAYS);
-        if (endDate.getMonthValue() != resolvedMonth) {
-            endDate = YearMonth.of(year, resolvedMonth).atEndOfMonth().plusDays(DAYS_INCREMENT);
-        }
+        // Rolling 7 Days (Today inclusive)
+        LocalDate endDate = LocalDate.now().plusDays(1);
+        LocalDate startDate = LocalDate.now().minusDays(6);
         return new DatePeriodRange(startDate, endDate);
     }
 
@@ -457,9 +446,9 @@ public class AdminDashboardService {
      * 월간 LocalDate 기간 범위 계산
      */
     private DatePeriodRange calculateMonthlyDateRange(Integer year, Integer month) {
-        Integer resolvedMonth = getDefaultMonthIfNull(month);
-        LocalDate startDate = LocalDate.of(year, resolvedMonth, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = YearMonth.of(year, resolvedMonth).atEndOfMonth().plusDays(DAYS_INCREMENT);
+        // Rolling 30 Days (Today inclusive)
+        LocalDate endDate = LocalDate.now().plusDays(1);
+        LocalDate startDate = LocalDate.now().minusDays(29);
         return new DatePeriodRange(startDate, endDate);
     }
 
@@ -467,8 +456,9 @@ public class AdminDashboardService {
      * 연간 LocalDate 기간 범위 계산
      */
     private DatePeriodRange calculateYearlyDateRange(Integer year) {
-        LocalDate startDate = LocalDate.of(year, FIRST_MONTH_OF_YEAR, FIRST_DAY_OF_MONTH);
-        LocalDate endDate = LocalDate.of(year + 1, FIRST_MONTH_OF_YEAR, FIRST_DAY_OF_MONTH);
+        // Rolling 1 Year (Today inclusive)
+        LocalDate endDate = LocalDate.now().plusDays(1);
+        LocalDate startDate = LocalDate.now().minusYears(1);
         return new DatePeriodRange(startDate, endDate);
     }
 
@@ -502,22 +492,29 @@ public class AdminDashboardService {
     private List<DiaryTrendItem> buildMonthlyTrend(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = adminDiaryRepository.countDiariesByMonthInPeriod(startDate, endDate);
 
-        return results.stream()
-                .map(this::convertMonthlyResultToTrendItem)
-                .collect(Collectors.toList());
+        // 결과 매핑: YearMonth -> Count
+        Map<YearMonth, Long> countMap = results.stream()
+                .collect(Collectors.toMap(
+                        result -> YearMonth.of(extractYearFromResult(result), extractMonthFromResult(result)),
+                        result -> extractCountFromResult(result)));
+
+        List<DiaryTrendItem> trend = new ArrayList<>();
+        YearMonth current = YearMonth.from(startDate);
+        YearMonth end = YearMonth.from(endDate.minusDays(1)); // endDate is exclusive (start of next period)
+
+        while (!current.isAfter(end)) {
+            Long count = countMap.getOrDefault(current, 0L);
+            LocalDate monthDate = current.atDay(1);
+            trend.add(createDiaryTrendItem(monthDate.format(MONTH_FORMATTER), count));
+            current = current.plusMonths(1);
+        }
+
+        return trend;
     }
 
     /**
      * 월별 집계 결과를 DiaryTrendItem으로 변환
      */
-    private DiaryTrendItem convertMonthlyResultToTrendItem(Object[] result) {
-        Integer year = extractYearFromResult(result);
-        Integer month = extractMonthFromResult(result);
-        Long count = extractCountFromResult(result);
-
-        LocalDate monthDate = LocalDate.of(year, month, FIRST_DAY_OF_MONTH);
-        return createDiaryTrendItem(monthDate.format(MONTH_FORMATTER), count);
-    }
 
     /**
      * 결과 배열에서 year 추출
@@ -574,7 +571,7 @@ public class AdminDashboardService {
         List<UserActivityStatsItem> trend = new ArrayList<>();
         LocalDate currentDate = startDate;
 
-        while (currentDate.isBefore(endDate)) {
+        while (!currentDate.isAfter(endDate)) {
             UserActivityStatsItem item = buildUserActivityItemForDate(currentDate, metricsList);
             trend.add(item);
             currentDate = currentDate.plusDays(DAYS_INCREMENT);
@@ -616,36 +613,16 @@ public class AdminDashboardService {
         UserActivityStatsItem.UserActivityStatsItemBuilder builder = UserActivityStatsItem.builder()
                 .date(date.format(DATE_FORMATTER));
 
-        // DAU 계산
-        if (metricsList.contains(METRIC_DAU)) {
-            Long dau = adminDiaryRepository.countDistinctUsersByDate(date);
-            builder.dau(toIntOrZero(dau));
-        }
-
-        // WAU 계산 (최근 7일)
-        if (metricsList.contains(METRIC_WAU)) {
-            LocalDate wauStartDate = date.minusDays(WEEKLY_DAYS - 1);
-            Long wau = adminDiaryRepository.countDistinctUsersInPeriod(wauStartDate, date.plusDays(DAYS_INCREMENT));
-            builder.wau(toIntOrZero(wau));
-        }
-
-        // MAU 계산 (최근 30일)
-        if (metricsList.contains(METRIC_MAU)) {
-            LocalDate mauStartDate = date.minusDays(MONTHLY_DAYS - 1);
-            Long mau = adminDiaryRepository.countDistinctUsersInPeriod(mauStartDate, date.plusDays(DAYS_INCREMENT));
-            builder.mau(toIntOrZero(mau));
-        }
-
         // 신규 가입자 수 계산
         if (metricsList.contains(METRIC_NEW_USERS)) {
             Integer newUsers = calculateNewUsersForDate(date);
             builder.newUsers(newUsers);
         }
 
-        // 유지율 계산
-        if (metricsList.contains(METRIC_RETENTION_RATE)) {
-            Double retentionRate = calculateRetentionRateForDate(date);
-            builder.retentionRate(retentionRate);
+        // 탈퇴 사용자 수 계산
+        if (metricsList.contains(METRIC_WITHDRAWN_USERS)) {
+            Integer withdrawnUsers = calculateWithdrawnUsersForDate(date);
+            builder.withdrawnUsers(withdrawnUsers);
         }
 
         return builder.build();
@@ -661,53 +638,19 @@ public class AdminDashboardService {
         UserActivityStatsItem.UserActivityStatsItemBuilder builder = UserActivityStatsItem.builder()
                 .date(YearMonth.from(monthStart).format(MONTH_FORMATTER));
 
-        // DAU: 월 평균 (월 내 일별 DAU의 평균)
-        if (metricsList.contains(METRIC_DAU)) {
-            List<Object[]> dailyDauResults = adminDiaryRepository.countDistinctUsersByDateInPeriod(monthStart,
-                    monthEnd);
-            double avgDau = dailyDauResults.stream()
-                    .mapToLong(result -> ((Number) result[1]).longValue())
-                    .average()
-                    .orElse(0.0);
-            builder.dau((int) Math.round(avgDau));
-        }
-
-        // WAU: 월 말일 기준 WAU
-        if (metricsList.contains(METRIC_WAU)) {
-            LocalDate monthEndDate = monthEnd.minusDays(DAYS_INCREMENT);
-            LocalDate wauStartDate = monthEndDate.minusDays(WEEKLY_DAYS - 1);
-            Long wau = adminDiaryRepository.countDistinctUsersInPeriod(wauStartDate, monthEnd);
-            builder.wau(toIntOrZero(wau));
-        }
-
-        // MAU: 월 말일 기준 MAU
-        if (metricsList.contains(METRIC_MAU)) {
-            LocalDate monthEndDate = monthEnd.minusDays(DAYS_INCREMENT);
-            LocalDate mauStartDate = monthEndDate.minusDays(MONTHLY_DAYS - 1);
-            Long mau = adminDiaryRepository.countDistinctUsersInPeriod(mauStartDate, monthEnd);
-            builder.mau(toIntOrZero(mau));
-        }
-
         // 신규 가입자 수: 월 전체
         if (metricsList.contains(METRIC_NEW_USERS)) {
             Integer newUsers = calculateNewUsersForMonth(monthStart, monthEnd);
             builder.newUsers(newUsers);
         }
 
-        // 유지율: 이전 월과 현재 월 비교
-        if (metricsList.contains(METRIC_RETENTION_RATE)) {
-            Double retentionRate = calculateRetentionRateForMonth(monthStart, monthEnd);
-            builder.retentionRate(retentionRate);
+        // 탈퇴 사용자 수: 월 전체
+        if (metricsList.contains(METRIC_WITHDRAWN_USERS)) {
+            Integer withdrawnUsers = calculateWithdrawnUsersForMonth(monthStart, monthEnd);
+            builder.withdrawnUsers(withdrawnUsers);
         }
 
         return builder.build();
-    }
-
-    /**
-     * Long을 Integer로 변환 (null이면 0)
-     */
-    private Integer toIntOrZero(Long value) {
-        return value != null ? value.intValue() : 0;
     }
 
     /**
@@ -753,56 +696,46 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 날짜의 유지율 계산
-     * 이전 날짜에 활동한 사용자 중, 현재 날짜에도 활동한 사용자의 비율
+     * 특정 날짜의 탈퇴 사용자 수 계산
      */
-    private Double calculateRetentionRateForDate(LocalDate date) {
-        LocalDate previousDate = date.minusDays(DAYS_INCREMENT);
+    private Integer calculateWithdrawnUsersForDate(LocalDate date) {
+        LocalDateTime dayStart = date.atStartOfDay();
+        LocalDateTime dayEnd = date.plusDays(DAYS_INCREMENT).atStartOfDay();
+        List<Object[]> results = userRepository.countWithdrawnUsersByDateInPeriod(dayStart, dayEnd);
 
-        // 이전 날짜에 활동한 사용자 ID 목록
-        List<Long> previousUserIds = adminDiaryRepository.findDistinctUserIdsByDate(previousDate);
-        if (previousUserIds.isEmpty()) {
-            return 0.0;
-        }
+        long withdrawnUsers = results.stream()
+                .filter(result -> {
+                    java.sql.Date sqlDate = (java.sql.Date) result[0];
+                    LocalDate resultDate = sqlDate.toLocalDate();
+                    return resultDate.equals(date);
+                })
+                .mapToLong(result -> ((Number) result[1]).longValue())
+                .findFirst()
+                .orElse(0L);
 
-        // 현재 날짜에 활동한 사용자 ID 목록
-        List<Long> currentUserIds = adminDiaryRepository.findDistinctUserIdsByDate(date);
-
-        // 교집합 계산
-        long retainedUsers = currentUserIds.stream()
-                .filter(previousUserIds::contains)
-                .count();
-
-        return calculatePercentage(retainedUsers, previousUserIds.size());
+        return (int) withdrawnUsers;
     }
 
     /**
-     * 특정 월의 유지율 계산
-     * 이전 월에 활동한 사용자 중, 현재 월에도 활동한 사용자의 비율
+     * 특정 월의 탈퇴 사용자 수 계산
      */
-    private Double calculateRetentionRateForMonth(LocalDate monthStart, LocalDate monthEnd) {
-        YearMonth currentMonth = YearMonth.from(monthStart);
-        YearMonth previousMonth = currentMonth.minusMonths(1);
+    private Integer calculateWithdrawnUsersForMonth(LocalDate monthStart, LocalDate monthEnd) {
+        LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
+        LocalDateTime monthEndDateTime = monthEnd.atStartOfDay();
+        List<Object[]> results = userRepository.countWithdrawnUsersByMonthInPeriod(monthStartDateTime,
+                monthEndDateTime);
 
-        LocalDate previousMonthStart = previousMonth.atDay(FIRST_DAY_OF_MONTH);
-        LocalDate previousMonthEnd = previousMonth.atEndOfMonth().plusDays(DAYS_INCREMENT);
+        long withdrawnUsers = results.stream()
+                .filter(result -> {
+                    Integer resultYear = (Integer) result[0];
+                    Integer resultMonth = (Integer) result[1];
+                    return resultYear.equals(monthStart.getYear()) && resultMonth.equals(monthStart.getMonthValue());
+                })
+                .mapToLong(result -> ((Number) result[2]).longValue())
+                .findFirst()
+                .orElse(0L);
 
-        // 이전 월에 활동한 사용자 ID 목록
-        List<Long> previousUserIds = adminDiaryRepository.findDistinctUserIdsInPeriod(previousMonthStart,
-                previousMonthEnd);
-        if (previousUserIds.isEmpty()) {
-            return 0.0;
-        }
-
-        // 현재 월에 활동한 사용자 ID 목록
-        List<Long> currentUserIds = adminDiaryRepository.findDistinctUserIdsInPeriod(monthStart, monthEnd);
-
-        // 교집합 계산
-        long retainedUsers = currentUserIds.stream()
-                .filter(previousUserIds::contains)
-                .count();
-
-        return calculatePercentage(retainedUsers, previousUserIds.size());
+        return (int) withdrawnUsers;
     }
 
     /**
@@ -810,17 +743,24 @@ public class AdminDashboardService {
      */
     private PeriodRange calculatePeriodRangeForStats(String period) {
         LocalDate now = LocalDate.now();
-        Integer currentYear = now.getYear();
-        Integer currentMonth = now.getMonthValue();
 
         String periodLower = period.toLowerCase();
         switch (periodLower) {
             case PERIOD_WEEKLY:
-                return calculateWeeklyRange(currentYear, currentMonth);
+                // Rolling 7 Days (Today inclusive)
+                LocalDate weekStart = now.minusDays(6);
+                LocalDate weekEnd = now.plusDays(1);
+                return new PeriodRange(weekStart.atStartOfDay(), weekEnd.atStartOfDay());
             case PERIOD_MONTHLY:
-                return calculateMonthlyRange(currentYear, currentMonth);
+                // Rolling 30 Days (Today inclusive)
+                LocalDate monthStart = now.minusDays(29);
+                LocalDate monthEnd = now.plusDays(1);
+                return new PeriodRange(monthStart.atStartOfDay(), monthEnd.atStartOfDay());
             case PERIOD_YEARLY:
-                return calculateYearlyRange(currentYear);
+                // Rolling 1 Year (Today inclusive)
+                LocalDate yearStart = now.minusYears(1);
+                LocalDate yearEnd = now.plusDays(1);
+                return new PeriodRange(yearStart.atStartOfDay(), yearEnd.atStartOfDay());
             default:
                 throw new IllegalArgumentException(String.format(ERROR_MESSAGE_INVALID_PERIOD, period));
         }
@@ -897,6 +837,7 @@ public class AdminDashboardService {
                 .orElse(0L);
 
         // 주별 신규 가입자 수
+        // 주별 신규 가입자 수 (Weekly - 최근 7일)
         LocalDate weekStart = today.minusDays(WEEKLY_DAYS - 1);
         LocalDateTime weekStartDateTime = weekStart.atStartOfDay();
         List<Object[]> weeklyResults = userRepository.countNewUsersByDateInPeriod(weekStartDateTime, todayEnd);
@@ -904,8 +845,8 @@ public class AdminDashboardService {
                 .mapToLong(result -> ((Number) result[1]).longValue())
                 .sum();
 
-        // 월별 신규 가입자 수
-        LocalDate monthStart = today.withDayOfMonth(FIRST_DAY_OF_MONTH);
+        // 월별 신규 가입자 수 (Monthly - 최근 30일)
+        LocalDate monthStart = today.minusDays(MONTHLY_DAYS - 1);
         LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
         List<Object[]> monthlyResults = userRepository.countNewUsersByDateInPeriod(monthStartDateTime, todayEnd);
         Long monthly = monthlyResults.stream()
@@ -931,9 +872,19 @@ public class AdminDashboardService {
         LocalDate endDate = endDateTime.toLocalDate();
 
         List<Object[]> diaryCounts;
+        LocalDate today = LocalDate.now();
+        long daysCount;
+
         if (PERIOD_YEARLY.equalsIgnoreCase(period)) {
             // 연간: 월별 집계 후 평균
             diaryCounts = adminDiaryRepository.countDiariesByMonthInPeriod(startDate, endDate);
+
+            // 분모 계산 (경과 일수)
+            LocalDate effectiveEndDate = endDate.isAfter(today.plusDays(1)) ? today.plusDays(1) : endDate;
+            daysCount = java.time.temporal.ChronoUnit.DAYS.between(startDate, effectiveEndDate);
+            if (daysCount < 1)
+                daysCount = 1;
+
             if (diaryCounts.isEmpty()) {
                 return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
                         .count(0L)
@@ -944,8 +895,8 @@ public class AdminDashboardService {
             long totalDiaries = diaryCounts.stream()
                     .mapToLong(result -> ((Number) result[2]).longValue())
                     .sum();
-            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
-            long average = daysBetween > 0 ? totalDiaries / daysBetween : 0L;
+
+            long average = totalDiaries / daysCount;
             return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
                     .count(average)
                     .period(period)
@@ -953,6 +904,13 @@ public class AdminDashboardService {
         } else {
             // 주간/월간: 일별 집계 후 평균
             diaryCounts = adminDiaryRepository.countDiariesByDateInPeriod(startDate, endDate);
+
+            // 분모 계산 (경과 일수)
+            LocalDate effectiveEndDate = endDate.isAfter(today.plusDays(1)) ? today.plusDays(1) : endDate;
+            daysCount = java.time.temporal.ChronoUnit.DAYS.between(startDate, effectiveEndDate);
+            if (daysCount < 1)
+                daysCount = 1;
+
             if (diaryCounts.isEmpty()) {
                 return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
                         .count(0L)
@@ -962,8 +920,8 @@ public class AdminDashboardService {
             long totalDiaries = diaryCounts.stream()
                     .mapToLong(result -> ((Number) result[1]).longValue())
                     .sum();
-            long daysCount = diaryCounts.size();
-            long average = daysCount > 0 ? totalDiaries / daysCount : 0L;
+
+            long average = totalDiaries / daysCount;
             return DashboardStatsResponse.AverageDailyDiariesInfo.builder()
                     .count(average)
                     .period(period)

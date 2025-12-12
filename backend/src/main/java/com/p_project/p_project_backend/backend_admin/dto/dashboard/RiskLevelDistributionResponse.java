@@ -13,8 +13,6 @@ import lombok.Setter;
 @Builder
 public class RiskLevelDistributionResponse {
     private String period;
-    private Integer year;
-    private Integer month;
     private RiskLevelDistribution distribution;
     private Long total;
 
@@ -30,4 +28,3 @@ public class RiskLevelDistributionResponse {
         private RiskLevelDistributionItem none;
     }
 }
-

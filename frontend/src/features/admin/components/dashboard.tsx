@@ -258,34 +258,30 @@ export function Dashboard() {
     {
       title: '위험 레벨별 사용자 수',
       value: (
-        <div className="flex gap-1 mt-1" style={{ maxWidth: 'calc(100% - 60px)' }}>
-          <div className="flex items-center gap-1 p-1 bg-red-50 rounded border border-red-200 flex-1 min-w-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[10px] text-red-600 leading-tight">High</p>
-              <p className="text-sm font-bold text-red-700 leading-tight truncate">{stats.riskLevelUsers?.high ?? 0}</p>
-            </div>
+        <div className="flex flex-wrap gap-3 mt-2">
+          {/* High */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+            <span className="text-xs font-medium text-slate-700">High</span>
+            <span className="text-base font-bold text-slate-800">{stats.riskLevelUsers?.high ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-orange-50 rounded border border-orange-200 flex-1 min-w-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0"></div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[10px] text-orange-600 leading-tight">Medium</p>
-              <p className="text-sm font-bold text-orange-700 leading-tight truncate">{stats.riskLevelUsers?.medium ?? 0}</p>
-            </div>
+          {/* Medium */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0"></div>
+            <span className="text-xs font-medium text-slate-700">Medium</span>
+            <span className="text-base font-bold text-slate-800">{stats.riskLevelUsers?.medium ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-blue-50 rounded border border-blue-200 flex-1 min-w-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0"></div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[10px] text-blue-600 leading-tight">Low</p>
-              <p className="text-sm font-bold text-blue-700 leading-tight truncate">{stats.riskLevelUsers?.low ?? 0}</p>
-            </div>
+          {/* Low */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></div>
+            <span className="text-xs font-medium text-slate-700">Low</span>
+            <span className="text-base font-bold text-slate-800">{stats.riskLevelUsers?.low ?? 0}</span>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-green-50 rounded border border-green-200 flex-1 min-w-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></div>
-            <div className="flex flex-col min-w-0">
-              <p className="text-[10px] text-green-600 leading-tight">None</p>
-              <p className="text-sm font-bold text-green-700 leading-tight truncate">{stats.riskLevelUsers?.none ?? 0}</p>
-            </div>
+          {/* None */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0"></div>
+            <span className="text-xs font-medium text-slate-700">None</span>
+            <span className="text-base font-bold text-slate-800">{stats.riskLevelUsers?.none ?? 0}</span>
           </div>
         </div>
       ),

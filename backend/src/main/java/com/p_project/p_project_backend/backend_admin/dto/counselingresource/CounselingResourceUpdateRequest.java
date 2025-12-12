@@ -2,7 +2,7 @@ package com.p_project.p_project_backend.backend_admin.dto.counselingresource;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,7 +28,6 @@ public class CounselingResourceUpdateRequest {
     @Size(max = 50, message = "전화번호는 최대 50자까지 입력 가능합니다")
     private String phone;
 
-    @Pattern(regexp = "^(https?://).*", message = "웹사이트 주소는 http:// 또는 https://로 시작해야 합니다")
     @Size(max = 500, message = "웹사이트 주소는 최대 500자까지 입력 가능합니다")
     private String website; // 선택 필드 (null 허용)
 
@@ -41,4 +40,3 @@ public class CounselingResourceUpdateRequest {
     @NotNull(message = "긴급 상담 여부는 필수입니다")
     private Boolean isUrgent;
 }
-
