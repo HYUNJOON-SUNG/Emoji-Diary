@@ -33,8 +33,8 @@ import { TabType } from './BottomTabBar'; // Keeping TabType for compatibility i
 import { analyzeRiskSignals } from '../../services/riskDetection';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
 // HMR Update
-import { type User } from '../../services/authApi';
-import { type RiskAnalysis } from '../../services/analysisApi';
+import { type User } from '../../types';
+import { type RiskAnalysis } from '../../services/riskDetection';
 import { MobileLayout } from '../../components/MobileLayout';
 
 /**
@@ -79,7 +79,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   // 페이지 전환 애니메이션 상태
   // const [isFlipping, setIsFlipping] = useState(false); // Unused
   const [direction, setDirection] = useState(0);
-  const [showMapRecommendation, setShowMapRecommendation] = useState(false);
+  // const [showMapRecommendation, setShowMapRecommendation] = useState(false); // Unused
   const [mapEmotion, setMapEmotion] = useState('');
   const [mapEmotionCategory, setMapEmotionCategory] = useState('');
   const [mapDiaryId, setMapDiaryId] = useState<string | undefined>(undefined); // 일기 ID (장소 추천 API 호출에 사용)
@@ -89,11 +89,11 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   const [existingDiaryData, setExistingDiaryData] = useState<any>(null);
 
   // 페르소나 설정 모달 상태
-  const [showPersonaModal, setShowPersonaModal] = useState(false);
+  const [, setShowPersonaModal] = useState(false); // Value unused
   // const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false); // Unused
 
   // 사용자 정보 상태
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // 로그인 시점 추적 (예외 처리용)
   // 1) 최초 로그인 시 한 번만 모달 표시
@@ -155,7 +155,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       setStatsSelectedDate(date);
     }
 
-    setShowMapRecommendation(false);
+    // setShowMapRecommendation(false); // Removed
     setViewMode('reading');
   };
 
@@ -260,7 +260,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       }
 
       setPreviousViewMode(null);
-      setShowMapRecommendation(false);
+      // setShowMapRecommendation(false); // Removed
       setIsEditMode(false);
       setExistingDiaryData(null);
 
@@ -353,7 +353,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       setIsEditMode(false);
       setExistingDiaryData(null);
       setSelectedDate(null);
-      setShowMapRecommendation(false);
+      // setShowMapRecommendation(false); // Removed
 
       setViewMode(targetView);
 
@@ -548,13 +548,14 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
 
   // Footer 컴포넌트 (네비게이션 바)
   // Footer 컴포넌트 (네비게이션 바)
-  // writing 모드와 map 모드에서는 하단 탭 바 숨김
-  const footer = (viewMode !== 'writing' && viewMode !== 'map') ? (
+  // 모든 화면에서 하단 탭 바 표시 (사용자 요청)
+  // writing 모드와 map 모드에서도 네비게이션 바가 보여야 함
+  const footer = (
     <BottomNav
       activeTab={getCurrentTab()}
       onTabChange={handleTabChange}
     />
-  ) : null;
+  );
 
   // 캘린더 슬라이드 애니메이션 변수 define
   const slideVariants = {
@@ -573,7 +574,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-white dark:bg-black">
       <MobileLayout header={header} footer={footer} className="relative z-0">
         <div className="relative w-full h-full"> {/* pb-20 removed, relying on MobileLayout footer */}
 
@@ -611,7 +612,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
             <AnimatePresence>
               {viewMode === 'writing' && !showEmotionAnalysis && (
                 <motion.div
-                  className="absolute inset-0 bg-white z-50 overflow-y-auto"
+                  className="absolute inset-0 bg-white z-50 overflow-y-auto scrollbar-hide"
                   initial={{ y: '100%' }}
                   animate={{ y: 0 }}
                   exit={{ y: '100%' }}
@@ -629,7 +630,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                       setMapEmotion(emotion);
                       setMapEmotionCategory(emotionCategory);
                       setViewMode('reading');
-                      setShowMapRecommendation(true);
+                      // setShowMapRecommendation(true); // Removed
                     }}
                     isEditMode={isEditMode}
                     existingDiary={existingDiaryData}
@@ -665,7 +666,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
                       setMapEmotion(emotion);
                       setMapEmotionCategory(emotionCategory);
                       setMapDiaryId(diaryId);
-                      setShowMapRecommendation(true);
+                      // setShowMapRecommendation(true); // Removed
                     }}
                   />
                 </motion.div>
@@ -757,7 +758,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           onClose={() => setShowRiskAlert(false)}
           onViewResources={handleViewResources}
           riskLevel={riskAnalysis?.riskLevel as 'low' | 'medium' | 'high'}
-          reasons={riskAnalysis?.riskFactors || []}
+          reasons={riskAnalysis?.reasons || []}
           urgentCounselingPhones={[]} // 필요한 경우 추가
         />
 
@@ -771,7 +772,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           aiComment={analysisComment}
           recommendedFood={analysisRecommendedFood}
           imageUrl={analysisImageUrl}
-          date={analysisDate || new Date()}
+          // date={analysisDate || new Date()} // Removed
           onMapRecommendation={handleEmotionAnalysisMapRecommendation}
         />
 

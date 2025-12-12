@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Pin, Calendar, Loader2 } from 'lucide-react';
+import { X, Pin, Calendar, Loader2, FileText } from 'lucide-react';
 import { getNotices, getNoticeById, type Notice } from '../../services/announcementApi';
 
 interface AnnouncementModalProps {
@@ -102,7 +102,7 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
           </div>
 
           {/* 내용 */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
+          <div className="p-6 overflow-y-auto scrollbar-hide max-h-[60vh]">
             <div className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400 mb-6">
               <Calendar className="w-4 h-4" />
               <span>{formatDate(selectedNotice.createdAt)}</span>
@@ -154,7 +154,7 @@ export function AnnouncementModal({ isOpen, onClose }: AnnouncementModalProps) {
         </div>
 
         {/* 내용 */}
-        <div className="p-4 overflow-y-auto max-h-[60vh] bg-stone-50/30 dark:bg-black/10">
+        <div className="p-4 overflow-y-auto scrollbar-hide max-h-[60vh] bg-stone-50/30 dark:bg-black/10">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { BookHeart, Mail, Lock, Loader2, Eye, EyeOff, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, KeyRound, CheckCircle2 } from 'lucide-react';
 import { sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
 
 /**
@@ -12,7 +12,7 @@ import { sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '.
  * 사용자가 비밀번호를 잊어버렸을 때 재설정하는 페이지
  * - 나무 책상 위의 가죽 다이어리 디자인 (스큐어모피즘)
  * - 3단계 진행: 이메일 입력 → 인증 코드 확인 → 새 비밀번호 설정
- * - 파란색 계열 톤온톤 테마
+ * - 초록색 계열 톤온톤 테마 (Green Glassmorphism)
  * 
  * [단계 1: 이메일 입력]
  * - 사용자: 이메일 입력
@@ -65,41 +65,41 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   // ========== 입력 필드 ref (검증 실패 시 스크롤 및 강조용) ==========
   const newPasswordInputRef = useRef<HTMLInputElement>(null);
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
-  
+
   // ========== 기본 입력 필드 상태 ==========
-  
+
   /** 이메일 입력값 */
   const [email, setEmail] = useState('');
-  
+
   /** 6자리 인증 코드 입력 배열 */
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
-  
+
   /** 새 비밀번호 입력값 */
   const [newPassword, setNewPassword] = useState('');
-  
+
   /** 새 비밀번호 확인 입력값 */
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   /** 새 비밀번호 표시/숨김 토글 */
   const [showNewPassword, setShowNewPassword] = useState(false);
-  
+
   /** 새 비밀번호 확인 표시/숨김 토글 */
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   /** 로딩 상태 (API 호출 중) */
   const [isLoading, setIsLoading] = useState(false);
-  
+
   /** 에러 메시지 */
   const [error, setError] = useState('');
-  
+
   /** 성공 메시지 */
   const [success, setSuccess] = useState('');
-  
+
   /** 현재 단계: 'email' | 'verify' | 'password' */
   const [step, setStep] = useState<'email' | 'verify' | 'password'>('email');
-  
+
   // ========== 타이머 관련 상태 (5분 = 300초) ==========
-  
+
   /**
    * 타이머 남은 시간 (초 단위)
    * 
@@ -108,27 +108,27 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
    * - 발송 시점부터 카운트다운
    */
   const [timeLeft, setTimeLeft] = useState(300); // ✅ 5분 = 300초
-  
+
   /** 타이머 활성화 여부 */
   const [timerActive, setTimerActive] = useState(false);
-  
+
   /** 인증 코드 만료 여부 (5분 경과) */
   const [codeExpired, setCodeExpired] = useState(false);
-  
+
   /** 인증 코드 발송 시각 (timestamp) */
-  const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
-  
+  // const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
+
   /** 비밀번호 재설정 토큰 (인증 코드 확인 후 받음) */
   const [resetToken, setResetToken] = useState<string | null>(null);
-  
+
   // ========== 입력 검증 에러 메시지 상태 ==========
-  
+
   /** 새 비밀번호 검증 에러 */
   const [newPasswordError, setNewPasswordError] = useState('');
-  
+
   /** 새 비밀번호 확인 검증 에러 */
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
-  
+
   /** 인증 코드 입력 필드 참조 배열 (자동 포커스 이동용) */
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -136,7 +136,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // ========== 타이머 로직 (5분 = 300초) ==========
-  
+
   /**
    * 인증 코드 타이머 Effect
    * 
@@ -149,8 +149,8 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
    * 프론트엔드 타이머는 UX를 위한 것이며, 실제 검증은 서버에서 해야 합니다.
    */
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
+    let interval: ReturnType<typeof setTimeout>;
+
     if (timerActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -163,7 +163,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
         });
       }, 1000);
     }
-    
+
     return () => clearInterval(interval);
   }, [timerActive, timeLeft]);
 
@@ -186,7 +186,7 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     if (!email.trim()) {
       setError('이메일을 입력해주세요.');
       return;
@@ -198,19 +198,19 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
       setError('올바른 이메일 형식을 입력해주세요.');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const response = await sendPasswordResetCode({ email });
       setSuccess(response.message);
-      setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
+      // setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
       setTimeLeft(300); // Reset to 5 minutes
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);
       setStep('verify');
-      
+
       // Focus first input
       setTimeout(() => {
         inputRefs.current[0]?.focus();
@@ -229,16 +229,16 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     setError('');
     setSuccess('');
     setIsLoading(true);
-    
+
     try {
       const response = await sendPasswordResetCode({ email });
       setSuccess(response.message);
-      setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
+      // setCodeSentAt(Date.now()); // [API 명세서] expiresIn만 반환되므로 현재 시간 저장
       setTimeLeft(300); // Reset to 5 minutes
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);
-      
+
       // Focus first input
       setTimeout(() => {
         inputRefs.current[0]?.focus();
@@ -260,11 +260,11 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     if (value && !/^\d$/.test(value)) {
       return;
     }
-    
+
     const newCode = [...verificationCode];
     newCode[index] = value;
     setVerificationCode(newCode);
-    
+
     // Auto focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -290,27 +290,27 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     const code = verificationCode.join('');
-    
+
     if (code.length !== 6) {
       setError('인증 코드 6자리를 모두 입력해주세요.');
       return;
     }
-    
+
     if (codeExpired) {
       setError('인증 시간이 만료되었습니다. 재발송 버튼을 눌러주세요.');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       const response = await verifyPasswordResetCode({ email, code });
       setSuccess('인증이 완료되었습니다.');
       setResetToken(response.resetToken); // [API 명세서] resetToken 저장
       setTimerActive(false);
-      
+
       // Move to password step after 1 second
       setTimeout(() => {
         setStep('password');
@@ -373,20 +373,20 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     // 검증 플래그
     let hasError = false;
-    
+
     if (!newPassword.trim()) {
       setNewPasswordError('비밀번호를 입력해주세요.');
       hasError = true;
     }
-    
+
     if (!confirmPassword.trim()) {
       setConfirmPasswordError('비밀번호 확인을 입력해주세요.');
       hasError = true;
     }
-    
+
     // Validate new password
     if (newPassword.trim()) {
       const passwordErr = validatePassword(newPassword);
@@ -395,12 +395,12 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
         hasError = true;
       }
     }
-    
+
     if (confirmPassword.trim() && newPassword !== confirmPassword) {
       setConfirmPasswordError('비밀번호가 일치하지 않습니다.');
       hasError = true;
     }
-    
+
     // 검증 실패 시 첫 번째 오류 필드로 스크롤하고 강조
     if (hasError) {
       if (newPasswordError && newPasswordInputRef.current) {
@@ -420,23 +420,23 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
       }
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       if (!resetToken) {
         setError('인증이 완료되지 않았습니다. 다시 시도해주세요.');
         setIsLoading(false);
         return;
       }
-      
+
       const response = await resetPassword({
         email,
         resetToken, // [API 명세서] verifyPasswordResetCode에서 받은 resetToken 사용
         newPassword,
         confirmPassword, // [API 명세서] 새 비밀번호 확인 필드 추가
       });
-      
+
       setSuccess(response.message);
       setShowSuccessModal(true);
     } catch (err) {
@@ -447,290 +447,289 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
   };
 
   return (
-    <div className="relative w-full h-full">
-      <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
-        <div className="w-full flex-shrink-0">
-          {/* Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-lg">
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="text-center space-y-2">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
-                  <KeyRound className="w-7 h-7 text-white" />
-                </div>
-                <h2 className="text-2xl text-stone-800 text-blue-600">비밀번호 찾기</h2>
-                <p className="text-sm text-stone-600 text-blue-600">
+    <div className="w-full h-full flex items-center justify-center p-4 overflow-y-auto scrollbar-hide relative z-10" style={{ minHeight: 0 }}>
+      <div className="w-full flex-shrink-0 max-w-md">
+        {/* Card */}
+        <div className="glass p-8 rounded-[2rem] shadow-2xl backdrop-blur-md bg-white/40 dark:bg-black/40 border border-white/20">
+          <div className="space-y-8">
+            {/* Header */}
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 mx-auto rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg ring-4 ring-white/20">
+                <KeyRound className="w-10 h-10 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-emerald-950 dark:text-emerald-50">비밀번호 찾기</h2>
+                <p className="text-sm text-emerald-800/80 dark:text-emerald-200/60 mt-1">
                   {step === 'email' && '이메일로 인증 코드를 받아주세요'}
                   {step === 'verify' && '인증 코드를 입력해주세요'}
                   {step === 'password' && '새로운 비밀번호를 설정해주세요'}
                 </p>
               </div>
+            </div>
 
-              {/* Step 1: Email */}
-              {step === 'email' && (
-                <form onSubmit={handleSendCode} className="space-y-4">
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-1.5">
-                      이메일
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="이메일을 입력하세요"
-                        disabled={isLoading}
-                        className="w-full pl-10 pr-3 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
-                      />
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                      <p className="text-xs text-rose-700">{error}</p>
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg">
-                      <p className="text-xs text-emerald-700">{success}</p>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        발송 중...
-                      </>
-                    ) : (
-                      '인증 코드 발송'
-                    )}
-                  </button>
-
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={onBackToLogin}
+            {/* Step 1: Email */}
+            {step === 'email' && (
+              <form onSubmit={handleSendCode} className="space-y-5" noValidate>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
+                    이메일
+                  </label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="이메일을 입력하세요"
                       disabled={isLoading}
-                      className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
-                    >
-                      ← 로그인으로 돌아가기
-                    </button>
+                      className="w-full pl-12 pr-4 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
+                    />
                   </div>
-                </form>
-              )}
+                </div>
 
-              {/* Step 2: Verify Code */}
-              {step === 'verify' && (
-                <form onSubmit={handleVerifyCode} className="space-y-4">
-                  
-                  {/* Timer */}
-                  <div className="text-center">
-                    <p className={`text-sm ${timeLeft <= 30 ? 'text-rose-600' : 'text-blue-700'}`}>
-                      남은 시간: {formatTime(timeLeft)}
+                {error && (
+                  <div className="p-3 bg-red-50/80 border border-red-200/50 rounded-xl backdrop-blur-sm animate-shake">
+                    <p className="text-xs text-red-600 font-medium text-center">{error}</p>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200/50 rounded-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
+                    <p className="text-xs text-emerald-700 font-medium text-center">{success}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center gap-2 font-semibold tracking-wide mt-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      발송 중...
+                    </>
+                  ) : (
+                    '인증 코드 발송'
+                  )}
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-xs font-medium text-emerald-800/60 hover:text-emerald-800 dark:text-emerald-200/40 dark:hover:text-emerald-200 transition-colors disabled:opacity-50"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 2: Verify Code */}
+            {step === 'verify' && (
+              <form onSubmit={handleVerifyCode} className="space-y-5" noValidate>
+
+                {/* Timer */}
+                <div className="text-center">
+                  <p className={`text-sm font-medium ${timeLeft <= 30 ? 'text-red-500' : 'text-emerald-600'}`}>
+                    남은 시간: {formatTime(timeLeft)}
+                  </p>
+                </div>
+
+                {/* 6-digit input */}
+                <div>
+                  <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 block mb-3 text-center">
+                    인증 코드 (6자리)
+                  </label>
+                  <div className="flex gap-2 justify-center flex-wrap max-w-full">
+                    {verificationCode.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => { inputRefs.current[index] = el; }}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleCodeChange(index, e.target.value)}
+                        onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                        disabled={codeExpired || isLoading}
+                        className="w-12 h-14 text-center text-xl font-bold bg-white/70 dark:bg-black/30 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 disabled:opacity-50 transition-all focus:border-emerald-500 focus:scale-110 shadow-sm flex-shrink-0"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {codeExpired && (
+                  <div className="p-3 bg-amber-50/80 border border-amber-200/50 rounded-xl backdrop-blur-sm">
+                    <p className="text-xs text-amber-700 font-medium text-center">
+                      인증 시간이 만료되었습니다. 재발송 버튼을 눌러주세요.
                     </p>
                   </div>
+                )}
 
-                  {/* 6-digit input */}
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-1.5 text-center">
-                      인증 코드 (6자리)
-                    </label>
-                    <div className="flex gap-2 justify-center flex-wrap max-w-full">
-                      {verificationCode.map((digit, index) => (
-                        <input
-                          key={index}
-                          ref={(el) => { inputRefs.current[index] = el; }}
-                          type="text"
-                          maxLength={1}
-                          value={digit}
-                          onChange={(e) => handleCodeChange(index, e.target.value)}
-                          onKeyDown={(e) => handleCodeKeyDown(index, e)}
-                          disabled={codeExpired || isLoading}
-                          className="w-12 h-14 text-center text-xl bg-white border border-stone-300 rounded-lg outline-none text-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 flex-shrink-0"
-                          style={{ minWidth: '48px', maxWidth: '48px' }}
-                        />
-                      ))}
-                    </div>
+                {error && (
+                  <div className="p-3 bg-red-50/80 border border-red-200/50 rounded-xl backdrop-blur-sm animate-shake">
+                    <p className="text-xs text-red-600 font-medium text-center">{error}</p>
                   </div>
+                )}
 
-                  {codeExpired && (
-                    <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                      <p className="text-xs text-amber-700">
-                        인증 시간이 만료되었습니다. 재발송 버튼을 눌러주세요.
-                      </p>
-                    </div>
-                  )}
-
-                  {error && (
-                    <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                      <p className="text-xs text-rose-700">{error}</p>
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <p className="text-xs text-emerald-700">{success}</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <button
-                      type="submit"
-                      disabled={isLoading || codeExpired}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          확인 중...
-                        </>
-                      ) : (
-                        '인증 확인'
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleResendCode}
-                      disabled={isLoading}
-                      className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 rounded-lg transition-colors"
-                    >
-                      인증 코드 재발송
-                    </button>
+                {success && (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200/50 rounded-xl backdrop-blur-sm flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <p className="text-xs text-emerald-700 font-medium">{success}</p>
                   </div>
+                )}
 
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={onBackToLogin}
-                      disabled={isLoading}
-                      className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
-                    >
-                      ← 로그인으로 돌아가기
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Step 3: Password */}
-              {step === 'password' && (
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  {/* New Password */}
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-1.5">
-                      새 비밀번호
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                      <input
-                        ref={newPasswordInputRef}
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        onBlur={handleNewPasswordBlur}
-                        placeholder="영문, 숫자, 특수문자 포함 8자 이상"
-                        disabled={isLoading}
-                        className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-blue-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                      >
-                        {showNewPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                    {newPasswordError && (
-                      <p className="text-xs text-rose-500 mt-1">{newPasswordError}</p>
-                    )}
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-1.5">
-                      새 비밀번호 확인
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                      <input
-                        ref={confirmPasswordInputRef}
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-                        placeholder="비밀번호를 다시 입력하세요"
-                        disabled={isLoading}
-                        className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 text-blue-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                    {confirmPasswordError && (
-                      <p className="text-xs text-rose-500 mt-1">{confirmPasswordError}</p>
-                    )}
-                  </div>
-
-                  {error && (
-                    <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                      <p className="text-xs text-rose-700">{error}</p>
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <p className="text-xs text-emerald-700">{success}</p>
-                    </div>
-                  )}
-
+                <div className="space-y-3">
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
+                    disabled={isLoading || codeExpired}
+                    className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center gap-2 font-semibold tracking-wide"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        변경 중...
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        확인 중...
                       </>
                     ) : (
-                      '비밀번호 변경'
+                      '인증 확인'
                     )}
                   </button>
 
-                  <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={isLoading}
+                    className="w-full py-3 bg-white/40 hover:bg-white/60 dark:bg-white/5 dark:hover:bg-white/10 disabled:opacity-50 text-emerald-900 dark:text-emerald-100 rounded-xl transition-all font-medium border border-white/20 dark:border-white/5"
+                  >
+                    인증 코드 재발송
+                  </button>
+                </div>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-xs font-medium text-emerald-800/60 hover:text-emerald-800 dark:text-emerald-200/40 dark:hover:text-emerald-200 transition-colors disabled:opacity-50"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 3: Password */}
+            {step === 'password' && (
+              <form onSubmit={handleResetPassword} className="space-y-5" noValidate>
+                {/* New Password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
+                    새 비밀번호
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
+                    <input
+                      ref={newPasswordInputRef}
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      onBlur={handleNewPasswordBlur}
+                      placeholder="영문, 숫자, 특수문자 포함 8자 이상"
+                      disabled={isLoading}
+                      className="w-full pl-12 pr-12 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
+                    />
                     <button
                       type="button"
-                      onClick={onBackToLogin}
-                      disabled={isLoading}
-                      className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600/50 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50/50 transition-colors"
                     >
-                      ← 로그인으로 돌아가기
+                      {showNewPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
-                </form>
-              )}
-            </div>
+                  {newPasswordError && (
+                    <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{newPasswordError}</p>
+                  )}
+                </div>
+
+                {/* Confirm Password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
+                    새 비밀번호 확인
+                  </label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
+                    <input
+                      ref={confirmPasswordInputRef}
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                      placeholder="비밀번호를 다시 입력하세요"
+                      disabled={isLoading}
+                      className="w-full pl-12 pr-12 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600/50 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50/50 transition-colors"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  {confirmPasswordError && (
+                    <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{confirmPasswordError}</p>
+                  )}
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-50/80 border border-red-200/50 rounded-xl backdrop-blur-sm animate-shake">
+                    <p className="text-xs text-red-600 font-medium text-center">{error}</p>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-200/50 rounded-xl backdrop-blur-sm flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <p className="text-xs text-emerald-700 font-medium">{success}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center gap-2 font-semibold tracking-wide mt-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      변경 중...
+                    </>
+                  ) : (
+                    '비밀번호 변경'
+                  )}
+                </button>
+
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={onBackToLogin}
+                    disabled={isLoading}
+                    className="inline-block py-2 text-xs font-medium text-emerald-800/60 hover:text-emerald-800 dark:text-emerald-200/40 dark:hover:text-emerald-200 transition-colors disabled:opacity-50"
+                  >
+                    ← 로그인으로 돌아가기
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -738,23 +737,23 @@ export function ForgotPasswordPage({ onBackToLogin }: ForgotPasswordPageProps) {
       {/* Success Modal */}
       {showSuccessModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+          <div className="glass bg-white/90 dark:bg-stone-900/90 rounded-[2rem] shadow-2xl p-8 max-w-sm w-full text-center space-y-6 animate-in fade-in zoom-in duration-300 border border-white/20">
+            <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
             </div>
-            
+
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-stone-800">
+              <h3 className="text-xl font-bold text-emerald-950 dark:text-emerald-50">
                 비밀번호가 재설정되었습니다
               </h3>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-emerald-800/80 dark:text-emerald-200/60">
                 새로운 비밀번호로 로그인해주세요.
               </p>
             </div>
-            
+
             <button
               onClick={onBackToLogin}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 text-white rounded-xl transition-all shadow-lg flex items-center justify-center font-semibold"
             >
               로그인으로 돌아가기
             </button>

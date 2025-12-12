@@ -27,7 +27,7 @@ export function TermsModal({ term, onClose }: TermsModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)] custom-scrollbar">
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-80px)] scrollbar-hide">
           <pre className="text-sm text-stone-700 dark:text-stone-300 whitespace-pre-wrap leading-relaxed font-sans">
             {term.content}
           </pre>

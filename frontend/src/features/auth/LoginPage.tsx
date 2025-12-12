@@ -134,16 +134,28 @@ export function LoginPage({ onLoginSuccess, onBack, onSignup, onForgotPassword }
 
       // Success
       onLoginSuccess();
-    } catch (err) {
+    } catch (err: any) {
       // API 에러 처리 (플로우 14.2)
-      setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
+      let errorMessage = err instanceof Error ? err.message : '로그인에 실패했습니다.';
+
+      // DB/서버 내부 오류 메시지 필터링 (사용자에게 적나라한 SQL 에러 노출 방지)
+      if (
+        errorMessage.includes('JDBC') ||
+        errorMessage.includes('SQL') ||
+        errorMessage.includes('Table') ||
+        errorMessage.includes('doesn\'t exist')
+      ) {
+        errorMessage = '시스템 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false); // 로딩 종료 (플로우 14.3)
     }
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4 overflow-y-auto relative z-10" style={{ minHeight: 0 }}>
+    <div className="w-full h-full flex items-center justify-center p-4 overflow-y-auto scrollbar-hide relative z-10" style={{ minHeight: 0 }}>
       <div className="w-full flex-shrink-0 max-w-md">
         {/* Login Form */}
         <div className="glass p-8 rounded-[2rem] shadow-2xl backdrop-blur-md bg-white/40 dark:bg-black/40 border border-white/20">

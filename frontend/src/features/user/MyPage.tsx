@@ -37,7 +37,7 @@ import {
 import { getCurrentUser, updatePersona, deleteAccount, sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
 import { User as UserType } from '../../types';
 import { PERSONAS } from './PersonaSelectionModal';
-import { AnnouncementModal } from './AnnouncementModal';
+import { AnnouncementPage } from './AnnouncementPage';
 import manProfile from '../../assets/man.png';
 import womanProfile from '../../assets/woman.png';
 
@@ -57,9 +57,9 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const [success, setSuccess] = useState('');
 
   // UI States
+  const [viewMode, setViewMode] = useState<'main' | 'announcement'>('main');
   const [showPasswordEdit, setShowPasswordEdit] = useState(false);
   const [showPersonaModal, setShowPersonaModal] = useState(false);
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -83,6 +83,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
 
   // Persona
   const [currentPersona, setCurrentPersona] = useState('friend');
+  const [tempPersonaId, setTempPersonaId] = useState(''); // 모달 내부 임시 선택 상태
   const [isUpdatingPersona, setIsUpdatingPersona] = useState(false);
 
   useEffect(() => {
@@ -106,9 +107,13 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
     }
   }, [user]);
 
+  // 모달이 열릴 때 임시 상태를 현재 설정된 페르소나로 초기화
   useEffect(() => {
+    if (showPersonaModal) {
+      setTempPersonaId(currentPersona);
+    }
     if (onModalStateChange) onModalStateChange(showPersonaModal);
-  }, [showPersonaModal, onModalStateChange]);
+  }, [showPersonaModal, currentPersona, onModalStateChange]);
 
   const loadUserInfo = async () => {
     setIsLoading(true);
@@ -427,8 +432,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       await loadUserInfo();
 
       setShowPersonaModal(false);
-      setSuccess('말투가 변경되었습니다.');
-      setTimeout(() => setSuccess(''), 2000);
+      setShowPersonaModal(false);
     } catch (err: any) {
       console.error('페르소나 변경 실패:', err);
       setError(err?.message || '페르소나 변경에 실패했습니다.');
@@ -465,14 +469,18 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
     );
   }
 
+  if (viewMode === 'announcement') {
+    return <AnnouncementPage onBack={() => setViewMode('main')} />;
+  }
+
   return (
     <div className="min-h-full flex flex-col space-y-4 pb-6">
       {/* Header - 뒤로가기 버튼 포함 */}
-      <div className="relative text-center space-y-1 pb-2 border-b border-white/20">
+      <div className="relative text-center space-y-1 pb-2 pt-6 border-b border-white/20">
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-6 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -489,7 +497,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       {error && <div className="bg-rose-50/80 dark:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 px-4 py-3 rounded-xl text-sm text-center animate-in fade-in zoom-in backdrop-blur-sm shadow-sm">{error}</div>}
 
       {/* Content Container */}
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0 space-y-4">
 
         {/* Profile Section */}
         <section className="bg-white/40 dark:bg-black/20 rounded-2xl border border-white/30 dark:border-white/10 p-5 space-y-4 shadow-sm backdrop-blur-md">
@@ -742,7 +750,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
           </button>
 
           <button
-            onClick={() => setShowAnnouncementModal(true)}
+            onClick={() => setViewMode('announcement')}
             className="w-full flex items-center justify-between p-5 hover:bg-white/20 dark:hover:bg-white/5 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
@@ -806,53 +814,57 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       {showPersonaModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-10">
-            <h3 className="text-lg font-bold text-stone-800 text-center text-emerald-600">AI 말투 선택</h3>
+            <h3 className="text-lg font-bold text-stone-800 text-center mb-4">AI 말투 선택</h3>
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                <p className="text-xs text-rose-700 text-emerald-600">{error}</p>
+                <p className="text-xs text-rose-700">{error}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-6">
               {PERSONAS.map(persona => (
                 <button
                   key={persona.id}
-                  onClick={() => handlePersonaSelect(persona.id)}
+                  onClick={() => setTempPersonaId(persona.id)}
                   disabled={isUpdatingPersona}
-                  className={`p-3 rounded-xl border text-left transition-all ${currentPersona === persona.id
-                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                  className={`p-3 rounded-xl border text-left transition-all relative ${tempPersonaId === persona.id
+                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 shadow-md'
                     : 'border-stone-200 hover:bg-stone-50'
                     } ${isUpdatingPersona ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  <div className="w-16 h-16 mb-2 mx-auto">
+                  <div className="w-14 h-14 mb-2 mx-auto">
                     <img src={persona.icon} alt={persona.name} className="w-full h-full object-contain" />
                   </div>
-                  <div className="font-medium text-sm text-stone-800 text-emerald-600">{persona.name}</div>
-                  <div className="text-[10px] text-stone-500 text-emerald-600">{persona.style}</div>
-                  {isUpdatingPersona && currentPersona === persona.id && (
-                    <div className="mt-2 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                    </div>
-                  )}
+                  <div className={`font-bold text-sm text-center mb-1 ${tempPersonaId === persona.id ? 'text-emerald-700' : 'text-stone-700'}`}>
+                    {persona.name}
+                  </div>
+                  <div className={`text-[10px] text-center ${tempPersonaId === persona.id ? 'text-emerald-600' : 'text-stone-500'}`}>
+                    {persona.style}
+                  </div>
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setShowPersonaModal(false)}
-              disabled={isUpdatingPersona}
-              className="w-full py-3 bg-stone-100 text-stone-600 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed text-emerald-600"
-            >
-              닫기
-            </button>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPersonaModal(false)}
+                disabled={isUpdatingPersona}
+                className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => handlePersonaSelect(tempPersonaId)}
+                disabled={isUpdatingPersona || tempPersonaId === currentPersona}
+                className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+              >
+                {isUpdatingPersona ? <Loader2 className="w-4 h-4 animate-spin" /> : '저장하기'}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {showAnnouncementModal && (
-        <AnnouncementModal
-          isOpen={showAnnouncementModal}
-          onClose={() => setShowAnnouncementModal(false)}
-        />
-      )}
+
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (

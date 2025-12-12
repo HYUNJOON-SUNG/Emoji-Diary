@@ -249,7 +249,7 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
       email: data.email,
       password: data.password,
     });
-    
+
     if (response.data.success) {
       const { accessToken, refreshToken, user } = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
@@ -309,21 +309,21 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
   if (!data.emailVerified) {
     throw new Error('이메일 인증이 완료되지 않았습니다.');
   }
-  
+
   // Terms check (프론트엔드에서만 검증)
   if (!data.termsAccepted) {
     throw new Error('필수 약관에 동의해주세요.');
   }
-  
+
   // [API 명세서] persona는 회원가입 시 선택 필드, 미제공 시 기본값 "베프"
   const validPersonas = ['베프', '부모님', '전문가', '멘토', '상담사', '시인'];
-  const persona = data.persona && validPersonas.includes(data.persona) 
-    ? data.persona 
+  const persona = data.persona && validPersonas.includes(data.persona)
+    ? data.persona
     : '베프'; // 기본값 "베프"
-  
+
   // persona를 enum으로 변환하여 전송 (한글 → enum)
   const personaEnum = personaToEnum(persona as any);
-  
+
   try {
     const requestBody = {
       name: data.name,
@@ -333,9 +333,9 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
       gender: data.gender,
       persona: personaEnum, // 백엔드는 enum을 기대함
     };
-    
+
     const response = await apiClient.post('/auth/register', requestBody);
-    
+
     if (response.data.success) {
       const { accessToken, refreshToken, user } = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
@@ -384,7 +384,7 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
 export async function checkEmailDuplicate(email: string): Promise<{ available: boolean; message: string }> {
   try {
     const response = await apiClient.post('/auth/check-email', { email });
-    
+
     if (response.data.success) {
       return {
         available: response.data.data.available,
@@ -394,14 +394,14 @@ export async function checkEmailDuplicate(email: string): Promise<{ available: b
       // 중복된 경우
       return {
         available: false,
-        message: response.data.error?.message || '이미 가입된 이메일입니다.',
+        message: '이미 가입된 이메일입니다.',
       };
     }
   } catch (error: any) {
     if (error.response?.status === 400) {
       return {
         available: false,
-        message: error.response.data?.error?.message || '이미 가입된 이메일입니다.',
+        message: '이미 가입된 이메일입니다.',
       };
     }
     throw error;
@@ -431,20 +431,19 @@ export async function sendPasswordResetCode(data: VerificationCodeRequest): Prom
     const response = await apiClient.post('/auth/password-reset/send-code', {
       email: data.email,
     });
-    
+
+    // 200 OK지만 success가 false인 경우 (소프트 에러)
     if (response.data.success) {
       return {
         message: response.data.data.message,
         expiresIn: response.data.data.expiresIn,
       };
     } else {
-      throw new Error(response.data.error?.message || '인증 코드 발송에 실패했습니다.');
+      throw new Error('이메일이 올바르지 않습니다.');
     }
   } catch (error: any) {
-    if (error.response?.status === 400 || error.response?.status === 404) {
-      throw new Error(error.response.data?.error?.message || '가입되지 않은 이메일입니다.');
-    }
-    throw error;
+    // 404, 400, 500 등 모든 HTTP 에러에 대해 동일한 메시지 반환
+    throw new Error('이메일이 올바르지 않습니다.');
   }
 }
 
@@ -467,19 +466,18 @@ export async function verifyPasswordResetCode(data: VerifyPasswordResetCodeReque
       email: data.email,
       code: data.code,
     });
-    
+
     if (response.data.success) {
       return {
         verified: response.data.data.verified,
         resetToken: response.data.data.resetToken,
       };
     } else {
-      throw new Error(response.data.error?.message || '인증 코드 확인에 실패했습니다.');
+      throw new Error('인증 코드 확인에 실패했습니다.');
     }
   } catch (error: any) {
     if (error.response?.status === 400) {
-      const errorMessage = error.response.data?.error?.message || '인증 코드가 일치하지 않습니다.';
-      throw new Error(errorMessage);
+      throw new Error('인증 코드가 일치하지 않습니다.');
     }
     throw error;
   }
@@ -508,21 +506,19 @@ export async function sendVerificationCodeForSignup(data: SignupVerificationCode
     const response = await apiClient.post('/auth/send-verification-code', {
       email: data.email,
     });
-    
+
     if (response.data.success) {
       return {
         message: response.data.data.message,
         expiresIn: response.data.data.expiresIn,
       };
     } else {
-      throw new Error(response.data.error?.message || '인증 코드 발송에 실패했습니다.');
+      // 논리적 에러 (200 OK지만 success: false)
+      throw new Error('이메일이 올바르지 않습니다.');
     }
   } catch (error: any) {
-    if (error.response?.status === 400) {
-      const errorMessage = error.response.data?.error?.message || '이미 가입된 이메일입니다.';
-      throw new Error(errorMessage);
-    }
-    throw error;
+    // 네트워크/HTTP 에러 또는 위에서 던진 에러
+    throw new Error('이메일이 올바르지 않습니다.');
   }
 }
 
@@ -556,19 +552,18 @@ export async function verifyCode(email: string, code: string): Promise<{ verifie
       email,
       code,
     });
-    
+
     if (response.data.success) {
       return {
         verified: response.data.data.verified,
         message: response.data.data.message,
       };
     } else {
-      throw new Error(response.data.error?.message || '인증 코드가 일치하지 않습니다.');
+      throw new Error('인증 코드가 일치하지 않습니다.');
     }
   } catch (error: any) {
     if (error.response?.status === 400) {
-      const errorMessage = error.response.data?.error?.message || '인증 코드가 일치하지 않습니다.';
-      throw new Error(errorMessage);
+      throw new Error('인증 코드가 일치하지 않습니다.');
     }
     throw error;
   }
@@ -598,7 +593,7 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
   if (data.newPassword !== data.confirmPassword) {
     throw new Error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
   }
-  
+
   try {
     const response = await apiClient.post('/auth/password-reset/reset', {
       email: data.email,
@@ -606,7 +601,7 @@ export async function resetPassword(data: ResetPasswordRequest): Promise<{ messa
       newPassword: data.newPassword,
       confirmPassword: data.confirmPassword,
     });
-    
+
     if (response.data.success) {
       return {
         message: response.data.data.message,
@@ -644,11 +639,11 @@ export async function refreshToken(refreshToken: string): Promise<{ accessToken:
     const response = await apiClient.post('/auth/refresh', {
       refreshToken,
     });
-    
+
     if (response.data.success) {
       const { accessToken, refreshToken: newRefreshToken, user } = response.data.data;
       TokenStorage.setTokens(accessToken, newRefreshToken);
-      
+
       // user가 포함된 경우 persona 변환
       if (user) {
         // ID 타입 처리: 백엔드에서 숫자로 올 수 있으므로 string으로 변환
@@ -664,7 +659,7 @@ export async function refreshToken(refreshToken: string): Promise<{ accessToken:
           user: userWithPersona,
         };
       }
-      
+
       return {
         accessToken,
         refreshToken: newRefreshToken,
@@ -705,7 +700,7 @@ export async function refreshToken(refreshToken: string): Promise<{ accessToken:
 export async function getCurrentUser(): Promise<User> {
   try {
     const response = await apiClient.get('/users/me');
-    
+
     if (response.data.success) {
       const userResponse = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
@@ -754,18 +749,18 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
   if (!validPersonas.includes(data.persona)) {
     throw new Error('유효하지 않은 페르소나입니다.');
   }
-  
+
   // persona를 enum으로 변환하여 전송 (한글 → enum)
   const personaEnum = personaToEnum(data.persona as any);
-  
+
   try {
     const response = await apiClient.put('/users/me/persona', { persona: personaEnum });
-    
+
     if (response.data.success) {
       const userResponse = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
       const personaKorean = enumToPersona(userResponse.persona as any);
-      
+
       // localStorage 동기화
       const userStr = localStorage.getItem('user');
       if (userStr) {
@@ -773,7 +768,7 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
         user.persona = personaKorean;
         localStorage.setItem('user', JSON.stringify(user));
       }
-      
+
       return {
         message: userResponse.message,
         persona: personaKorean,
@@ -811,7 +806,7 @@ export async function updatePersona(data: { persona: string }): Promise<{ messag
 export async function updateProfile(data: { name: string }): Promise<{ message: string; user: User }> {
   try {
     const response = await apiClient.put('/users/me', { name: data.name });
-    
+
     if (response.data.success) {
       const userResponse = response.data.data;
       // 백엔드에서 enum으로 반환되므로 한글로 변환
@@ -821,7 +816,7 @@ export async function updateProfile(data: { name: string }): Promise<{ message: 
       };
       // localStorage 동기화
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       return {
         message: '프로필이 수정되었습니다.',
         user,
@@ -868,14 +863,14 @@ export async function updatePassword(data: {
   if (data.newPassword !== data.confirmPassword) {
     throw new Error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
   }
-  
+
   try {
     const response = await apiClient.put('/users/me/password', {
       currentPassword: data.currentPassword,
       newPassword: data.newPassword,
       confirmPassword: data.confirmPassword,
     });
-    
+
     if (response.data.success) {
       return {
         message: response.data.data.message,
@@ -921,7 +916,7 @@ export async function updatePassword(data: {
 export async function updateNotificationSettings(enabled: boolean): Promise<{ message: string; enabled: boolean }> {
   try {
     const response = await apiClient.put('/users/me/notification', { enabled });
-    
+
     if (response.data.success) {
       // localStorage 동기화
       const userStr = localStorage.getItem('user');
@@ -930,7 +925,7 @@ export async function updateNotificationSettings(enabled: boolean): Promise<{ me
         user.notificationEnabled = enabled;
         localStorage.setItem('user', JSON.stringify(user));
       }
-      
+
       return {
         message: response.data.data.message || (enabled ? '알림이 켜졌습니다.' : '알림이 꺼졌습니다.'),
         enabled,
@@ -978,12 +973,12 @@ export async function deleteAccount(password: string): Promise<{ message: string
     const response = await apiClient.delete('/users/me', {
       data: { password },
     });
-    
+
     if (response.data.success) {
       // Clear localStorage
       TokenStorage.clearTokens();
       localStorage.removeItem('user');
-      
+
       return {
         message: response.data.data.message,
       };
