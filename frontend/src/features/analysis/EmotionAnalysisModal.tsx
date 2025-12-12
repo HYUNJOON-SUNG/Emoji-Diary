@@ -125,6 +125,7 @@
 
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getEmotionImage } from '../../utils/emotionImages';
 
 /**
  * EmotionAnalysisModal 컴포넌트 Props
@@ -228,17 +229,17 @@ const emotionLabels: { [key: string]: string } = {
  */
 const emotionColors: { [key: string]: { bg: string; border: string; text: string } } = {
   // 긍정 감정 - 파란색/시안 파스텔 톤
-  '😊': { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800' }, // 행복
+  '행복': { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800' }, // 행복
   
   // 중립 감정 - 회색 계열
-  '😐': { bg: 'bg-stone-100', border: 'border-stone-300', text: 'text-stone-800' }, // 중립
-  '😳': { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800' }, // 당황
+  '중립': { bg: 'bg-stone-100', border: 'border-stone-300', text: 'text-stone-800' }, // 중립
+  '당황': { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800' }, // 당황
   
   // 부정 감정 - 빨간색/로즈 파스텔 톤
-  '😢': { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800' }, // 슬픔
-  '😠': { bg: 'bg-rose-200', border: 'border-rose-400', text: 'text-rose-900' }, // 분노
-  '😰': { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-800' }, // 불안
-  '🤢': { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' }, // 혐오
+  '슬픔': { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800' }, // 슬픔
+  '분노': { bg: 'bg-rose-200', border: 'border-rose-400', text: 'text-rose-900' }, // 분노
+  '불안': { bg: 'bg-pink-100', border: 'border-pink-300', text: 'text-pink-800' }, // 불안
+  '혐오': { bg: 'bg-rose-100', border: 'border-rose-300', text: 'text-rose-800' }, // 혐오
 };
 
 export function EmotionAnalysisModal({
@@ -259,14 +260,14 @@ export function EmotionAnalysisModal({
 
   // 플로우 3.4: KoBERT가 분석한 감정 이모지 기반으로 레이블 표시
   // - emotionName이 있으면 사용, 없으면 emotion 이모지를 기반으로 한글 이름 매핑
-  // - 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
-  const displayLabel = emotionName || (emotion ? emotionLabels[emotion] : '중립');
+  // - 7가지 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
+  const displayLabel = emotionName || emotion || '중립';
   
-  // 색상은 emotion 이모지 기반으로 선택
+  // 색상은 emotion 한글 이름 기반으로 선택
   // 안전한 기본값 설정: emotion이 없거나 정의되지 않은 값이면 중립 색상 사용
   const safeEmotion = emotion && emotionColors[emotion] 
     ? emotion 
-    : '😐';
+    : '중립';
   const colors = emotionColors[safeEmotion];
 
   return (
@@ -370,14 +371,18 @@ export function EmotionAnalysisModal({
                           - 0.2초 지연 후 확대 애니메이션
                           - 플로우 3.4: KoBERT가 분석한 감정 이모지 표시
                         */}
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', delay: 0.2 }}
-                          className="text-6xl sm:text-7xl"
-                        >
-                          {emotion}
-                        </motion.div>
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', delay: 0.2 }}
+                            className="w-24 h-24 sm:w-28 sm:h-28" 
+                          >
+                            <img 
+                              src={getEmotionImage(emotion)} 
+                              alt={emotion}
+                              className="w-full h-full object-contain filter drop-shadow-md"
+                            />
+                          </motion.div>
 
                         {/* 
                           감정 카테고리 배지 (페이드인 애니메이션)

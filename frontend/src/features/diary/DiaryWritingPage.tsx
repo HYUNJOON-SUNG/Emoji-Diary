@@ -180,8 +180,8 @@ export const DiaryWritingPage = forwardRef<{
       if (newImages.length > 0) {
         try {
           for (const image of newImages) {
-            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
-            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
+            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
               try {
                 await deleteImage({ imageUrl: image.url });
                 console.log('[북마크 내비게이션 이동] 이미지 삭제 성공:', image.url);
@@ -200,8 +200,8 @@ export const DiaryWritingPage = forwardRef<{
       if (images.length > 0) {
         try {
           for (const image of images) {
-            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
-            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
+            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
               try {
                 await deleteImage({ imageUrl: image.url });
                 console.log('[북마크 내비게이션 이동] 이미지 삭제 성공:', image.url);
@@ -224,13 +224,56 @@ export const DiaryWritingPage = forwardRef<{
     await handleNavigationCancel();
   }, [images, isEditMode, existingDiary]);
   
+  // ========== 변경 감지 (Dirty Check) ==========
+
+  const isDirty = (() => {
+    // 1. 이미지 목록 비교
+    const currentImageUrls = images.map(img => img.url);
+    const initialImageUrls = existingDiary?.images || [];
+    
+    const isImagesChanged = 
+      currentImageUrls.length !== initialImageUrls.length ||
+      !currentImageUrls.every((url, index) => url === initialImageUrls[index]);
+
+    // 2. 활동 목록 비교
+    const currentActivities = activities;
+    const initialActivities = existingDiary?.activities || [];
+    
+    const isActivitiesChanged = 
+      currentActivities.length !== initialActivities.length ||
+      !currentActivities.every((act, index) => act === initialActivities[index]);
+
+    if (isEditMode && existingDiary) {
+      // 수정 모드: 초기값과 다르면 변경됨
+      return (
+        title !== existingDiary.title ||
+        content !== existingDiary.content ||
+        mood !== (existingDiary.mood || '') ||
+        weather !== (existingDiary.weather || '') ||
+        isActivitiesChanged ||
+        isImagesChanged
+      );
+    } else {
+      // 새 작성 모드: 하나라도 입력값이 있으면 변경됨
+      return (
+        title.trim() !== '' ||
+        content.trim() !== '' ||
+        mood !== '' ||
+        weather !== '' ||
+        activities.length > 0 ||
+        images.length > 0
+      );
+    }
+  })();
+
   useImperativeHandle(ref, () => ({
     handleNavigationCancel: handleNavigationCancelMemoized,
     showCancelModal: () => {
       // 하단 내비게이션 바 클릭 시 취소 모달 표시
       setShowCancelModal(true);
-    }
-  }), [handleNavigationCancelMemoized]);
+    },
+    hasChanges: isDirty
+  }), [handleNavigationCancelMemoized, isDirty]);
   
   // ========== 유효성 검증 ==========
   
@@ -249,24 +292,15 @@ export const DiaryWritingPage = forwardRef<{
   /**
    * 취소 버튼 클릭 핸들러 (플로우 3.5, 4.4)
    * 
-   * ===== 새 작성 모드 (플로우 3.5) =====
-   * 1. 작성된 내용이 있는지 확인
-   * 2. 내용이 없으면 → 즉시 캘린더로 이동
-   * 3. 내용이 있으면 → 취소 확인 모달 표시
-   * 
-   * ===== 수정 모드 (플로우 4.4) =====
-   * 1. 수정된 내용이 있는지 확인 (원본과 비교)
-   * 2. 수정 없으면 → 즉시 상세보기로 이동
-   * 3. 수정 있으면 → 취소 확인 모달 표시
-   * 
-   * 취소 확인 모달:
-   * - 새 작성: "작성 중인 내용이 사라집니다. 정말 취소하시겠습니까?"
-   * - 수정: "수정한 내용이 사라집니다. 정말 취소하시겠습니까?"
+   * 변경 사항이 있는 경우에만 취소 확인 모달을 표시합니다.
+   * 변경 사항이 없으면 즉시 뒤로가기를 수행합니다.
    */
   const handleCancelClick = () => {
-    // 뒤로가기 버튼 클릭 시 항상 취소 모달 표시 (하단 내비게이션 바와 동일하게)
-    // 내용이 없어도 모달을 표시하여 사용자가 확인할 수 있도록 함
-    setShowCancelModal(true);
+    if (isDirty) {
+      setShowCancelModal(true);
+    } else {
+      onCancel();
+    }
   };
   
   /**
@@ -296,8 +330,8 @@ export const DiaryWritingPage = forwardRef<{
       if (newImages.length > 0) {
         try {
           for (const image of newImages) {
-            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
-            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
+            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
               try {
                 await deleteImage({ imageUrl: image.url });
                 console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);
@@ -316,8 +350,8 @@ export const DiaryWritingPage = forwardRef<{
       if (images.length > 0) {
         try {
           for (const image of images) {
-            // http/https로 시작하는 URL만 서버에 업로드된 이미지이므로 삭제 API 호출
-            if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+            // http/https로 시작하거나 상대 경로 (blob:/data: 제외)는 서버 이미지로 간주하여 삭제 시도
+            if (image.url && !image.url.startsWith('blob:') && !image.url.startsWith('data:')) {
               try {
                 await deleteImage({ imageUrl: image.url });
                 console.log('[일기 작성 취소] 이미지 삭제 성공:', image.url);

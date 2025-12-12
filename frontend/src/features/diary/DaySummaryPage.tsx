@@ -93,27 +93,11 @@ import { useState, useEffect } from 'react';
 import { CalendarDays, Loader2, Edit, Trash2, MapPin, Sparkles, X, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchDiaryDetails, DiaryDetail, deleteDiary } from '../../services/diaryApi';
 import { KakaoMapRecommendation } from './KakaoMapRecommendation';
+// HMR Force Update
 
-/**
- * KoBERT 감정 한글 → 이모지 변환 함수
- * 
- * [API 명세서 참고]
- * - API 응답에서 emotion은 한글로 반환됨: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오"
- * - UI 표시를 위해 이모지로 변환
- */
-const getEmotionEmoji = (emotion: string): string => {
-  const emotionEmojiMap: { [key: string]: string } = {
-    '행복': '😊',
-    '중립': '😐',
-    '당황': '😳',
-    '슬픔': '😢',
-    '분노': '😠',
-    '불안': '😰',
-    '혐오': '🤢',
-  };
-  // 이미 이모지인 경우 그대로 반환, 한글인 경우 변환
-  return emotionEmojiMap[emotion] || emotion || '😐';
-};
+import { getEmotionImage } from '../../utils/emotionImages';
+
+
 
 /**
  * 감정 한글 → 카테고리 변환 함수
@@ -332,12 +316,11 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
     );
   }
 
-  const formattedDate = selectedDate.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  });
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth() + 1;
+  const day = selectedDate.getDate();
+  const weekday = selectedDate.toLocaleDateString('ko-KR', { weekday: 'long' });
+  const formattedDate = `${year}. ${month}. ${day}. ${weekday}`;
 
   if (isLoading) {
     return (
@@ -398,19 +381,16 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
           
           <div className="flex items-start justify-between pr-10 pl-10">
             <div>
-              <div className="text-xs text-gray-500 mb-1 font-medium">오늘의 일기</div>
-              <div className="text-base text-gray-900 font-semibold">{formattedDate}</div>
+              <div className="text-xs text-stone-400 mb-1 font-medium">{formattedDate}</div>
+              <div className="text-base text-gray-900 font-semibold whitespace-normal leading-snug pr-2">{entry.title}</div>
             </div>
             <div className="flex items-center">
-              <span className="text-5xl">{getEmotionEmoji(entry.emotion)}</span>
+              <img src={getEmotionImage(entry.emotion)} alt={entry.emotion} className="w-14 h-14 object-contain" />
             </div>
           </div>
         </div>
 
-        {/* Title Card */}
-        <div className="relative bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-gray-900 font-semibold text-lg">{entry.title}</h3>
-        </div>
+
 
         {/* 사용자 업로드 이미지 (플로우 3.2, 4.3) */}
         <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

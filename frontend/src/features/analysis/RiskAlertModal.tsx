@@ -41,7 +41,7 @@
  * - High 레벨인 경우: 관리자가 설정한 긴급 상담 기관의 전화번호 표시 (관리자 명세서 5.3의 "긴급 상담 기관으로 표시"로 설정된 기관의 전화번호)
  * 
  * **사용자 선택지**:
- * 1. **"도움말 & 리소스 보기" 버튼**
+ * 1. **"상담 연결 리소스 보기" 버튼**
  *    - 클릭 → 지원 리소스 페이지로 이동
  *    - 모달 닫기
  * 2. **"닫기" 버튼**
@@ -68,7 +68,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface RiskAlertModalProps {
   isOpen: boolean; // 모달 표시 여부
   onClose: () => void; // 닫기 콜백
-  onViewResources: () => void; // "도움말 & 리소스 보기" 클릭 콜백 (지원센터로 이동)
+  onViewResources: () => void; // "설정 및 리소스 보기" 클릭 콜백 (지원센터로 이동)
   riskLevel: 'low' | 'medium' | 'high'; // 위험 레벨
   reasons: string[]; // 판정 근거 배열 (예: ["최근 5일 연속으로 부정적인 감정이 기록되었습니다."])
   urgentCounselingPhones?: string[]; // 긴급 상담 전화번호 목록 (High 레벨인 경우, 관리자가 설정한 긴급 상담 기관의 전화번호)
@@ -99,7 +99,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
           border: 'border-cyan-400',
           text: 'text-cyan-900',
           icon: 'text-cyan-700',
-          button: 'bg-cyan-600 hover:bg-cyan-700',
+          button: 'bg-cyan-100 hover:bg-cyan-200', // 버튼 배경색: 연한 톤
         };
       case 'medium':
         return {
@@ -107,7 +107,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
           border: 'border-sky-300',
           text: 'text-sky-900',
           icon: 'text-sky-700',
-          button: 'bg-sky-600 hover:bg-sky-700',
+          button: 'bg-sky-100 hover:bg-sky-200',
         };
       case 'low':
         return {
@@ -115,7 +115,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
           border: 'border-blue-300',
           text: 'text-blue-900',
           icon: 'text-blue-700',
-          button: 'bg-blue-600 hover:bg-blue-700',
+          button: 'bg-blue-100 hover:bg-blue-200',
         };
     }
   };
@@ -173,7 +173,7 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className={`relative w-full max-w-md ${colors.bg} border-2 ${colors.border} rounded-2xl shadow-2xl overflow-hidden flex flex-col`}
+            className={`relative w-full max-w-md bg-white border-2 ${colors.border} rounded-2xl shadow-2xl overflow-hidden flex flex-col`}
             style={{ maxHeight: '85%', maxWidth: '95%' }}
           >
             {/* Close Button */}
@@ -192,26 +192,18 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                   <AlertTriangle className="w-8 h-8" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                  <h3 className={`mb-2 text-blue-600 ${colors.text}`}>{getTitle()}</h3>
-                  <p className={`text-sm text-blue-600 ${colors.text}`}>{getMessage()}</p>
+                  <h3 className={`mb-2 font-bold ${colors.text}`}>{getTitle()}</h3>
+                  <p className={`text-sm ${colors.text}`}>{getMessage()}</p>
                 </div>
               </div>
 
               {/* 
                 감지된 패턴 (플로우 9.1)
-                
-                표시 내용:
-                - riskDetection.ts에서 생성한 reasons 배열
-                - 예시:
-                  - "최근 5일 연속으로 부정적인 감정이 기록되었습니다."
-                  - "최근 14일 중 8일에 우울, 분노, 불안 등의 감정이 기록되었습니다."
               */}
               {reasons.length > 0 && (
                 <div className={`p-4 bg-white/50 rounded-lg border ${colors.border}`}>
-                  {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                  <p className={`text-xs mb-2 text-blue-600 ${colors.text}`}>감지된 패턴:</p>
-                  <ul className={`space-y-2 text-xs text-blue-600 ${colors.text}`}>
+                  <p className={`text-xs mb-2 font-semibold ${colors.text}`}>감지된 패턴:</p>
+                  <ul className={`space-y-2 text-xs ${colors.text}`}>
                     {reasons.map((reason, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="mt-0.5 flex-shrink-0">•</span>
@@ -224,30 +216,20 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
 
               {/* 
                 긴급 연락처 (플로우 9.2)
-                
-                표시 조건:
-                - riskLevel === 'high' 일 때만 표시
-                - 관리자가 설정한 긴급 상담 기관의 전화번호 표시 (관리자 명세서 4.3의 "긴급 상담 기관으로 표시"로 설정된 기관의 전화번호)
-                
-                디자인:
-                - 흰색 배경 + 파란색 테두리
-                - 하트 아이콘 (따뜻함 표현)
-                - 전화번호 강조 (bold)
               */}
               {riskLevel === 'high' && urgentCounselingPhones.length > 0 && (
                 <div className="p-4 bg-white border-2 border-blue-400 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Heart className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <Heart className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                      <p className="text-sm text-blue-600 mb-2">
+                      <p className="text-sm text-stone-900 mb-2">
                         <strong>즉시 도움이 필요하시면:</strong>
                       </p>
-                      <div className="space-y-1.5 text-xs text-blue-600">
+                      <div className="space-y-1.5 text-xs text-stone-800">
                         {urgentCounselingPhones.map((phone, index) => (
                           <p key={index}>• <strong>{phone}</strong></p>
                         ))}
-                        <p className="text-blue-600 mt-2">※ 24시간 상담 가능</p>
+                        <p className="text-stone-600 mt-2">※ 24시간 상담 가능</p>
                       </div>
                     </div>
                   </div>
@@ -256,40 +238,27 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
 
               {/* 
                 액션 버튼 (플로우 9.2)
-                
-                1. "도움말 & 리소스 보기" 버튼:
-                   - 클릭 시 onViewResources() 콜백 호출
-                   - DiaryBook의 handleViewResources 실행
-                   - setShowRiskAlert(false) + handleGoToSupport() 실행
-                   - 지원센터 페이지(SupportResourcesPage)로 이동
-                
-                2. "닫기" 버튼:
-                   - 클릭 시 onClose() 콜백 호출
-                   - setShowRiskAlert(false) 실행
-                   - 모달만 닫고 현재 페이지 유지
               */}
               <div className="flex gap-2 pt-2">
-                {/* 도움말 & 리소스 보기 버튼 (플로우 9.2) */}
-                {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
+                {/* 상담 연결 리소스 보기 버튼 (플로우 9.2) */}
                 <button
                   onClick={onViewResources}
-                  className={`flex-1 py-3 rounded-lg text-white transition-colors text-sm flex items-center justify-center gap-2 ${colors.button}`}
+                  className={`flex-1 py-3 rounded-lg transition-colors text-sm flex items-center justify-center gap-2 font-bold ${colors.button} ${colors.text}`}
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  <span className="text-blue-600">도움말 & 리소스 보기</span>
+                  <ExternalLink className={`w-4 h-4 ${colors.text}`} />
+                  <span>상담 연결 리소스 보기</span>
                 </button>
                 {/* 닫기 버튼 (플로우 9.2) */}
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 bg-white text-blue-600 rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300"
+                  className={`px-6 py-3 bg-white ${colors.text} rounded-lg hover:bg-stone-100 transition-colors text-sm border border-stone-300 font-bold`}
                 >
                   닫기
                 </button>
               </div>
 
               {/* Info Text */}
-              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-              <p className={`text-xs text-center text-blue-600 ${colors.text} pt-2 border-t ${colors.border}`}>
+              <p className={`text-xs text-center text-stone-500 pt-2 border-t ${colors.border} opacity-70`}>
                 이 알림은 감정 패턴 분석을 바탕으로 제공됩니다.<br />
                 전문적인 진단이 필요하면 전문가와 상담하세요.
               </p>

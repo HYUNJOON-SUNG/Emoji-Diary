@@ -157,18 +157,7 @@ function getImageUrl(url: string | undefined): string | undefined {
   return `${baseUrlOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
-/**
- * 감정 이모지 매핑 (캘린더 표시용)
- */
-const emotionEmojiMap: { [key: string]: string } = {
-  '행복': '😊',
-  '중립': '😐',
-  '당황': '😳',
-  '슬픔': '😢',
-  '분노': '😠',
-  '불안': '😰',
-  '혐오': '🤢',
-};
+
 
 /**
  * 감정 카테고리 매핑
@@ -231,7 +220,7 @@ export async function fetchMonthlyEmotions(year: number, month: number): Promise
       // API 응답을 EmotionData 형식으로 변환
       return diaries.map((diary: { date: string; emotion: string }) => ({
         date: diary.date,
-        emotion: emotionEmojiMap[diary.emotion] || diary.emotion, // 한글 감정을 이모지로 변환 ("행복" -> "😊")
+        emotion: diary.emotion,
         emotionCategory: getEmotionCategory(diary.emotion),
       }));
     } else {

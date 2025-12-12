@@ -33,6 +33,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { fetchMonthlyEmotions, EmotionData } from '../../services/diaryApi';
+import { getEmotionImage } from '../../utils/emotionImages';
 
 /**
  * CalendarPage 컴포넌트 Props
@@ -332,11 +333,15 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
             ${selected ? 'bg-blue-500 text-white shadow-md scale-105' : today ? 'bg-blue-100 text-blue-700 font-semibold' : 'bg-white hover:bg-gray-50'}`}
         >
           {/* 날짜 숫자 - 항상 중앙 정렬 (플로우 5.1) */}
-          <span className="text-sm leading-tight">{day}</span>
+          <span className="text-sm leading-tight relative">{day}</span>
           
-          {/* 감정 스티커 - 하단 배치 (날짜를 가리지 않도록) */}
+          {/* 감정 스티커 - 우측 상단 배치 (스티커 효과) */}
           {emotion && (
-            <span className="text-xs leading-none mt-0.5">{emotion}</span>
+            <img 
+              src={getEmotionImage(emotion)} 
+              alt={emotion} 
+              className="absolute -top-1.5 -right-1.5 w-6 h-6 object-contain z-10 filter drop-shadow-sm transform rotate-12" 
+            />
           )}
         </button>
       );
@@ -371,8 +376,8 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
         <div className="text-center flex items-center gap-2">
           <div>
             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-            <div className={`text-blue-600 font-semibold ${compact ? 'text-lg' : 'text-xl'}`}>{monthNames[month]}</div>
-            <div className={`text-blue-600 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
+            <div className={`text-stone-900 font-semibold ${compact ? 'text-lg' : 'text-xl'}`}>{monthNames[month]}</div>
+            <div className={`text-stone-900 ${compact ? 'text-xs' : 'text-sm'}`}>{year}</div>
           </div>
           {isLoading && (
             <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
@@ -397,7 +402,7 @@ export function CalendarPage({ onDateSelect, selectedDate, currentMonth, onMonth
           // 일요일: 빨강, 토요일: 파랑
           const isSunday = index === 0;
           const isSaturday = index === 6;
-          const dayColorClass = isSunday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-500';
+          const dayColorClass = isSunday ? 'text-red-600' : isSaturday ? 'text-blue-500' : 'text-gray-500';
           
           return (
             <div key={index} className={`text-center ${dayColorClass} font-medium ${compact ? 'text-xs' : 'text-sm'}`}>

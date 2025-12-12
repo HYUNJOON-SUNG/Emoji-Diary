@@ -27,7 +27,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, X, ExternalLink, Loader2, ZoomIn, ZoomOut, Navigation, Map, Layers, RefreshCw } from 'lucide-react';
+import { MapPin, Search, Navigation, ZoomIn, ZoomOut, Layers, X, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
 import { type Place, type RecommendedFood } from '@/services/placeApi';
 import { fetchDiaryById } from '@/services/diaryApi';
 
@@ -80,7 +80,7 @@ export function KakaoMapRecommendation({
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   
   // 정렬 옵션 (플로우 8.2)
-  const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'name'>('distance'); // 기본값: 거리순
+  const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance'); // 기본값: 거리순
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null); // 선택된 장소 (상세 정보 표시용)
 
   /**
@@ -301,14 +301,13 @@ export function KakaoMapRecommendation({
    * 
    * 정렬 옵션:
    * - 거리순 (기본): 현재 위치로부터의 거리 기준 오름차순
-   * - 평점순: 평점 기준 내림차순 (평점이 없는 경우 뒤로)
    * - 이름순: 장소명 기준 가나다순
    * 
    * [주의사항]
    * - distance는 숫자 타입으로 전달되어야 함 (API 응답에서 숫자로 오므로)
    * - 표시용 포맷팅은 UI에서 처리
    */
-  const sortPlaces = (placesToSort: Place[], sortType: 'distance' | 'rating' | 'name'): Place[] => {
+  const sortPlaces = (placesToSort: Place[], sortType: 'distance' | 'name'): Place[] => {
     const sorted = [...placesToSort];
     
     switch (sortType) {
@@ -325,22 +324,7 @@ export function KakaoMapRecommendation({
           return distanceA - distanceB;
         });
       
-      case 'rating':
-        // 평점순 정렬 (평점이 없는 경우 뒤로)
-        // 카카오 로컬 API는 평점 정보를 제공하지 않으므로, 평점이 있는 경우만 정렬
-        return sorted.sort((a, b) => {
-          const ratingA = a.rating;
-          const ratingB = b.rating;
-          
-          // 둘 다 평점이 없으면 원래 순서 유지
-          if (!ratingA && !ratingB) return 0;
-          // A만 평점이 없으면 뒤로
-          if (!ratingA) return 1;
-          // B만 평점이 없으면 앞으로
-          if (!ratingB) return -1;
-          // 둘 다 평점이 있으면 내림차순 정렬
-          return ratingB - ratingA;
-        });
+
       
       case 'name':
         // 이름순 정렬 (가나다순)
@@ -358,7 +342,7 @@ export function KakaoMapRecommendation({
    * - places 배열의 distance는 숫자로 유지되어야 정렬이 정확하게 작동함
    * - 표시용으로는 UI에서 포맷팅
    */
-  const handleSortChange = (newSort: 'distance' | 'rating' | 'name') => {
+  const handleSortChange = (newSort: 'distance' | 'name') => {
     setSortBy(newSort);
     // places 배열을 복사하여 정렬 (원본 배열 변경 방지)
     // distance는 이미 숫자로 저장되어 있으므로 그대로 사용
@@ -878,24 +862,32 @@ export function KakaoMapRecommendation({
   if (isInline) {
     return (
       <div className="w-full h-full bg-stone-50 flex flex-col min-h-0">
-        <div className="flex items-center justify-between p-4 border-b border-stone-200 bg-white shrink-0">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-stone-800">
-              감정에 맞는 장소 추천
-            </h3>
-            {!hideFoodRecommendation && recommendedFood && (
-              <p className="text-sm text-stone-600 mt-1">
-                추천 음식: <span className="font-medium">{recommendedFood.name}</span>
-              </p>
-            )}
+        <div className="p-4 border-b border-stone-200 bg-white shrink-0">
+          <div className="flex items-start gap-3">
+            <button
+              onClick={onClose}
+              className="mt-0.5 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 active:bg-blue-50 shrink-0"
+              aria-label="뒤로가기"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-stone-800 break-keep leading-snug">
+                {recommendedFood ? `오늘 같은 날 ${recommendedFood.name}은(는) 어때요?` : '오늘 같은 날 맛집은 어때요?'}
+              </h3>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-stone-200 rounded-full transition-colors shrink-0"
-            aria-label="닫기"
-          >
-            <X className="w-5 h-5 text-stone-600" />
-          </button>
+          {recommendedFood && recommendedFood.reason && (
+            <div className="mt-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-3.5 shadow-sm border border-orange-100/50">
+              <div className="text-xs text-orange-700 mb-1.5 flex items-center gap-1.5 font-medium">
+                <span>🍽️</span>
+                <span>AI 음식 추천</span>
+              </div>
+              <p className="text-sm text-stone-700 leading-relaxed font-medium break-words">
+                {recommendedFood.reason}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
@@ -993,39 +985,28 @@ export function KakaoMapRecommendation({
                 {/* 정렬 옵션 (플로우 8.2) */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-stone-600 font-medium">정렬:</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleSortChange('distance')}
-                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                        sortBy === 'distance'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                      }`}
-                    >
-                      거리순
-                    </button>
-                    <button
-                      onClick={() => handleSortChange('rating')}
-                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                        sortBy === 'rating'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                      }`}
-                      title="카카오 로컬 API는 평점 정보를 제공하지 않아 정렬이 적용되지 않을 수 있습니다"
-                    >
-                      평점순
-                    </button>
-                    <button
-                      onClick={() => handleSortChange('name')}
-                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                        sortBy === 'name'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                      }`}
-                    >
-                      이름순
-                    </button>
-                  </div>
+                  <div className="flex bg-stone-100 p-1 rounded-lg">
+                <button
+                  onClick={() => handleSortChange('distance')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                    sortBy === 'distance'
+                      ? 'bg-white text-stone-800 shadow-sm'
+                      : 'text-stone-500 hover:text-stone-700'
+                  }`}
+                >
+                  거리순
+                </button>
+                <button
+                  onClick={() => handleSortChange('name')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                    sortBy === 'name'
+                      ? 'bg-white text-stone-800 shadow-sm'
+                      : 'text-stone-500 hover:text-stone-700'
+                  }`}
+                >
+                  이름순
+                </button>
+              </div>
                 </div>
 
                 {/* 장소 목록 */}
@@ -1131,25 +1112,33 @@ export function KakaoMapRecommendation({
   // 모달 모드
   return (
     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-hidden">
-      <div className="bg-white rounded-2xl w-full max-w-full max-h-full overflow-hidden shadow-2xl flex flex-col" style={{ maxHeight: '100%' }}>
-        <div className="flex items-center justify-between p-4 border-b border-stone-200">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-stone-800">
-              감정에 맞는 장소 추천
-            </h3>
-            {!hideFoodRecommendation && recommendedFood && (
-              <p className="text-sm text-stone-600 mt-1">
-                추천 음식: <span className="font-medium">{recommendedFood.name}</span>
-              </p>
-            )}
+      <div className="bg-white rounded-2xl w-full max-w-4xl h-[85vh] overflow-hidden shadow-2xl flex flex-col border border-stone-200">
+        <div className="p-5 border-b border-stone-200 bg-white">
+          <div className="flex items-start gap-3">
+            <button
+              onClick={onClose}
+              className="mt-1 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-blue-600 hover:text-blue-700 active:bg-blue-50 shrink-0"
+              aria-label="뒤로가기"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl font-bold text-stone-800 break-keep leading-tight">
+                {recommendedFood ? `오늘 같은 날 ${recommendedFood.name}은(는) 어때요?` : '오늘 같은 날 맛집은 어때요?'}
+              </h3>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-stone-100 rounded-full transition-colors"
-            aria-label="닫기"
-          >
-            <X className="w-5 h-5 text-stone-600" />
-          </button>
+          {recommendedFood && recommendedFood.reason && (
+            <div className="mt-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm border border-orange-100/50">
+              <div className="text-xs text-orange-700 mb-2 flex items-center gap-1.5 font-medium">
+                <span>🍽️</span>
+                <span>AI 음식 추천</span>
+              </div>
+              <p className="text-sm text-stone-700 leading-relaxed font-medium break-words">
+                {recommendedFood.reason}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">

@@ -21,6 +21,8 @@ import { UserCircle, Mail, Lock, Bell, BellOff, Sparkles, Heart, FileText, LogOu
 import { getCurrentUser, updatePersona, User as UserType, deleteAccount, sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
 import { PERSONAS } from './PersonaSelectionModal';
 import { AnnouncementModal } from './AnnouncementModal';
+import manProfile from '../../assets/man.png';
+import womanProfile from '../../assets/woman.png';
 
 interface MyPageProps {
   onBack?: () => void;
@@ -477,10 +479,12 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
           {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
           <h3 className="text-sm font-bold text-stone-700 mb-2 text-blue-600">내 정보</h3>
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
-              user.gender === 'FEMALE' ? 'bg-pink-100' : 'bg-blue-100'
-            }`}>
-              {user.gender === 'FEMALE' ? '👩' : '👨'}
+            <div className="w-12 h-12 rounded-full overflow-hidden border border-stone-100">
+              <img 
+                src={user.gender === 'FEMALE' ? womanProfile : manProfile} 
+                alt="프로필 이미지" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
@@ -686,7 +690,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
             <div className="flex items-center gap-3">
               <Heart className="w-4 h-4 text-rose-500" />
               {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-              <span className="text-sm text-stone-700 text-blue-600">도움말 & 지원 리소스</span>
+              <span className="text-sm text-stone-700 text-blue-600">상담 연결 리소스</span>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
           </button>
