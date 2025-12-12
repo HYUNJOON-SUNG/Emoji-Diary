@@ -151,10 +151,10 @@ const KOBERT_EMOTIONS_MAP: { [key: string]: string } = {
 interface EmotionAnalysisModalProps {
   /** 모달 표시 여부 */
   isOpen: boolean;
-  
+
   /** 모달 닫기 콜백 */
   onClose: () => void;
-  
+
   /** 
    * KoBERT가 분석한 감정 이모지 (플로우 3.4)
    * - 일기 본문을 KoBERT로 분석한 결과 이모지
@@ -162,14 +162,14 @@ interface EmotionAnalysisModalProps {
    * - 모달에서 큰 크기로 표시됨
    */
   emotion: string | null;
-  
+
   /** 
    * KoBERT가 분석한 감정 이름 (플로우 3.4)
    * - KoBERT 분석 결과: "행복", "중립", "당황", "슬픔", "분노", "불안", "혐오"
    * - 감정 카테고리 배지에 표시됨
    */
   emotionName?: string | null;
-  
+
   /** 
    * KoBERT가 분석한 감정 카테고리 (플로우 3.4)
    * - KoBERT 분석 결과: positive, neutral, negative
@@ -177,40 +177,40 @@ interface EmotionAnalysisModalProps {
    * - 색상 테마 결정에 사용
    */
   emotionCategory: string | null;
-  
+
   /** 
    * AI 코멘트 (제미나이 API 결과, 페르소나 반영)
    * - KoBERT 분석 결과 + 사용자 선택 감정 + 페르소나 스타일 반영
    * - 공감과 위로의 메시지 (2-3문장)
    */
   aiComment: string | null;
-  
+
   /** 
    * 추천 음식 정보 (제미나이 API 결과)
    * - KoBERT 감정 분석 결과를 반영하여 생성된 음식 추천
    * - { name: string, reason: string } 형식
    */
   recommendedFood?: { name: string; reason: string } | null;
-  
+
   /** 
    * AI 생성 이미지 URL (NanoVana API 결과)
    * - 일기 내용과 감정을 반영하여 생성된 그림일기 이미지
    */
   imageUrl?: string | null;
-  
+
   /** 
    * 에러 메시지 (AI 분석 실패 시)
    * - 일기 저장은 성공했으나 AI 분석만 실패한 경우
    */
   error?: string | null;
-  
+
   /** 
    * 맛집 추천 버튼 클릭 콜백 (플로우 3.4, 8.1)
    * - 클릭 시 장소 추천 화면으로 이동
    * - 추천 음식 이름을 기반으로 맛집 추천
    */
   onMapRecommendation?: () => void;
-  
+
   /** 
    * 일기 상세보기로 이동 콜백 (플로우 3.4)
    * - 닫기/확인 버튼 클릭 시 호출
@@ -248,11 +248,11 @@ const emotionLabels: { [key: string]: string } = {
 const emotionColors: { [key: string]: { bg: string; border: string; text: string } } = {
   // 긍정 감정 - 파란색/시안 파스텔 톤
   '행복': { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-800' }, // 행복
-  
+
   // 중립 감정 - 회색 계열
   '중립': { bg: 'bg-stone-100', border: 'border-stone-300', text: 'text-stone-800' }, // 중립
   '당황': { bg: 'bg-gray-100', border: 'border-gray-300', text: 'text-gray-800' }, // 당황
-  
+
   // 부정 감정 - 빨간색/로즈 파스텔 톤
   '슬픔': { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-800' }, // 슬픔
   '분노': { bg: 'bg-rose-200', border: 'border-rose-400', text: 'text-rose-900' }, // 분노
@@ -280,11 +280,11 @@ export function EmotionAnalysisModal({
   // - emotionName이 있으면 사용, 없으면 emotion 이모지를 기반으로 한글 이름 매핑
   // - 7가지 감정: 행복, 중립, 당황, 슬픔, 분노, 불안, 혐오
   const displayLabel = emotionName || emotion || '중립';
-  
+
   // 색상은 emotion 한글 이름 기반으로 선택
   // 안전한 기본값 설정: emotion이 없거나 정의되지 않은 값이면 중립 색상 사용
-  const safeEmotion = emotion && emotionColors[emotion] 
-    ? emotion 
+  const safeEmotion = emotion && emotionColors[emotion]
+    ? emotion
     : '중립';
   const colors = emotionColors[safeEmotion];
 
@@ -360,7 +360,7 @@ export function EmotionAnalysisModal({
                       <div className="pt-2">
                         <button
                           onClick={onClose}
-                          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-h-[44px]"
+                          className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors min-h-[44px]"
                         >
                           확인
                         </button>
@@ -390,18 +390,18 @@ export function EmotionAnalysisModal({
                           - 0.2초 지연 후 확대 애니메이션
                           - 플로우 3.4: KoBERT가 분석한 감정 이모지 표시
                         */}
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', delay: 0.2 }}
-                            className="w-24 h-24 sm:w-28 sm:h-28" 
-                          >
-                            <img 
-                              src={emotionImage} 
-                              alt={emotion}
-                              className="w-full h-full object-contain filter drop-shadow-md"
-                            />
-                          </motion.div>
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: 'spring', delay: 0.2 }}
+                          className="w-24 h-24 sm:w-28 sm:h-28"
+                        >
+                          <img
+                            src={emotionImage}
+                            alt={emotion}
+                            className="w-full h-full object-contain filter drop-shadow-md"
+                          />
+                        </motion.div>
 
                         {/* 
                           감정 카테고리 배지 (페이드인 애니메이션)
@@ -469,7 +469,7 @@ export function EmotionAnalysisModal({
                             <p className="text-xs text-stone-900 font-bold">AI의 공감 한마디</p>
                           </div>
                           {/* [수정] DaySummaryPage와 동일한 스타일 적용 (배경, 테두리, 그림자) */}
-                          <div className="bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl p-5 shadow-sm border border-blue-100">
+                          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-emerald-100">
                             {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
                             <p className="text-sm text-stone-900 leading-relaxed text-center">
                               {aiComment}
@@ -549,8 +549,7 @@ export function EmotionAnalysisModal({
                         {onMapRecommendation && recommendedFood?.name && (
                           <button
                             onClick={() => {
-                              onMapRecommendation(); // 장소 추천 화면으로 이동
-                              onClose(); // 모달 닫기
+                              onMapRecommendation(); // 장소 추천 화면으로 이동 (상위 컴포넌트에서 모달 닫기 처리함)
                             }}
                             className="flex-1 px-4 py-2.5 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition-colors shadow-none flex items-center justify-center gap-2 font-medium"
                           >
@@ -572,7 +571,7 @@ export function EmotionAnalysisModal({
                               onCloseToCalendar();
                             }
                           }}
-                          className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md`}
+                          className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-md`}
                         >
                           닫기
                         </button>

@@ -17,8 +17,25 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { UserCircle, Mail, Lock, Bell, BellOff, Sparkles, Heart, FileText, LogOut, ChevronRight, UserX, AlertTriangle, Check, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, CheckCircle2, Calendar } from 'lucide-react';
-import { getCurrentUser, updatePersona, User as UserType, deleteAccount, sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
+import {
+  UserCircle,
+  Mail,
+  Lock,
+  ChevronRight,
+  Sparkles,
+  AlertTriangle,
+  Loader2,
+  ArrowLeft,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Heart,
+  FileText,
+  LogOut,
+  UserX
+} from 'lucide-react';
+import { getCurrentUser, updatePersona, deleteAccount, sendPasswordResetCode, verifyPasswordResetCode, resetPassword } from '../../services/authApi';
+import { User as UserType } from '../../types';
 import { PERSONAS } from './PersonaSelectionModal';
 import { AnnouncementModal } from './AnnouncementModal';
 import manProfile from '../../assets/man.png';
@@ -38,14 +55,14 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // UI States
   const [showPasswordEdit, setShowPasswordEdit] = useState(false);
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
+
   // Password Change (Email Verification Flow)
   const [passwordStep, setPasswordStep] = useState<'email' | 'verify' | 'password'>('email');
   const [emailForPassword, setEmailForPassword] = useState('');
@@ -58,7 +75,6 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const [timeLeft, setTimeLeft] = useState(300);
   const [timerActive, setTimerActive] = useState(false);
   const [codeExpired, setCodeExpired] = useState(false);
-  const [codeSentAt, setCodeSentAt] = useState<number | null>(null);
   const [newPasswordError, setNewPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const passwordInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -72,7 +88,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   useEffect(() => {
     loadUserInfo();
   }, []);
-  
+
   useEffect(() => {
     if (user?.email && !emailForPassword) {
       setEmailForPassword(user.email);
@@ -97,7 +113,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const loadUserInfo = async () => {
     setIsLoading(true);
     setError('');
-    
+
     // 먼저 localStorage에서 사용자 정보를 가져와서 표시 (API 호출 실패 시 fallback)
     const savedUserStr = localStorage.getItem('user');
     if (savedUserStr) {
@@ -108,7 +124,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
         console.error('Failed to parse saved user data:', e);
       }
     }
-    
+
     try {
       const userData = await getCurrentUser();
       setUser(userData);
@@ -133,7 +149,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
 
   // Password Reset Timer Effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (timerActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -174,11 +190,16 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       setPasswordError('이메일을 입력해주세요.');
       return;
     }
+    // 이메일 형식 검사 (브라우저 기본 툴팁 대체)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setPasswordError('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await sendPasswordResetCode({ email });
       setSuccess(response.message);
-      setCodeSentAt(Date.now());
       setTimeLeft(300);
       setTimerActive(true);
       setCodeExpired(false);
@@ -267,7 +288,6 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       const response = await sendPasswordResetCode({ email });
       console.log('인증 코드 재발송 응답:', response);
       setSuccess(response.message);
-      setCodeSentAt(Date.now());
       setTimeLeft(300);
       setTimerActive(true);
       setCodeExpired(false);
@@ -390,22 +410,22 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       setError('페르소나를 선택해주세요.');
       return;
     }
-    
+
     setIsUpdatingPersona(true);
     setError('');
-    
+
     try {
       // [API 명세서 Section 3.2] PUT /api/users/me/persona
       // DB에 페르소나 저장
       await updatePersona({ persona: persona.name });
-      
+
       // 상태 업데이트
       setCurrentPersona(id);
       localStorage.setItem('aiPersona', id);
-      
+
       // 사용자 정보 다시 로드하여 DB 값과 동기화
       await loadUserInfo();
-      
+
       setShowPersonaModal(false);
       setSuccess('말투가 변경되었습니다.');
       setTimeout(() => setSuccess(''), 2000);
@@ -421,7 +441,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   if (isLoading && !user) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -437,7 +457,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
         </div>
         <button
           onClick={loadUserInfo}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
         >
           다시 시도
         </button>
@@ -448,67 +468,69 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   return (
     <div className="min-h-full flex flex-col space-y-4 pb-6">
       {/* Header - 뒤로가기 버튼 포함 */}
-      <div className="relative text-center space-y-1 pb-2 border-b border-stone-200/60">
-        {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
+      <div className="relative text-center space-y-1 pb-2 border-b border-white/20">
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-0 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
-        <div className="flex items-center justify-center gap-2 text-blue-700">
+        <div className="flex items-center justify-center gap-2 text-emerald-800 dark:text-emerald-300">
           <UserCircle className="w-5 h-5" />
-          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-          <span className="font-bold text-blue-600">마이페이지</span>
+          <span className="font-bold">마이페이지</span>
         </div>
       </div>
 
       {/* Messages */}
-      {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-      {success && <div className="bg-green-50 text-green-700 px-4 py-2 rounded-lg text-xs text-center animate-in fade-in zoom-in text-blue-600">{success}</div>}
-      {error && <div className="bg-rose-50 text-rose-700 px-4 py-2 rounded-lg text-xs text-center animate-in fade-in zoom-in text-blue-600">{error}</div>}
+      {success && <div className="bg-emerald-50/80 dark:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-200 px-4 py-3 rounded-xl text-sm text-center animate-in fade-in zoom-in backdrop-blur-sm shadow-sm">{success}</div>}
+      {error && <div className="bg-rose-50/80 dark:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 px-4 py-3 rounded-xl text-sm text-center animate-in fade-in zoom-in backdrop-blur-sm shadow-sm">{error}</div>}
 
       {/* Content Container */}
       <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
-        
+
         {/* Profile Section */}
-        <section className="bg-white rounded-xl border border-stone-200 p-4 space-y-4 shadow-sm">
-          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-          <h3 className="text-sm font-bold text-stone-700 mb-2 text-blue-600">내 정보</h3>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-stone-100">
-              <img 
-                src={user.gender === 'FEMALE' ? womanProfile : manProfile} 
-                alt="프로필 이미지" 
+        <section className="bg-white/40 dark:bg-black/20 rounded-2xl border border-white/30 dark:border-white/10 p-5 space-y-4 shadow-sm backdrop-blur-md">
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100 mb-2 flex items-center gap-2">
+            <span className="w-1 h-4 bg-emerald-400 rounded-full inline-block" />
+            내 정보
+          </h3>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/50 dark:border-white/20 shadow-md">
+              <img
+                src={user.gender === 'FEMALE' ? womanProfile : manProfile}
+                alt="프로필 이미지"
                 className="w-full h-full object-cover"
               />
             </div>
             <div>
-              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-              <p className="text-sm font-medium text-stone-900 text-blue-600">{user.name}</p>
-              <p className="text-xs text-stone-500 text-blue-600">{user.email}</p>
+              <p className="text-lg font-bold text-emerald-950 dark:text-emerald-50">{user.name}</p>
+              <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80">{user.email}</p>
             </div>
           </div>
         </section>
 
         {/* Settings Section */}
-        <section className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-          {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-          <h3 className="text-sm font-bold text-stone-700 p-4 pb-2 text-blue-600">설정</h3>
-          
+        <section className="bg-white/40 dark:bg-black/20 rounded-2xl border border-white/30 dark:border-white/10 overflow-hidden shadow-sm backdrop-blur-md">
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100 p-5 pb-2 flex items-center gap-2">
+            <span className="w-1 h-4 bg-emerald-400 rounded-full inline-block" />
+            설정
+          </h3>
+
           {/* Persona Setting */}
-          <button 
+          <button
             onClick={() => setShowPersonaModal(true)}
-            className="w-full flex items-center justify-between p-4 border-b border-stone-100 hover:bg-stone-50 transition-colors text-left"
+            className="w-full flex items-center justify-between p-5 border-b border-white/10 hover:bg-white/20 dark:hover:bg-white/5 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <Sparkles className="w-4 h-4 text-purple-500" />
+              <div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-300">
+                <Sparkles className="w-4 h-4" />
+              </div>
               <div>
-                <span className="text-sm text-stone-700 block text-blue-600">AI 말투 설정</span>
-                <span className="text-xs text-stone-400 text-blue-600">
+                <span className="text-sm text-stone-800 dark:text-stone-200 block font-medium">AI 말투 설정</span>
+                <span className="text-xs text-stone-500 dark:text-stone-400">
                   현재: {PERSONAS.find(p => p.id === currentPersona)?.name || user?.persona || '베프'}
                 </span>
               </div>
@@ -517,44 +539,59 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
           </button>
 
           {/* Password Change Accordion */}
-          <div className="border-b border-stone-100">
-            <button 
+          <div className="border-b border-white/10">
+            <button
               onClick={() => setShowPasswordEdit(!showPasswordEdit)}
-              className="w-full flex items-center justify-between p-4 hover:bg-stone-50 transition-colors text-left"
+              className="w-full flex items-center justify-between p-5 hover:bg-white/20 dark:hover:bg-white/5 transition-colors text-left"
             >
               <div className="flex items-center gap-3">
-                <Lock className="w-4 h-4 text-stone-500" />
-                {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                <span className="text-sm text-stone-700 text-blue-600">비밀번호 변경</span>
+                <div className="p-2 bg-emerald-100/50 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-300">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <span className="text-sm text-stone-800 dark:text-stone-200 font-medium">비밀번호 변경</span>
               </div>
               <ChevronRight className={`w-4 h-4 text-stone-400 transition-transform ${showPasswordEdit ? 'rotate-90' : ''}`} />
             </button>
-            
+
             {showPasswordEdit && (
-              <div className="p-4 bg-stone-50 space-y-3 animate-in slide-in-from-top-2">
+              <div className="p-5 bg-white/30 dark:bg-black/10 space-y-3 animate-in slide-in-from-top-2 border-t border-white/10">
                 {/* Step 1: Email */}
                 {passwordStep === 'email' && (
-                  <form onSubmit={handlePasswordEmailSubmit} className="space-y-3">
+                  <form onSubmit={handlePasswordEmailSubmit} className="space-y-4" noValidate>
                     <div>
-                      <label className="text-xs text-stone-600 block mb-1.5">이메일</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <label className="text-xs text-stone-600 dark:text-stone-400 block mb-1.5 ml-1 font-medium">이메일</label>
+                      <div className="relative group">
+                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${passwordError ? 'text-rose-500' : 'text-stone-400 group-focus-within:text-emerald-500'}`} />
                         <input
                           type="email"
                           value={emailForPassword}
-                          onChange={(e) => setEmailForPassword(e.target.value)}
-                          placeholder="이메일을 입력하세요"
+                          onChange={(e) => {
+                            setEmailForPassword(e.target.value);
+                            if (passwordError) setPasswordError(''); // 입력 시 에러 즉시 해제
+                          }}
+                          placeholder="name@example.com"
                           disabled={isLoading}
-                          className="w-full pl-10 pr-3 py-2 text-sm bg-white border border-stone-200 rounded-lg focus:border-blue-500 outline-none disabled:opacity-50"
+                          className={`w-full pl-10 pr-4 py-2.5 text-sm bg-white/50 dark:bg-black/20 border rounded-xl outline-none transition-all placeholder:text-stone-400
+                            ${passwordError
+                              ? 'border-rose-500 text-rose-900 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/50'
+                              : 'border-white/20 dark:border-white/10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                            }
+                          `}
                         />
                       </div>
+                      {/* Stylish Error Message */}
+                      {passwordError && (
+                        <div className="flex items-center gap-1.5 mt-2 ml-1 text-rose-500 animate-in slide-in-from-left-1 duration-200">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <p className="text-xs font-medium">{passwordError}</p>
+                        </div>
+                      )}
                     </div>
-                    {passwordError && <p className="text-xs text-rose-600">{passwordError}</p>}
-                    {success && <p className="text-xs text-emerald-600">{success}</p>}
+
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                     >
                       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '인증 코드 발송'}
                     </button>
@@ -563,41 +600,40 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
 
                 {/* Step 2: Verify Code */}
                 {passwordStep === 'verify' && (
-                  <form onSubmit={handleVerifyCode} className="space-y-3">
+                  <form onSubmit={handleVerifyCode} className="space-y-4" noValidate>
                     <div className="text-center">
-                      <p className={`text-xs ${timeLeft <= 30 ? 'text-rose-600' : 'text-blue-700'}`}>
+                      <p className={`text-xs font-semibold ${timeLeft <= 30 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         남은 시간: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                       </p>
                     </div>
                     <div>
-                      <label className="text-xs text-stone-600 block mb-1.5 text-center">인증 코드 (6자리)</label>
+                      <label className="text-xs text-stone-600 dark:text-stone-400 block mb-2 text-center">인증 코드 (6자리)</label>
                       <div className="flex gap-2 justify-center flex-wrap max-w-full">
                         {verificationCode.map((digit, index) => (
                           <input
                             key={index}
-                            ref={(el) => (passwordInputRefs.current[index] = el)}
+                            ref={(el) => { passwordInputRefs.current[index] = el; }}
                             type="text"
                             maxLength={1}
                             value={digit}
                             onChange={(e) => handleCodeChange(index, e.target.value)}
                             onKeyDown={(e) => handleCodeKeyDown(index, e)}
                             disabled={codeExpired || isLoading}
-                            className="w-10 h-12 text-center text-lg bg-white border border-stone-200 rounded-lg focus:border-blue-500 outline-none disabled:opacity-50 flex-shrink-0"
+                            className="w-10 h-12 text-center text-lg font-bold bg-white/50 dark:bg-black/20 border border-emerald-200 dark:border-emerald-800 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none disabled:opacity-50 flex-shrink-0 transition-all shadow-sm"
                             style={{ minWidth: '40px', maxWidth: '40px' }}
                           />
                         ))}
                       </div>
                     </div>
                     {codeExpired && (
-                      <p className="text-xs text-amber-600">인증 시간이 만료되었습니다. 재발송 버튼을 눌러주세요.</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-500 text-center">인증 시간이 만료되었습니다. 재발송 버튼을 눌러주세요.</p>
                     )}
-                    {passwordError && <p className="text-xs text-rose-600">{passwordError}</p>}
-                    {success && <p className="text-xs text-emerald-600">{success}</p>}
+                    {passwordError && <p className="text-xs text-rose-500 text-center">{passwordError}</p>}
                     <div className="space-y-2">
                       <button
                         type="submit"
                         disabled={isLoading || codeExpired}
-                        className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                       >
                         {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '인증 확인'}
                       </button>
@@ -605,7 +641,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
                         type="button"
                         onClick={handleResendCode}
                         disabled={isLoading}
-                        className="w-full py-2 bg-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-300 font-medium disabled:opacity-50"
+                        className="w-full py-2.5 bg-white/50 dark:bg-white/10 text-stone-600 dark:text-stone-300 text-sm rounded-xl font-medium hover:bg-white/80 dark:hover:bg-white/20 transition-all disabled:opacity-50"
                       >
                         인증 코드 재발송
                       </button>
@@ -615,64 +651,73 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
 
                 {/* Step 3: New Password */}
                 {passwordStep === 'password' && (
-                  <form onSubmit={handleResetPassword} className="space-y-3">
-                    <div className="relative">
-                      <input
-                        ref={newPasswordInputRef}
-                        type={showPasswords.new ? 'text' : 'password'}
-                        placeholder="새 비밀번호 (8자 이상)"
-                        value={newPassword}
-                        onChange={(e) => {
-                          setNewPassword(e.target.value);
-                          if (e.target.value) {
-                            const err = validatePassword(e.target.value);
-                            setNewPasswordError(err);
-                          } else {
-                            setNewPasswordError('');
-                          }
-                        }}
-                        onBlur={handleNewPasswordBlur}
-                        className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg focus:border-blue-500 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"
-                        aria-label={showPasswords.new ? "비밀번호 숨기기" : "비밀번호 보기"}
-                        title={showPasswords.new ? "비밀번호 숨기기" : "비밀번호 보기"}
-                      >
-                        {showPasswords.new ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      </button>
+                  <form onSubmit={handleResetPassword} className="space-y-4" noValidate>
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <input
+                          ref={newPasswordInputRef}
+                          type={showPasswords.new ? 'text' : 'password'}
+                          placeholder="새 비밀번호 (8자 이상)"
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            if (e.target.value) {
+                              const err = validatePassword(e.target.value);
+                              setNewPasswordError(err);
+                            } else {
+                              setNewPasswordError('');
+                            }
+                          }}
+                          onBlur={handleNewPasswordBlur}
+                          className={`w-full px-4 py-2.5 text-sm bg-white/50 dark:bg-black/20 border rounded-xl outline-none transition-all placeholder:text-stone-400
+                            ${newPasswordError
+                              ? 'border-rose-500 text-rose-900 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/50'
+                              : 'border-white/20 dark:border-white/10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/50'
+                            }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1"
+                        >
+                          {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {newPasswordError && (
+                        <div className="flex items-center gap-1.5 mt-2 ml-1 text-rose-500 animate-in slide-in-from-left-1 duration-200">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <p className="text-xs font-medium">{newPasswordError}</p>
+                        </div>
+                      )}
+
+                      <div className="relative">
+                        <input
+                          ref={confirmPasswordInputRef}
+                          type={showPasswords.confirm ? 'text' : 'password'}
+                          placeholder="새 비밀번호 확인"
+                          value={confirmNewPassword}
+                          onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm bg-white/50 dark:bg-black/20 border border-white/20 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all placeholder:text-stone-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1"
+                        >
+                          {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      {confirmPasswordError && <p className="text-xs text-rose-500 ml-1">{confirmPasswordError}</p>}
                     </div>
-                    {newPasswordError && <p className="text-xs text-rose-600">{newPasswordError}</p>}
-                    <div className="relative">
-                      <input
-                        ref={confirmPasswordInputRef}
-                        type={showPasswords.confirm ? 'text' : 'password'}
-                        placeholder="새 비밀번호 확인"
-                        value={confirmNewPassword}
-                        onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg focus:border-blue-500 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400"
-                        aria-label={showPasswords.confirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
-                        title={showPasswords.confirm ? "비밀번호 확인 숨기기" : "비밀번호 확인 보기"}
-                      >
-                        {showPasswords.confirm ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      </button>
-                    </div>
-                    {confirmPasswordError && <p className="text-xs text-rose-600">{confirmPasswordError}</p>}
-                    {passwordError && <p className="text-xs text-rose-600">{passwordError}</p>}
-                    {success && <p className="text-xs text-emerald-600">{success}</p>}
+
+                    {passwordError && <p className="text-xs text-rose-500 text-center">{passwordError}</p>}
+
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '변경하기'}
+                      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '비밀번호 변경하기'}
                     </button>
                   </form>
                 )}
@@ -682,27 +727,29 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
         </section>
 
         {/* Support & Info */}
-        <section className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-sm">
-          <button 
+        <section className="bg-white/40 dark:bg-black/20 rounded-2xl border border-white/30 dark:border-white/10 overflow-hidden shadow-sm backdrop-blur-md">
+          <button
             onClick={onGoToSupport}
-            className="w-full flex items-center justify-between p-4 border-b border-stone-100 hover:bg-stone-50 transition-colors text-left"
+            className="w-full flex items-center justify-between p-5 border-b border-white/10 hover:bg-white/20 dark:hover:bg-white/5 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <Heart className="w-4 h-4 text-rose-500" />
-              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-              <span className="text-sm text-stone-700 text-blue-600">상담 연결 리소스</span>
+              <div className="p-2 bg-rose-100/50 dark:bg-rose-900/30 rounded-lg text-rose-500 dark:text-rose-300">
+                <Heart className="w-4 h-4" />
+              </div>
+              <span className="text-sm text-stone-800 dark:text-stone-200 font-medium">상담 연결 리소스</span>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
           </button>
 
-          <button 
+          <button
             onClick={() => setShowAnnouncementModal(true)}
-            className="w-full flex items-center justify-between p-4 hover:bg-stone-50 transition-colors text-left"
+            className="w-full flex items-center justify-between p-5 hover:bg-white/20 dark:hover:bg-white/5 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <FileText className="w-4 h-4 text-blue-500" />
-              {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-              <span className="text-sm text-stone-700 text-blue-600">공지사항</span>
+              <div className="p-2 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-300">
+                <FileText className="w-4 h-4" />
+              </div>
+              <span className="text-sm text-stone-800 dark:text-stone-200 font-medium">공지사항</span>
             </div>
             <ChevronRight className="w-4 h-4 text-stone-400" />
           </button>
@@ -710,9 +757,9 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
 
         {/* Logout Button */}
         <div className="pt-2">
-          <button 
+          <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-stone-100 hover:bg-stone-200 rounded-xl transition-colors text-stone-700"
+            className="w-full flex items-center justify-center gap-2 p-4 bg-white/30 dark:bg-white/5 hover:bg-white/50 dark:hover:bg-white/10 rounded-2xl transition-all border border-white/20 dark:border-white/5 text-stone-600 dark:text-stone-300 backdrop-blur-sm"
           >
             <LogOut className="w-4 h-4" />
             <span className="text-sm font-medium">로그아웃</span>
@@ -720,32 +767,32 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
         </div>
 
         {/* Danger Zone */}
-        <div className="pt-4">
-          <button 
+        <div className="pt-4 pb-6">
+          <button
             onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
-            className="w-full py-3 text-xs text-stone-400 hover:text-rose-600 transition-colors flex items-center justify-center gap-1"
+            className="w-full py-3 text-xs text-stone-400 hover:text-rose-500 transition-colors flex items-center justify-center gap-1"
           >
             <UserX className="w-3 h-3" />
             계정 탈퇴
           </button>
-          
+
           {showDeleteConfirm && (
-            <div className="mt-2 p-4 bg-rose-50 border border-rose-100 rounded-xl animate-in slide-in-from-bottom-2 text-center">
-              <AlertTriangle className="w-6 h-6 text-rose-600 mx-auto mb-2" />
-              <p className="text-xs text-rose-800 mb-3 font-medium">
-                정말로 탈퇴하시겠습니까?<br/>
+            <div className="mt-2 p-4 bg-rose-50/90 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-2xl animate-in slide-in-from-bottom-2 text-center backdrop-blur-sm">
+              <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400 mx-auto mb-2" />
+              <p className="text-xs text-rose-800 dark:text-rose-200 mb-3 font-medium leading-relaxed">
+                정말로 탈퇴하시겠습니까?<br />
                 모든 데이터가 영구적으로 삭제됩니다.
               </p>
               <div className="flex gap-2 justify-center">
-                <button 
+                <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-3 py-1.5 bg-white border border-rose-200 text-rose-600 text-xs rounded-lg"
+                  className="px-4 py-2 bg-white dark:bg-white/10 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 text-xs rounded-lg font-medium hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
                 >
                   취소
                 </button>
-                <button 
+                <button
                   onClick={handleDeleteAccount}
-                  className="px-3 py-1.5 bg-rose-600 text-white text-xs rounded-lg hover:bg-rose-700"
+                  className="px-4 py-2 bg-rose-600 dark:bg-rose-700 text-white text-xs rounded-lg hover:bg-rose-700 dark:hover:bg-rose-600 font-bold shadow-sm transition-colors"
                 >
                   탈퇴하기
                 </button>
@@ -759,10 +806,10 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       {showPersonaModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom-10">
-            <h3 className="text-lg font-bold text-stone-800 text-center text-blue-600">AI 말투 선택</h3>
+            <h3 className="text-lg font-bold text-stone-800 text-center text-emerald-600">AI 말투 선택</h3>
             {error && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                <p className="text-xs text-rose-700 text-blue-600">{error}</p>
+                <p className="text-xs text-rose-700 text-emerald-600">{error}</p>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -771,29 +818,28 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
                   key={persona.id}
                   onClick={() => handlePersonaSelect(persona.id)}
                   disabled={isUpdatingPersona}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    currentPersona === persona.id 
-                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' 
-                      : 'border-stone-200 hover:bg-stone-50'
-                  } ${isUpdatingPersona ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`p-3 rounded-xl border text-left transition-all ${currentPersona === persona.id
+                    ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                    : 'border-stone-200 hover:bg-stone-50'
+                    } ${isUpdatingPersona ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="w-16 h-16 mb-2 mx-auto">
                     <img src={persona.icon} alt={persona.name} className="w-full h-full object-contain" />
                   </div>
-                  <div className="font-medium text-sm text-stone-800 text-blue-600">{persona.name}</div>
-                  <div className="text-[10px] text-stone-500 text-blue-600">{persona.style}</div>
+                  <div className="font-medium text-sm text-stone-800 text-emerald-600">{persona.name}</div>
+                  <div className="text-[10px] text-stone-500 text-emerald-600">{persona.style}</div>
                   {isUpdatingPersona && currentPersona === persona.id && (
                     <div className="mt-2 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
                     </div>
                   )}
                 </button>
               ))}
             </div>
-            <button 
+            <button
               onClick={() => setShowPersonaModal(false)}
               disabled={isUpdatingPersona}
-              className="w-full py-3 bg-stone-100 text-stone-600 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed text-blue-600"
+              className="w-full py-3 bg-stone-100 text-stone-600 rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed text-emerald-600"
             >
               닫기
             </button>
@@ -802,9 +848,9 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
       )}
 
       {showAnnouncementModal && (
-        <AnnouncementModal 
-          isOpen={showAnnouncementModal} 
-          onClose={() => setShowAnnouncementModal(false)} 
+        <AnnouncementModal
+          isOpen={showAnnouncementModal}
+          onClose={() => setShowAnnouncementModal(false)}
         />
       )}
 
@@ -813,24 +859,24 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4 shadow-2xl animate-in slide-in-from-bottom-10">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                <LogOut className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                <LogOut className="w-8 h-8 text-emerald-600" />
               </div>
               <h3 className="text-lg font-bold text-stone-800 text-center">로그아웃 하시겠습니까?</h3>
             </div>
             <div className="flex gap-3 pt-2">
-              <button 
+              <button
                 onClick={() => setShowLogoutConfirm(false)}
                 className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-colors"
               >
                 취소
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setShowLogoutConfirm(false);
                   if (onLogout) onLogout();
                 }}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+                className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
               >
                 로그아웃
               </button>

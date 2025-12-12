@@ -137,32 +137,33 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
   return (
     <div className="min-h-screen pb-6 space-y-6">
       {/* 헤더 - 뒤로가기 버튼 포함 */}
-      <div className="relative text-center space-y-3 pb-6 border-b border-stone-200/60">
+      {/* 헤더 - 뒤로가기 버튼 포함 (Glass Style) */}
+      <div className="relative text-center space-y-3 pb-6 border-b border-emerald-100/50 dark:border-emerald-800/30">
         {/* 뒤로가기 버튼 - 왼쪽 상단 고정 (요구사항 12) */}
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-blue-600 active:text-blue-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-0 left-0 p-2 active:bg-emerald-50/50 dark:active:bg-emerald-900/30 rounded-full transition-colors text-emerald-600 dark:text-emerald-400 active:text-emerald-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
-        
+
         {/* 도움말 버튼 - 오른쪽 상단 고정 */}
         <button
           onClick={() => setShowHelpModal(true)}
-          className="absolute top-0 right-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-stone-400 hover:text-stone-600 active:text-stone-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="absolute top-0 right-0 p-2 active:bg-emerald-50/50 dark:active:bg-emerald-900/30 rounded-full transition-colors text-emerald-400 dark:text-emerald-500 hover:text-emerald-600 active:text-emerald-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
           aria-label="도움말"
         >
           <HelpCircle className="w-5 h-5" />
         </button>
 
-        <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
-          <Heart className="w-8 h-8 text-blue-600" />
+        <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100/50 dark:bg-emerald-900/40 flex items-center justify-center backdrop-blur-sm shadow-sm border border-emerald-200/50 dark:border-emerald-700/30">
+          <Heart className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-stone-800 font-bold text-lg">상담 연결 리소스</h2>
+          <h2 className="text-stone-800 dark:text-stone-100 font-bold text-lg">상담 연결 리소스</h2>
         </div>
       </div>
 
@@ -199,18 +200,17 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
 
       {/* 카테고리 필터 */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-stone-700">
-          <Filter className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300 px-1">
+          <Filter className="w-4 h-4 text-emerald-500" />
           <span className="font-medium">카테고리</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-3 py-2.5 text-xs rounded-lg transition-colors font-medium min-h-[44px] ${
-              selectedCategory === 'all'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-300'
-            }`}
+            className={`px-3 py-2.5 text-xs rounded-xl transition-all font-medium min-h-[44px] border ${selectedCategory === 'all'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
+                : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
+              }`}
           >
             전체
           </button>
@@ -218,13 +218,14 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
             <button
               key={key}
               onClick={() => setSelectedCategory(key)}
-              className={`px-3 py-2.5 text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5 font-medium min-h-[44px] ${
-                selectedCategory === key
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-300'
-              }`}
+              className={`px-3 py-2.5 text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 font-medium min-h-[44px] border ${selectedCategory === key
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
+                  : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
+                }`}
             >
-              {getCategoryIcon(key)}
+              <span className={selectedCategory === key ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}>
+                {getCategoryIcon(key)}
+              </span>
               <span>{label}</span>
             </button>
           ))}       </div>
@@ -235,89 +236,89 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
       <div className="space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-            <span className="ml-2 text-sm text-stone-600">상담 기관 목록을 불러오는 중...</span>
+            <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+            <span className="ml-2 text-sm text-stone-600 dark:text-stone-400">상담 기관 목록을 불러오는 중...</span>
           </div>
         ) : error ? (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="p-4 bg-rose-50/50 dark:bg-rose-900/20 border border-rose-200/50 dark:border-rose-800/30 rounded-2xl backdrop-blur-sm">
+            <p className="text-sm text-rose-800 dark:text-rose-200">{error}</p>
           </div>
         ) : (
           <>
-            <p className="text-sm text-stone-700 font-medium">
+            <p className="text-sm text-stone-700 dark:text-stone-300 font-medium px-1">
               총 {filteredResources.length}개의 기관
             </p>
-            
+
             {filteredResources.length === 0 ? (
-              <div className="p-8 text-center bg-stone-50 rounded-lg border border-stone-200">
-                <p className="text-sm text-stone-600">표시할 상담 기관이 없습니다.</p>
+              <div className="p-8 text-center bg-stone-50/50 dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 backdrop-blur-sm">
+                <p className="text-sm text-stone-600 dark:text-stone-400">표시할 상담 기관이 없습니다.</p>
               </div>
             ) : (
               filteredResources.map((resource) => (
-          <div
-            key={resource.id}
-            className="p-5 bg-white rounded-xl border border-stone-200 space-y-4 hover:shadow-md transition-shadow"
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <h3 
-                  className="text-sm text-stone-900 mb-2 font-medium"
-                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
+                <div
+                  key={resource.id}
+                  className="p-5 bg-white/60 dark:bg-stone-900/60 rounded-2xl border border-white/40 dark:border-white/5 space-y-4 hover:shadow-lg transition-all backdrop-blur-md ring-1 ring-black/5 dark:ring-white/5"
                 >
-                  {resource.name}
-                </h3>
-                <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border ${categoryColors[resource.category]}`}>
-                  {getCategoryIcon(resource.category)}
-                  <span>{categoryLabels[resource.category]}</span>
-                </span>
-              </div>
-            </div>
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="text-sm text-stone-900 dark:text-stone-100 mb-2 font-bold"
+                        style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
+                      >
+                        {resource.name}
+                      </h3>
+                      <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border bg-white/50 backdrop-blur-sm ${categoryColors[resource.category].replace('bg-', 'bg-opacity-20 ')}`}>
+                        {getCategoryIcon(resource.category)}
+                        <span>{categoryLabels[resource.category]}</span>
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Description */}
-            <p 
-              className="text-xs text-stone-600 leading-relaxed"
-              style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
-            >
-              {resource.description}
-            </p>
+                  {/* Description */}
+                  <p
+                    className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed font-medium"
+                    style={{ wordBreak: 'break-word', overflowWrap: 'break-word', hyphens: 'auto' }}
+                  >
+                    {resource.description}
+                  </p>
 
-            {/* Contact Info */}
-            <div className="space-y-2.5 pt-3 border-t border-stone-200">
-              {/* Phone */}
-              {resource.phone && (
-                <a
-                  href={`tel:${resource.phone}`}
-                  className="flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 hover:underline min-h-[44px] break-words"
-                >
-                  <Phone className="w-4 h-4 flex-shrink-0" />
-                  <span className="break-all">{resource.phone}</span>
-                </a>
-              )}
-              
-              {/* Hours */}
-              {resource.hours && (
-                <div className="flex items-center gap-2 text-xs text-stone-600 break-words">
-                  <Clock className="w-4 h-4 flex-shrink-0" />
-                  <span className="break-words">{resource.hours}</span>
+                  {/* Contact Info */}
+                  <div className="space-y-2.5 pt-3 border-t border-stone-100 dark:border-stone-800">
+                    {/* Phone */}
+                    {resource.phone && (
+                      <a
+                        href={`tel:${resource.phone}`}
+                        className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline min-h-[44px] break-words font-medium"
+                      >
+                        <Phone className="w-4 h-4 flex-shrink-0" />
+                        <span className="break-all">{resource.phone}</span>
+                      </a>
+                    )}
+
+                    {/* Hours */}
+                    {resource.hours && (
+                      <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 break-words">
+                        <Clock className="w-4 h-4 flex-shrink-0" />
+                        <span className="break-words">{resource.hours}</span>
+                      </div>
+                    )}
+
+                    {/* Website */}
+                    {resource.website && (
+                      <a
+                        href={resource.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline min-h-[44px] font-medium"
+                      >
+                        <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                        <span>웹사이트 방문</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
-              )}
-              
-              {/* Website */}
-              {resource.website && (
-                <a
-                  href={resource.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-purple-700 hover:text-purple-800 hover:underline min-h-[44px]"
-                >
-                  <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                  <span>웹사이트 방문</span>
-                </a>
-              )}
-            </div>
-          </div>
-        ))
+              ))
             )}
           </>
         )}
@@ -410,9 +411,9 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
                 </div>
 
                 {/* 닫기 버튼 */}
-                <button 
+                <button
                   onClick={() => setShowHelpModal(false)}
-                  className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                  className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
                 >
                   확인했습니다
                 </button>

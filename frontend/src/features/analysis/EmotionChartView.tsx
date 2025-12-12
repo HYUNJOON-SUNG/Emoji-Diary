@@ -41,7 +41,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, TrendingUp, BarChart2 } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { fetchChartStats, ChartDataPoint } from '../../services/diaryApi';
 
 /**
@@ -110,32 +110,32 @@ const emotionLabels: { [key: string]: string } = {
 
 export function EmotionChartView() {
   // ========== 상태 관리 ==========
-  
+
   /**
    * 차트 타입 (플로우 7.5)
    * - line: 선 그래프
    * - bar: 막대 그래프
    */
   const [chartType, setChartType] = useState<ChartType>('line');
-  
+
   /**
    * 기간 타입 (플로우 7.5)
    * - weekly: 주간 (최근 7일)
    * - monthly: 월간 (최근 30일)
    */
   const [periodType, setPeriodType] = useState<PeriodType>('weekly');
-  
+
   /**
    * 차트 데이터
    * - 날짜별 감정 빈도 데이터
    */
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  
+
   /**
    * 로딩 상태
    */
   const [isLoading, setIsLoading] = useState(false);
-  
+
   /**
    * 에러 메시지
    */
@@ -185,19 +185,19 @@ export function EmotionChartView() {
   const loadChartData = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // [API 명세서 Section 5.2.2] GET /api/statistics/emotion-trend
       // period: 'weekly' | 'monthly', year: number, month: number (weekly와 monthly 모두 필수)
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth() + 1; // 1-12
-      
+
       // fetchChartStats는 내부적으로 API를 호출하므로 year, month를 전달
       // 하지만 함수 시그니처가 startDate, endDate를 받으므로 유지
       const endDate = new Date();
       const startDate = new Date();
-      
+
       if (periodType === 'weekly') {
         // 주간: 최근 7일 (오늘 포함, 일별)
         startDate.setDate(endDate.getDate() - 6); // 오늘 포함하여 7일
@@ -208,13 +208,13 @@ export function EmotionChartView() {
         startDate.setMonth(now.getMonth());
         startDate.setFullYear(year);
       }
-      
+
       const startStr = formatDateString(startDate);
       const endStr = formatDateString(endDate);
-      
+
       console.log('감정 통계 차트 데이터 로드:', { periodType, year, month, startStr, endStr });
       const data = await fetchChartStats(startStr, endStr, periodType);
-      
+
       // 필터링: 주간일 경우 정확히 최근 7일치 데이터만 남김 (API가 월 전체를 줄 수도 있으므로)
       if (periodType === 'weekly') {
         const filteredData = generateLast7DaysData(data);
@@ -239,16 +239,16 @@ export function EmotionChartView() {
   const generateLast7DaysData = (apiData: ChartDataPoint[]): ChartDataPoint[] => {
     const result: ChartDataPoint[] = [];
     const today = new Date();
-    
+
     // 7일 전부터 오늘까지 순회
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const dateStr = formatDateString(date);
-      
+
       // API 데이터에서 해당 날짜 찾기
       const found = apiData.find(d => d.date === dateStr);
-      
+
       if (found) {
         result.push({
           ...found,
@@ -281,7 +281,7 @@ export function EmotionChartView() {
    */
   const getEmotionDistribution = () => {
     const totals: { [key: string]: number } = {};
-    
+
     // 전체 데이터 포인트를 순회하며 감정별 합계 계산
     chartData.forEach(dataPoint => {
       Object.keys(emotionChartColors).forEach(emotion => {
@@ -289,7 +289,7 @@ export function EmotionChartView() {
         totals[emotion] += dataPoint[emotion as keyof ChartDataPoint] as number;
       });
     });
-    
+
     // 빈도가 높은 순으로 정렬하고 상위 5개만 반환
     return Object.entries(totals)
       .filter(([_, count]) => count > 0)
@@ -302,10 +302,10 @@ export function EmotionChartView() {
    */
   const getPrimaryEmotion = (dataPoint: ChartDataPoint): string | null => {
     if (dataPoint.total === 0) return null;
-    
+
     let maxCount = 0;
     let primary = null;
-    
+
     Object.keys(emotionScores).forEach(emotion => {
       const count = dataPoint[emotion as keyof ChartDataPoint] as number;
       if (count > maxCount) {
@@ -313,7 +313,7 @@ export function EmotionChartView() {
         primary = emotion;
       }
     });
-    
+
     return primary;
   };
 
@@ -326,10 +326,10 @@ export function EmotionChartView() {
     const scoredData = chartData.map(d => {
       const primaryEmotion = getPrimaryEmotion(d);
       const dailyScore = primaryEmotion ? emotionScores[primaryEmotion] : 0;
-      
+
       // 누적 합산 (일기가 없는 날은 0점 더함 => 변화 없음)
       cumulativeScore += dailyScore;
-      
+
       return {
         ...d,
         dailyScore,
@@ -344,14 +344,14 @@ export function EmotionChartView() {
       4 // 최소 범위 확보 (점수가 작을 때를 대비)
     );
     // 여유 공간 추가
-    const domainMax = maxAbsScore + 1; 
+    const domainMax = maxAbsScore + 1;
 
     return (
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={scoredData} margin={{ top: 30, right: 20, bottom: 30, left: 35 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="displayLabel" 
+          <XAxis
+            dataKey="displayLabel"
             tick={{ fill: '#6b7280', fontSize: 12 }}
             stroke="#9ca3af"
             axisLine={false}
@@ -360,49 +360,49 @@ export function EmotionChartView() {
             padding={{ left: 20, right: 20 }}
           />
           {/* Y축: 숫자 숨김, 눈금 없음, 도메인 설정 */}
-          <YAxis 
-            hide={true} 
+          <YAxis
+            hide={true}
             padding={{ top: 0, bottom: 0 }}
             domain={[-domainMax, domainMax]}
           />
-          
+
           {/* 기준선 (0점) */}
           <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
-          
+
           {/* Y축 레이블 (수동 배치, margin.left 영역 활용) */}
           {/* 긍정 (Top) */}
-          <text x={30} y={40} textAnchor="end" fill="#3b82f6" fontSize={12} fontWeight="bold">긍정</text>
-          
+          <text x={30} y={40} textAnchor="end" fill="#10b981" fontSize={12} fontWeight="bold">긍정</text>
+
           {/* 0 (Center) - 차트 높이 300, top 30, bottom 30 => 높이 240, 중간 150 */}
           {/* 정확한 위치는 도메인 대칭이므로 중앙 */}
           <text x={30} y={150} textAnchor="end" fill="#9ca3af" fontSize={12} fontWeight="bold" dy={4}>0</text>
-          
-          {/* 부정 (Bottom) */}
-          <text x={30} y={265} textAnchor="end" fill="#ef4444" fontSize={12} fontWeight="bold">부정</text>
 
-          <Tooltip 
+          {/* 부정 (Bottom) */}
+          <text x={30} y={265} textAnchor="end" fill="#f43f5e" fontSize={12} fontWeight="bold">부정</text>
+
+          <Tooltip
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 const emotionKey = data.primaryEmotion;
                 return (
-                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
-                    <p className="text-gray-500 text-xs mb-1">{data.displayLabel}</p>
+                  <div className="bg-white/90 dark:bg-black/80 backdrop-blur-xl p-3 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5">
+                    <p className="text-stone-500 dark:text-stone-400 text-xs mb-1">{data.displayLabel}</p>
                     {emotionKey ? (
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
-                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotionChartColors[emotionKey] }} />
-                           <span className="font-medium text-gray-900">{emotionLabels[emotionKey]}</span>
+                          <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: emotionChartColors[emotionKey] }} />
+                          <span className="font-medium text-stone-900 dark:text-stone-100">{emotionLabels[emotionKey]}</span>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-stone-500 dark:text-stone-400">
                           일일: {data.dailyScore > 0 ? '+' : ''}{data.dailyScore}점
                         </div>
-                        <div className="text-xs font-semibold text-blue-600">
+                        <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                           누적: {data.cumulativeScore}점
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-sm">기록 없음 (변화 없음)</p>
+                      <p className="text-stone-400 text-sm">기록 없음 (변화 없음)</p>
                     )}
                   </div>
                 );
@@ -410,12 +410,12 @@ export function EmotionChartView() {
               return null;
             }}
           />
-          
-          <Line 
-            type="monotone" 
-            dataKey="cumulativeScore" 
-            stroke="#6366f1" 
-            strokeWidth={3} 
+
+          <Line
+            type="monotone"
+            dataKey="cumulativeScore"
+            stroke="#10b981"
+            strokeWidth={3}
             dot={(props) => {
               const { cx, cy, payload } = props;
               const emotionKey = payload.primaryEmotion;
@@ -424,7 +424,7 @@ export function EmotionChartView() {
                 <circle cx={cx} cy={cy} r={6} fill={emotionChartColors[emotionKey]} stroke="#fff" strokeWidth={2} />
               );
             }}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 8, stroke: "#10b981", strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -462,7 +462,7 @@ export function EmotionChartView() {
 
     const startDate = dates[0];
     const endDate = dates[dates.length - 1];
-    
+
     // 틱 날짜 선정
     const tickDates = new Set<string>();
     tickDates.add(startDate); // 시작일(30일 전)
@@ -482,13 +482,13 @@ export function EmotionChartView() {
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={scoredData} margin={{ top: 30, right: 20, bottom: 30, left: 35 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="date" 
+          <XAxis
+            dataKey="date"
             ticks={ticks}
             tickFormatter={(dateStr) => {
-               // 날짜 포맷: MM/DD
-               const d = new Date(dateStr);
-               return `${d.getMonth() + 1}/${d.getDate()}`;
+              // 날짜 포맷: MM/DD
+              const d = new Date(dateStr);
+              return `${d.getMonth() + 1}/${d.getDate()}`;
             }}
             tick={{ fill: '#6b7280', fontSize: 12 }}
             stroke="#9ca3af"
@@ -497,35 +497,35 @@ export function EmotionChartView() {
             dy={10}
             padding={{ left: 20, right: 20 }}
           />
-          <YAxis 
-            hide={true} 
+          <YAxis
+            hide={true}
             padding={{ top: 0, bottom: 0 }}
             domain={[-domainMax, domainMax]}
           />
           <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
-          
-          {/* Y축 레이블 */}
-          <text x={30} y={40} textAnchor="end" fill="#3b82f6" fontSize={12} fontWeight="bold">긍정</text>
-          <text x={30} y={150} textAnchor="end" fill="#9ca3af" fontSize={12} fontWeight="bold" dy={4}>0</text>
-          <text x={30} y={265} textAnchor="end" fill="#ef4444" fontSize={12} fontWeight="bold">부정</text>
 
-          <Tooltip 
+          {/* Y축 레이블 */}
+          <text x={30} y={40} textAnchor="end" fill="#10b981" fontSize={12} fontWeight="bold">긍정</text>
+          <text x={30} y={150} textAnchor="end" fill="#9ca3af" fontSize={12} fontWeight="bold" dy={4}>0</text>
+          <text x={30} y={265} textAnchor="end" fill="#f43f5e" fontSize={12} fontWeight="bold">부정</text>
+
+          <Tooltip
             content={({ active, payload, label }) => {
               if (active && payload && payload.length) {
                 // 주간 집계 로직
                 // label(날짜) 기준 해당 주(월~일)의 데이터 집계
                 const currentDate = new Date(label);
-                
+
                 // 해당 주의 월요일 구하기
                 const day = currentDate.getDay();
                 const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
                 const monday = new Date(currentDate.setDate(diff));
-                monday.setHours(0,0,0,0);
-                
+                monday.setHours(0, 0, 0, 0);
+
                 // 해당 주의 일요일 구하기
                 const sunday = new Date(monday);
                 sunday.setDate(monday.getDate() + 6);
-                sunday.setHours(23,59,59,999);
+                sunday.setHours(23, 59, 59, 999);
 
                 // 범위 내 데이터 필터링
                 const weeklyData = scoredData.filter(d => {
@@ -534,13 +534,13 @@ export function EmotionChartView() {
                 });
 
                 // 감정 카운트 집계
-                const counts: {[key: string]: number} = {};
+                const counts: { [key: string]: number } = {};
                 weeklyData.forEach(d => {
-                   Object.keys(emotionChartColors).forEach(emotion => {
-                      if (d[emotion as keyof ChartDataPoint] > 0) {
-                         counts[emotion] = (counts[emotion] || 0) + (d[emotion as keyof ChartDataPoint] as number);
-                      }
-                   });
+                  Object.keys(emotionChartColors).forEach(emotion => {
+                    if ((d[emotion as keyof ChartDataPoint] as number) > 0) {
+                      counts[emotion] = (counts[emotion] || 0) + (d[emotion as keyof ChartDataPoint] as number);
+                    }
+                  });
                 });
 
                 // 상위 3개 감정 추출
@@ -549,24 +549,24 @@ export function EmotionChartView() {
                   .slice(0, 3);
 
                 return (
-                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100 min-w-[150px]">
-                    <p className="text-gray-500 text-xs mb-2">
-                       {monday.getMonth()+1}/{monday.getDate()} - {sunday.getMonth()+1}/{sunday.getDate()} 주차
+                  <div className="bg-white/90 dark:bg-black/80 backdrop-blur-xl p-3 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5 min-w-[150px]">
+                    <p className="text-stone-500 dark:text-stone-400 text-xs mb-2">
+                      {monday.getMonth() + 1}/{monday.getDate()} - {sunday.getMonth() + 1}/{sunday.getDate()} 주차
                     </p>
                     {sortedEmotions.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {sortedEmotions.map(([emotion, count]) => (
                           <div key={emotion} className="flex items-center justify-between gap-3">
-                             <div className="flex items-center gap-1.5">
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: emotionChartColors[emotion] }} />
-                                <span className="text-xs font-medium text-gray-700">{emotionLabels[emotion]}</span>
-                             </div>
-                             <span className="text-xs font-semibold text-gray-900">{count}회</span>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: emotionChartColors[emotion] }} />
+                              <span className="text-xs font-medium text-stone-700 dark:text-stone-300">{emotionLabels[emotion]}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">{count}회</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-xs">기록 없음</p>
+                      <p className="text-stone-400 text-xs">기록 없음</p>
                     )}
                   </div>
                 );
@@ -574,24 +574,24 @@ export function EmotionChartView() {
               return null;
             }}
           />
-          
-          <Line 
-            type="monotone" 
-            dataKey="cumulativeScore" 
-            stroke="#6366f1" 
-            strokeWidth={3} 
+
+          <Line
+            type="monotone"
+            dataKey="cumulativeScore"
+            stroke="#10b981"
+            strokeWidth={3}
             dot={(props) => {
               const { cx, cy, payload } = props;
               // X축 틱에 포함된 날짜만 점 표시
               if (ticks.includes(payload.date)) {
-                 const emotionKey = payload.primaryEmotion;
-                 return (
-                    <circle cx={cx} cy={cy} r={5} fill={emotionKey ? emotionChartColors[emotionKey] : '#9ca3af'} stroke="#fff" strokeWidth={2} />
-                 );
+                const emotionKey = payload.primaryEmotion;
+                return (
+                  <circle cx={cx} cy={cy} r={5} fill={emotionKey ? emotionChartColors[emotionKey] : '#9ca3af'} stroke="#fff" strokeWidth={2} />
+                );
               }
               return <circle cx={cx} cy={cy} r={0} />;
             }}
-            activeDot={{ r: 6 }}
+            activeDot={{ r: 6, stroke: "#10b981", strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -628,32 +628,32 @@ export function EmotionChartView() {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={initialData} margin={{ top: 30, right: 20, bottom: 20, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-          <XAxis 
-            dataKey="name" 
+          <XAxis
+            dataKey="name"
             tick={{ fill: '#6b7280', fontSize: 12 }}
             stroke="#9ca3af"
             axisLine={false}
             tickLine={false}
           />
-          <YAxis 
+          <YAxis
             allowDecimals={false}
             tick={{ fill: '#6b7280', fontSize: 12 }}
             stroke="#9ca3af"
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip 
+          <Tooltip
             cursor={{ fill: 'rgba(0,0,0,0.05)' }}
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 const data = payload[0].payload;
                 return (
-                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
+                  <div className="bg-white/90 dark:bg-black/80 backdrop-blur-xl p-3 rounded-2xl shadow-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5">
                     <div className="flex items-center gap-2 mb-1">
-                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.fill }} />
-                       <span className="font-medium text-gray-900">{data.name}</span>
+                      <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: data.fill }} />
+                      <span className="font-medium text-stone-900 dark:text-stone-100">{data.name}</span>
                     </div>
-                    <p className="text-gray-500 text-xs">{data.count}회</p>
+                    <p className="text-stone-500 dark:text-stone-400 text-xs">{data.count}회</p>
                   </div>
                 );
               }
@@ -666,71 +666,7 @@ export function EmotionChartView() {
     );
   };
 
-  /**
-   * 기존 차트 렌더링 (월간용 보존)
-   */
-  const renderDefaultChart = () => {
-    // 차트 타입에 따라 컴포넌트 선택
-    const ChartComponent = chartType === 'line' ? LineChart : BarChart;
-    const DataComponent = chartType === 'line' ? Line : Bar;
-    
-    // 실제 데이터가 있는 감정만 필터링 (기존 로직)
-    const activeEmotions = Object.keys(emotionChartColors).filter(emotion => {
-      return chartData.some(dataPoint => dataPoint[emotion as keyof ChartDataPoint] > 0);
-    });
 
-    return (
-      <ResponsiveContainer width="100%" height={300}>
-        <ChartComponent data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#d6d3d1" opacity={0.3} />
-          <XAxis 
-            dataKey="displayLabel" 
-            tick={{ fill: '#57534e', fontSize: 11 }}
-            stroke="#a8a29e"
-          />
-          <YAxis 
-            tick={{ fill: '#57534e', fontSize: 11 }}
-            stroke="#a8a29e"
-            allowDecimals={false}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ fontSize: '11px' }} formatter={(value) => emotionLabels[value] || value} />
-          {activeEmotions.map(emotion => (
-            <DataComponent
-              key={emotion}
-              type="monotone"
-              dataKey={emotion}
-              stroke={emotionChartColors[emotion]}
-              fill={emotionChartColors[emotion]}
-              strokeWidth={chartType === 'line' ? 2 : 0}
-              dot={chartType === 'line' ? { r: 3 } : false}
-            />
-          ))}
-        </ChartComponent>
-      </ResponsiveContainer>
-    );
-  };
-
-  /**
-   * 커스텀 툴팁 컴포넌트 (기존)
-   */
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-stone-300">
-          <p className="text-sm text-stone-800 mb-2">{label}</p>
-          {payload
-            .filter((entry: any) => entry.value > 0)
-            .map((entry: any) => (
-              <p key={entry.dataKey} className="text-xs" style={{ color: entry.color }}>
-                {emotionLabels[entry.dataKey]}: {entry.value}회
-              </p>
-            ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   const emotionDistribution = getEmotionDistribution();
 
@@ -740,60 +676,56 @@ export function EmotionChartView() {
     <div className="space-y-6">
       {/* Controls - 기간 및 차트 타입 선택 */}
       <div className="flex flex-col items-center gap-4">
-        
+
         {/* 통합 컨트롤 영역 */}
         <div className="flex flex-col gap-3 items-center">
-          
+
           {/* 1. 기간 선택 (Toggle Style) */}
-          <div 
-            className="bg-stone-100 p-1 rounded-lg flex w-[280px] min-w-[280px] shrink-0" 
+          <div
+            className="bg-white/40 dark:bg-black/20 backdrop-blur-sm border border-white/20 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
             style={{ width: '280px', minWidth: '280px' }}
           >
-             <button
+            <button
               onClick={() => setPeriodType('weekly')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                periodType === 'weekly'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${periodType === 'weekly'
+                ? 'bg-white/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 shadow-sm ring-1 ring-black/5'
+                : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
+                }`}
             >
               주간
             </button>
             <button
               onClick={() => setPeriodType('monthly')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                periodType === 'monthly'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${periodType === 'monthly'
+                ? 'bg-white/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 shadow-sm ring-1 ring-black/5'
+                : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
+                }`}
             >
               월간
             </button>
           </div>
 
           {/* 2. 차트 타입 선택 (Toggle Style) - 주간/월간 모두 표시 */}
-          <div 
-            className="bg-stone-100 p-1 rounded-lg flex w-[280px] min-w-[280px] shrink-0"
+          <div
+            className="bg-white/40 dark:bg-black/20 backdrop-blur-sm border border-white/20 p-1 rounded-xl flex w-[280px] min-w-[280px] shrink-0"
             style={{ width: '280px', minWidth: '280px' }}
           >
             <button
               onClick={() => setChartType('line')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${
-                chartType === 'line'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${chartType === 'line'
+                ? 'bg-white/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 shadow-sm ring-1 ring-black/5'
+                : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
+                }`}
             >
               <TrendingUp className="w-4 h-4" />
               선 그래프
             </button>
             <button
               onClick={() => setChartType('bar')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${
-                chartType === 'bar'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-stone-500 hover:text-stone-700'
-              }`}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${chartType === 'bar'
+                ? 'bg-white/90 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 shadow-sm ring-1 ring-black/5'
+                : 'text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200'
+                }`}
             >
               <BarChart2 className="w-4 h-4" />
               막대 그래프
@@ -822,13 +754,13 @@ export function EmotionChartView() {
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-5 h-5 text-blue-700" />
             <h3 className="text-sm text-stone-800">
-              {periodType === 'weekly' 
+              {periodType === 'weekly'
                 ? (chartType === 'line' ? '최근 7일간 감정 변화' : '이번주 감정 분포')
                 : (chartType === 'line' ? '최근 30일간 감정 변화' : '이번달 감정 분포')}
             </h3>
           </div>
           {/* 렌더링 로직 분기 */}
-          {periodType === 'weekly' 
+          {periodType === 'weekly'
             ? (chartType === 'line' ? renderWeeklyLineChart() : renderEmotionBarChart())
             : (chartType === 'line' ? renderMonthlyLineChart() : renderEmotionBarChart())
           }

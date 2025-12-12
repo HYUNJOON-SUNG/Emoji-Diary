@@ -1,5 +1,6 @@
+
 import { useState, useRef, useEffect } from 'react';
-import { BookHeart, Mail, Lock, UserRound, Loader2, Eye, EyeOff, CheckCircle2, KeyRound } from 'lucide-react';
+import { Mail, Lock, UserRound, Loader2, Eye, EyeOff, CheckCircle2, KeyRound, Heart } from 'lucide-react';
 import { signup, TokenStorage, checkEmailDuplicate, sendVerificationCodeForSignup, verifyCode } from '../../services/authApi';
 import { TermsAgreement } from './TermsAgreement';
 import { termsData } from '../../services/termsData';
@@ -13,8 +14,8 @@ import { termsData } from '../../services/termsData';
  * 
  * 사용자가 새 계정을 생성하는 페이지
  * - 나무 책상 위의 가죽 다이어리 디자인 (스큐어모피즘)
- * - 중앙 배치 카드 레이아웃
- * - 파란색 계열 톤온톤 테마
+ * - 나무 책상 위의 가죽 다이어리 디자인 (스큐어모피즘)
+ * - 초록색 계열 톤온톤 테마 (Green Glassmorphism)
  * 
  * [주요 기능]
  * 1. 이름 입력 (2자 이상 실시간 검증)
@@ -80,79 +81,78 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
   const genderRef = useRef<HTMLDivElement>(null);
   const termsRef = useRef<HTMLDivElement>(null);
-  
+
   // ========== 기본 입력 필드 상태 ==========
-  
+
   /** 이름 입력값 (2자 이상 필수) */
   const [name, setName] = useState('');
-  
+
   /** 이메일 입력값 (예: user@example.com) */
   const [email, setEmail] = useState('');
-  
+
   /** 비밀번호 입력값 (영문, 숫자, 특수문자 포함 8자 이상) */
   const [password, setPassword] = useState('');
-  
+
   /** 비밀번호 확인 입력값 (password와 일치해야 함) */
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   /** 비밀번호 표시/숨김 토글 */
   const [showPassword, setShowPassword] = useState(false);
-  
+
   /** 비밀번호 확인 표시/숨김 토글 */
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   /** 약관 동의 상태 { termId: true/false } */
   const [agreements, setAgreements] = useState<{ [key: string]: boolean }>({});
-  
+
   /** 성별 선택 (필수, AI 이미지 생성 시 주인공 성별 결정) */
   const [gender, setGender] = useState<'MALE' | 'FEMALE' | ''>('');
 
   // ========== 로딩 및 에러 상태 ==========
-  
+
   /** 전체 로딩 상태 (API 호출 중) */
   const [isLoading, setIsLoading] = useState(false);
-  
+
   /** 이메일 중복 확인 로딩 상태 */
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-  
+
   /** 전역 에러 메시지 (화면 하단 빨간색 박스) */
   const [error, setError] = useState('');
-  
+
   /** 성공 메시지 (화면 하단 파란색 박스) */
   const [success, setSuccess] = useState('');
 
   // ========== 이메일 인증 코드 관련 상태 ==========
-  
+
   /**
    * 인증 코드 입력 배열 (6자리)
    * 예: ['1', '2', '3', '4', '5', '6']
    */
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
-  
+
   /** 이메일 중복 확인 완료 여부 */
   const [emailDuplicateChecked, setEmailDuplicateChecked] = useState(false);
-  
+
   /** 이메일 사용 가능 여부 (중복 아님) */
   const [emailAvailable, setEmailAvailable] = useState(false);
-  
+
   /** 인증 코드 발송 완료 여부 */
   const [codeSent, setCodeSent] = useState(false);
-  
+
   /** 인증 코드 검증 완료 여부 */
   const [codeVerified, setCodeVerified] = useState(false);
-  
-  /** 인증 코드 발송 시각 (timestamp) */
-  const [codeSentAt, setCodeSentAt] = useState<number>(0);
-  
+
+
+
   /** 타이머 남은 시간 (초 단위, 300초 = 5분) */
   const [timeRemaining, setTimeRemaining] = useState(0);
-  
+
   /** 타이머 활성화 여부 */
   const [timerActive, setTimerActive] = useState(false);
-  
+
   /** 인증 코드 만료 여부 (5분 경과) */
   const [codeExpired, setCodeExpired] = useState(false);
-  
+
   /**
    * 인증 코드 입력 필드 참조 배열
    * - 자동 포커스 이동에 사용
@@ -160,21 +160,21 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // ========== 입력 검증 에러 메시지 상태 ==========
-  
+
   /** 이름 검증 에러 (예: "이름은 2자 이상이어야 합니다.") */
   const [nameError, setNameError] = useState('');
-  
+
   /** 이메일 검증 에러 (예: "이미 가입된 이메일입니다.") */
   const [emailError, setEmailError] = useState('');
-  
+
   /** 비밀번호 검증 에러 (예: "영문, 숫자, 특수문자 포함 8자 이상이어야 합니다.") */
   const [passwordError, setPasswordError] = useState('');
-  
+
   /** 비밀번호 확인 검증 에러 (예: "밀번호가 일치하지 않습니다.") */
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   // ========== 타이머 로직 (5분 = 300초) ==========
-  
+
   /**
    * 인증 코드 타이머 Effect
    * 
@@ -213,7 +213,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')} `;
   };
 
   // ========== 입력 검증 함수 (플로우 1.3) ==========
@@ -254,12 +254,12 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 
    * [Cursor AI 연동 코드]
    * ```typescript
-   * // 실제 API 호출 시:
+  * // 실제 API 호출 시:
    * const response = await fetch('/api/auth/check-email-duplicate', {
-   *   method: 'POST',
-   *   headers: { 'Content-Type': 'application/json' },
-   *   body: JSON.stringify({ email })
-   * });
+    *   method: 'POST',
+    *   headers: { 'Content-Type': 'application/json' },
+    *   body: JSON.stringify({ email })
+    * });
    * const data = await response.json();
    * ```
    */
@@ -281,11 +281,11 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     // 2단계: 중복 검사 (API 호출)
     setIsCheckingEmail(true);
     setEmailError('');
-    
+
     try {
       // [API 명세서 Section 2.2.1] POST /api/auth/check-email
       const response = await checkEmailDuplicate(email);
-      
+
       if (response.available) {
         setEmailError('');
         setEmailAvailable(true);
@@ -327,19 +327,19 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 
    * [Cursor AI 연동 코드]
    * ```typescript
-   * // 실제 이메일 발송 서비스 연동:
+  * // 실제 이메일 발송 서비스 연동:
    * import nodemailer from 'nodemailer';
    * 
    * const transporter = nodemailer.createTransport({
-   *   service: 'gmail',
-   *   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    *   service: 'gmail',
+    *   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
    * });
    * 
    * await transporter.sendMail({
-   *   from: 'noreply@yourapp.com',
-   *   to: email,
-   *   subject: '감정 일기 - 이메일 인증 코드',
-   *   text: `인증 코드: ${code}`
+      *   from: 'noreply@yourapp.com',
+      *   to: email,
+      *   subject: '감정 일기 - 이메일 인증 코드',
+      *   text: `인증 코드: ${code}`
    * });
    * ```
    */
@@ -347,19 +347,18 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     setIsLoading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       // [API 명세서 Section 2.2.2] POST /api/auth/send-verification-code
       const response = await sendVerificationCodeForSignup({ email });
       setSuccess(response.message);
       // API 응답에는 expiresIn만 반환되므로 현재 시간을 기준으로 계산
-      setCodeSentAt(Date.now());
       setTimeRemaining(response.expiresIn || 300); // API에서 반환된 expiresIn 사용 (기본값 300초)
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);
       setCodeSent(true);
-      
+
       // 첫 번째 입력 필드에 자동 포커스
       setTimeout(() => {
         inputRefs.current[0]?.focus();
@@ -387,16 +386,15 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     setIsLoading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       const response = await sendVerificationCodeForSignup({ email });
       setSuccess(response.message);
-      setCodeSentAt(response.sentAt);
-      setTimeRemaining(3); // 5분 리셋
+      setTimeRemaining(300); // 5분 리셋
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);
-      
+
       setTimeout(() => {
         inputRefs.current[0]?.focus();
       }, 100);
@@ -423,11 +421,11 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     if (!/^\d*$/.test(value)) {
       return;
     }
-    
+
     const newCode = [...verificationCode];
     newCode[index] = value;
     setVerificationCode(newCode);
-    
+
     // 자동 포커스 이동
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
@@ -469,7 +467,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 
    * [Cursor AI 연동 코드]
    * ```typescript
-   * // Redis 저장소 예시:
+  * // Redis 저장소 예시:
    * const storedCode = await redis.get(`verification:${email}`);
    * const expiresAt = await redis.get(`verification:${email}:expires`);
    * 
@@ -488,9 +486,9 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   const handleVerifyCode = async () => {
     setError('');
     setSuccess('');
-    
+
     const code = verificationCode.join('');
-    
+
     if (code.length !== 6) {
       setError('인증 코드 6자리를 모두 입력해주세요.');
       return;
@@ -500,9 +498,9 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       setError('인증 시간 만료\n코드를 재발송해주세요.');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       // [API 명세서 Section 2.2.3] POST /api/auth/verify-code
       const response = await verifyCode(email, code);
@@ -562,7 +560,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    */
   const handleConfirmPasswordChange = (value: string) => {
     setConfirmPassword(value);
-    
+
     if (value && value !== password) {
       setConfirmPasswordError('비밀번호가 일치하지 않습니다.');
     } else {
@@ -601,7 +599,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 
    * [Cursor AI 연동 코드]
    * ```typescript
-   * import bcrypt from 'bcrypt';
+  * import bcrypt from 'bcrypt';
    * import jwt from 'jsonwebtoken';
    * 
    * // 비밀번호 해싱
@@ -609,35 +607,35 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
    * 
    * // 사용자 DB 저장
    * const user = await db.users.create({
-   *   email,
-   *   password: hashedPassword,
-   *   name,
-   *   notificationEnabled: true
+    *   email,
+    *   password: hashedPassword,
+    *   name,
+    *   notificationEnabled: true
    * });
    * 
    * // JWT 토큰 발급
    * const accessToken = jwt.sign(
-   *   { userId: user.id, email: user.email },
-   *   process.env.JWT_SECRET,
-   *   { expiresIn: '1h' }
-   * );
+   * { userId: user.id, email: user.email },
+   * process.env.JWT_SECRET,
+   * { expiresIn: '1h' }
+      * );
    * 
    * const refreshToken = jwt.sign(
-   *   { userId: user.id },
-   *   process.env.JWT_REFRESH_SECRET,
-   *   { expiresIn: '7d' }
-   * );
+   * { userId: user.id },
+   * process.env.JWT_REFRESH_SECRET,
+   * { expiresIn: '7d' }
+        * );
    * ```
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     console.log('=== 🔍 회원가입 검증 시작 ===');
-    
+
     // ===== 최종 검증 =====
     let hasError = false;
-    
+
     // 이름 검증
     console.log('1️⃣ 이름 검증:', { name, length: name.trim().length });
     if (!name.trim()) {
@@ -651,7 +649,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 이름 검증 통과');
     }
-    
+
     // 이메일 검증
     console.log('2️⃣ 이메일 검증:', { email, emailDuplicateChecked, emailAvailable });
     if (!email.trim()) {
@@ -665,7 +663,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 이메일 검증 통과');
     }
-    
+
     // 이메일 인증 검증
     console.log('3️⃣ 이메일 인증 검증:', { codeVerified });
     if (!codeVerified) {
@@ -675,7 +673,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 이메일 인증 통과');
     }
-    
+
     // 비밀번호 검증
     console.log('4️⃣ 비밀번호 검증:', { password: password ? '입력됨' : '입력 안 됨', length: password.length });
     if (!password) {
@@ -692,7 +690,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
         console.log('✅ 비밀번호 검증 통과');
       }
     }
-    
+
     // 비밀번호 확인 검증
     console.log('5️⃣ 비밀번호 확인 검증:', { confirmPassword: confirmPassword ? '입력됨' : '입력 안 됨', match: confirmPassword === password });
     if (!confirmPassword) {
@@ -706,7 +704,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 비밀번호 확인 통과');
     }
-    
+
     // 성별 검증
     console.log('6️⃣ 성별 검증:', { gender });
     if (!gender || (gender !== 'MALE' && gender !== 'FEMALE')) {
@@ -716,17 +714,17 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 성별 검증 통과');
     }
-    
+
     // 필수 약관 동의 확인
     const requiredTerms = termsData.filter(t => t.required);
     const allRequiredAgreed = requiredTerms.every(term => !!agreements[term.id]);
-    
+
     console.log('7️⃣ 약관 동의 검증:');
     console.log('  - agreements 객체:', agreements);
     console.log('  - 필수 약관 ID 목록:', requiredTerms.map(t => t.id));
     console.log('  - 각 약관 동의 상태:', requiredTerms.map(t => ({ id: t.id, agreed: agreements[t.id] })));
     console.log('  - 모든 필수 약관 동의:', allRequiredAgreed);
-    
+
     if (!allRequiredAgreed) {
       setError('필수 약관에 모두 동의해주세요.');
       hasError = true;
@@ -734,13 +732,13 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     } else {
       console.log('✅ 약관 동의 통과');
     }
-    
+
     console.log('=== 최종 검증 결과 ===');
     console.log('hasError:', hasError);
-    
+
     if (hasError) {
       console.log('❌ 회원가입 실패: 검증 에러 발생');
-      
+
       // 첫 번째 오류 필드로 스크롤하고 강조
       // 검증 순서: 이름 → 이메일 → 이메일 인증 → 비밀번호 → 비밀번호 확인 → 성별 → 약관
       if (nameError && nameInputRef.current) {
@@ -781,35 +779,35 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       } else if (!allRequiredAgreed && termsRef.current) {
         termsRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      
+
       return;
     }
-    
+
     // 모든 검증 통과 시 에러 메시지 초기화
     setError('');
     console.log('✅ 모든 검증 통과! 회원가입 API 호출');
-    
+
     // ===== API 호출: 회원가입 =====
     setIsLoading(true);
-    
+
     try {
       // [API 명세서 Section 2.2.4] 회원가입 API 호출
-      const response = await signup({ 
-        email, 
-        password, 
+      const response = await signup({
+        email,
+        password,
         name,
         emailVerified: true, // 이메일 인증 완료 (codeVerified가 true이므로)
         gender: gender as 'MALE' | 'FEMALE', // 성별 (필수)
         verificationCode: verificationCode.join(''), // 프론트엔드에서만 사용 (백엔드 전송 전에 verifyCode로 검증 완료)
         termsAccepted: true // 약관 동의 (여기까지 왔다면 필수 약관 동의 완료)
       });
-      
+
       // JWT 토큰 localStorage 저장
       TokenStorage.setTokens(response.accessToken, response.refreshToken);
-      
+
       // 사용자 정보 localStorage 저장
       localStorage.setItem('user', JSON.stringify(response.user));
-      
+
       // 회원가입 성공 → 페르소나 설정 화면으로 이동 (App.tsx에서 처리)
       onSignupSuccess();
     } catch (err) {
@@ -820,42 +818,36 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
   };
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-100 via-sky-50 to-cyan-100 flex items-center justify-center p-4 py-8 overflow-y-auto text-blue-600" style={{ minHeight: 0 }}>
-      <div className="w-full flex-shrink-0">
-        {/* Signup Card */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg overflow-hidden">
-          <div className="p-6 max-h-[85vh] overflow-y-auto space-y-6">
+    <div className="w-full h-full flex items-center justify-center p-4 py-8 overflow-y-auto relative z-10" style={{ minHeight: 0 }}>
+      {/* Signup Card */}
+      <div className="w-full flex-shrink-0 max-w-md">
+        <div className="glass rounded-[2.5rem] shadow-2xl backdrop-blur-md bg-white/40 dark:bg-black/40 border border-white/20 overflow-hidden">
+          <div className="p-6 max-h-[85vh] overflow-y-auto space-y-6 custom-scrollbar">
             {/* Header */}
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
-                <BookHeart className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 mx-auto rounded-[1.5rem] bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg ring-4 ring-white/20">
+                <Heart className="w-10 h-10 text-white fill-white/20" />
               </div>
               <div>
-                <h2 className="text-stone-800 mb-1 text-blue-600">회원가입</h2>
+                <h2 className="text-2xl font-bold text-emerald-950 dark:text-emerald-50">회원가입</h2>
+                <p className="text-sm text-emerald-800/80 dark:text-emerald-200/60 mt-1">나만의 감정 기록을 시작해보세요</p>
               </div>
             </div>
 
-            {/* Signup Form */}
-            {/* 
-              [플로우 1.3]
-              form의 onSubmit 이벤트는 회원가입 버튼 클릭 시에만 발생합니다.
-              약관 동의나 필수 사항 체크가 완료되어도 자동으로 form이 submit되지 않습니다.
-            */}
-            <form 
+            <form
               onSubmit={(e) => {
-                // form의 기본 submit 동작 방지
-                // 회원가입 버튼의 onClick 핸들러에서만 처리
                 e.preventDefault();
-              }} 
-              className="space-y-4"
+              }}
+              className="space-y-5"
+              noValidate
             >
               {/* Name */}
-              <div>
-                <label className="text-xs text-stone-600 block mb-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
                   이름
                 </label>
-                <div className="relative">
-                  <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                <div className="relative group">
+                  <UserRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
                   <input
                     ref={nameInputRef}
                     type="text"
@@ -864,22 +856,22 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                     onBlur={handleNameBlur}
                     placeholder="이름을 입력해주세요"
                     disabled={isLoading}
-                    className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px]"
+                    className="w-full pl-12 pr-4 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
                   />
                 </div>
                 {nameError && (
-                  <p className="text-xs text-rose-500 mt-1.5">{nameError}</p>
+                  <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{nameError}</p>
                 )}
               </div>
 
               {/* Email */}
-              <div>
-                <label className="text-xs text-stone-600 block mb-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
                   이메일
                 </label>
                 <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <div className="relative flex-1 group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
                     <input
                       ref={emailInputRef}
                       type="email"
@@ -895,14 +887,14 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                       }}
                       placeholder="이메일을 입력하세요"
                       disabled={isLoading || isCheckingEmail || codeVerified}
-                      className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px] text-blue-600"
+                      className="w-full pl-12 pr-4 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={handleCheckEmailDuplicate}
                     disabled={isLoading || isCheckingEmail || !email || codeVerified}
-                    className="px-4 py-2.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300 text-white rounded-lg transition-colors whitespace-nowrap disabled:cursor-not-allowed"
+                    className="px-4 py-2.5 text-xs font-medium bg-emerald-600/90 hover:bg-emerald-600 disabled:bg-stone-300 dark:disabled:bg-stone-700 text-white rounded-xl transition-all shadow-md disabled:shadow-none whitespace-nowrap disabled:cursor-not-allowed"
                   >
                     {isCheckingEmail ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -912,22 +904,22 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                   </button>
                 </div>
                 {emailError && (
-                  <p className="text-xs text-rose-500 mt-1">{emailError}</p>
+                  <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{emailError}</p>
                 )}
                 {success && !codeSent && (
-                  <p className="text-xs text-emerald-600 mt-1">{success}</p>
+                  <p className="text-xs text-emerald-600 font-medium ml-1">{success}</p>
                 )}
               </div>
 
-              {/* 인증 코드 발송 버튼 (중복 확인 완료 후 표시) */}
+              {/* Verification Code Button */}
               {emailDuplicateChecked && emailAvailable && !codeVerified && (
-                <div>
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                   {!codeSent ? (
                     <button
                       type="button"
                       onClick={handleSendVerificationCode}
                       disabled={isLoading}
-                      className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:bg-stone-300 text-white rounded-lg transition-colors text-sm disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-teal-600/90 hover:bg-teal-600 disabled:bg-stone-300 text-white rounded-xl transition-all text-sm font-medium shadow-md flex items-center justify-center gap-2"
                     >
                       {isLoading ? (
                         <>
@@ -945,34 +937,34 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                 </div>
               )}
 
-              {/* 인증 코드 입력 (발송 후 표시) */}
+              {/* Verification Code Input */}
               {codeSent && !codeVerified && (
-                <div className="space-y-3">
-                  
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 p-4 bg-white/30 dark:bg-black/10 rounded-2xl border border-white/20">
+
                   {/* Timer */}
                   <div className="text-center">
-                    <p className={`text-sm ${codeExpired ? 'text-rose-600' : 'text-blue-600'}`}>
+                    <p className={`text - sm font - medium ${codeExpired ? 'text-red-500' : 'text-emerald-600'} `}>
                       {codeExpired ? (
                         <>
                           인증 시간 만료<br />
                           코드를 재발송해주세요.
                         </>
                       ) : (
-                        `남은 시간: ${formatTime(timeRemaining)}`
+                        `남은 시간: ${formatTime(timeRemaining)} `
                       )}
                     </p>
                   </div>
 
-                  {/* 인증 코드 입력 */}
+                  {/* Verification Code Input */}
                   <div>
-                    <label className="text-xs text-stone-600 block mb-1.5 text-center">
+                    <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 block mb-2 text-center">
                       인증 코드 (6자리)
                     </label>
                     <div className="flex gap-2 justify-center">
                       {verificationCode.map((digit, index) => (
                         <input
                           key={index}
-                          ref={(el) => (inputRefs.current[index] = el)}
+                          ref={(el) => { inputRefs.current[index] = el; }}
                           type="text"
                           inputMode="numeric"
                           maxLength={1}
@@ -980,18 +972,18 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                           onChange={(e) => handleCodeChange(index, e.target.value)}
                           onKeyDown={(e) => handleCodeKeyDown(index, e)}
                           disabled={isLoading || codeExpired}
-                          className="w-10 h-12 text-center text-lg bg-white border-2 border-stone-300 rounded-lg outline-none text-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                          className="w-10 h-12 text-center text-lg font-bold bg-white/70 dark:bg-black/30 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 disabled:opacity-50 transition-all focus:border-emerald-500 focus:scale-110 shadow-sm"
                         />
                       ))}
                     </div>
                   </div>
 
-                  {/* 인증 확인 버튼 */}
+                  {/* Verify Button */}
                   <button
                     type="button"
                     onClick={handleVerifyCode}
                     disabled={isLoading || codeExpired || verificationCode.join('').length !== 6}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-stone-300 text-white rounded-lg transition-colors text-sm disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-stone-300 text-white rounded-xl transition-all text-sm font-medium shadow-md flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
                       <>
@@ -1006,35 +998,35 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                     )}
                   </button>
 
-                  {/* 재발송 버튼 */}
+                  {/* Resend Button */}
                   <button
                     type="button"
                     onClick={handleResendCode}
                     disabled={isLoading}
-                    className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 rounded-lg transition-colors text-sm"
+                    className="w-full py-3 bg-white/50 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 disabled:opacity-50 text-emerald-800 dark:text-emerald-200 rounded-xl transition-all text-sm font-medium"
                   >
                     인증 코드 재발송
                   </button>
                 </div>
               )}
 
-              {/* 인증 완료 메시지 */}
+              {/* Verify Success */}
               {codeVerified && (
-                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <p className="text-xs text-emerald-700">이메일 인증이 완료되었습니다</p>
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  <p className="text-sm font-medium text-emerald-700">이메일 인증이 완료되었습니다</p>
                 </div>
               )}
 
-              {/* Password (인증 완료 후에만 표시) */}
+              {/* Password */}
               {codeVerified && (
-                <>
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-2">
+                <div className="space-y-5 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
                       비밀번호
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
                       <input
                         ref={passwordInputRef}
                         type={showPassword ? 'text' : 'password'}
@@ -1043,12 +1035,12 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                         onBlur={handlePasswordBlur}
                         placeholder="영문, 숫자, 특수문자 포함 8자 이상"
                         disabled={isLoading}
-                        className="w-full pl-10 pr-10 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px] text-blue-600"
+                        className="w-full pl-12 pr-12 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600/50 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50/50 transition-colors"
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -1058,17 +1050,17 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                       </button>
                     </div>
                     {passwordError && (
-                      <p className="text-xs text-rose-500 mt-1.5">{passwordError}</p>
+                      <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{passwordError}</p>
                     )}
                   </div>
 
                   {/* Confirm Password */}
-                  <div>
-                    <label className="text-xs text-stone-600 block mb-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 ml-1">
                       비밀번호 확인
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/50 group-focus-within:text-emerald-600 transition-colors" />
                       <input
                         ref={confirmPasswordInputRef}
                         type={showConfirmPassword ? 'text' : 'password'}
@@ -1076,12 +1068,12 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                         onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                         placeholder="비밀번호를 다시 입력하세요"
                         disabled={isLoading}
-                        className="w-full pl-10 pr-10 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px] text-blue-600"
+                        className="w-full pl-12 pr-12 py-3.5 text-sm bg-white/50 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-xl outline-none text-emerald-950 dark:text-emerald-50 placeholder:text-emerald-800/40 dark:placeholder:text-emerald-200/30 disabled:opacity-50 transition-all focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 focus:bg-white/80 dark:focus:bg-black/40 hover:bg-white/60 dark:hover:bg-black/30"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600/50 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50/50 transition-colors"
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -1091,17 +1083,17 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                       </button>
                     </div>
                     {confirmPasswordError && (
-                      <p className="text-xs text-rose-500 mt-1.5">{confirmPasswordError}</p>
+                      <p className="text-xs text-red-500 font-medium ml-1 animate-shake">{confirmPasswordError}</p>
                     )}
                   </div>
 
                   {/* Gender Selection */}
-                  <div ref={genderRef}>
-                    <label className="text-xs text-stone-600 block mb-2">
-                      성별 <span className="text-rose-500">*</span>
+                  <div ref={genderRef} className="space-y-2 bg-white/30 dark:bg-black/10 p-4 rounded-xl border border-white/20">
+                    <label className="text-xs font-semibold text-emerald-900/70 dark:text-emerald-100/70 block">
+                      성별 <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label className="flex items-center gap-2 cursor-pointer group">
                         <input
                           type="radio"
                           name="gender"
@@ -1112,11 +1104,11 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                             setError('');
                           }}
                           disabled={isLoading}
-                          className="w-4 h-4 text-blue-600 border-stone-300 focus:ring-blue-500 disabled:opacity-50"
+                          className="w-4 h-4 text-emerald-600 border-stone-300 focus:ring-emerald-500 disabled:opacity-50"
                         />
-                        <span className="text-sm text-stone-700">남성</span>
+                        <span className="text-sm font-medium text-emerald-900 dark:text-emerald-100 group-hover:text-emerald-700 transition-colors">남성</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label className="flex items-center gap-2 cursor-pointer group">
                         <input
                           type="radio"
                           name="gender"
@@ -1127,74 +1119,67 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                             setError('');
                           }}
                           disabled={isLoading}
-                          className="w-4 h-4 text-blue-600 border-stone-300 focus:ring-blue-500 disabled:opacity-50"
+                          className="w-4 h-4 text-emerald-600 border-stone-300 focus:ring-emerald-500 disabled:opacity-50"
                         />
-                        <span className="text-sm text-stone-700">여성</span>
+                        <span className="text-sm font-medium text-emerald-900 dark:text-emerald-100 group-hover:text-emerald-700 transition-colors">여성</span>
                       </label>
                     </div>
-                    <p className="text-xs text-stone-500 mt-1">AI 그림일기 주인공 성별 결정에 사용됩니다</p>
+                    <p className="text-xs text-emerald-800/60 dark:text-emerald-200/50">AI 그림일기 주인공 성별 결정에 사용됩니다</p>
                   </div>
 
                   {/* Terms Agreement */}
-                  <div ref={termsRef}>
-                    <TermsAgreement 
+                  <div ref={termsRef} className="bg-white/30 dark:bg-black/10 p-4 rounded-xl border border-white/20">
+                    <TermsAgreement
                       agreements={agreements}
                       onAgreementChange={setAgreements}
                     />
                   </div>
-                </>
+                </div>
               )}
 
               {/* Error Message */}
               {error && (
-                <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                  <p className="text-xs text-rose-700 whitespace-pre-line text-center">{error}</p>
+                <div className="p-3 bg-red-50/80 border border-red-200/50 rounded-xl backdrop-blur-sm animate-shake">
+                  <p className="text-xs text-red-600 font-medium whitespace-pre-line text-center">{error}</p>
                 </div>
               )}
 
-              {/* Success Message (인증 코드 발송/확인) */}
+              {/* Success Message */}
               {success && codeSent && (
-                <div className="p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                  <p className="text-xs text-blue-700">{success}</p>
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200/50 rounded-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
+                  <p className="text-xs text-emerald-700 font-medium text-center">{success}</p>
                 </div>
               )}
 
-              {/* Submit Button (인증 완료 후에만 표시) */}
-              {/* 
-                [플로우 1.3 Step 8]
-                회원가입 버튼은 사용자가 직접 클릭해야만 회원가입이 진행됩니다.
-                약관 동의나 필수 사항 체크가 완료되어도 자동으로 회원가입이 진행되지 않습니다.
-              */}
+              {/* Submit Button */}
               {codeVerified && (
                 <button
                   type="submit"
                   disabled={isLoading}
                   onClick={(e) => {
-                    // 명시적으로 버튼 클릭 이벤트만 처리
-                    // 약관 동의나 다른 필수 사항 체크가 완료되어도 자동으로 실행되지 않도록 함
                     e.preventDefault();
                     handleSubmit(e);
                   }}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md"
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-500 hover:to-green-400 disabled:opacity-70 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center gap-2 font-semibold tracking-wide text-lg mt-4 animate-in fade-in slide-in-from-bottom-4"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       회원가입 중...
                     </>
                   ) : (
-                    '회원가입'
+                    '회원가입 완료'
                   )}
                 </button>
               )}
 
               {/* Back to Login */}
-              <div className="text-center">
+              <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={onBackToLogin}
                   disabled={isLoading}
-                  className="inline-block py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors disabled:opacity-50 text-blue-600"
+                  className="inline-block py-2 text-xs font-medium text-emerald-800/60 hover:text-emerald-800 dark:text-emerald-200/40 dark:hover:text-emerald-200 transition-colors disabled:opacity-50"
                 >
                   ← 로그인으로 돌아가기
                 </button>

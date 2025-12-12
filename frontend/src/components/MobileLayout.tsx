@@ -23,9 +23,9 @@ interface MobileLayoutProps {
 
 export function MobileLayout({ header, children, footer, className = '' }: MobileLayoutProps) {
   return (
-    <div 
-      className={`w-full h-full flex flex-col bg-white ${className}`} 
-      // 부모(MobileFrame)가 overflow-hidden이므로 여기서 h-full이 정확히 화면 크기가 됩니다.
+    <div
+      className={`w-full h-full flex flex-col bg-transparent ${className}`}
+    // 부모(MobileFrame)가 overflow-hidden이므로 여기서 h-full이 정확히 화면 크기가 됩니다.
     >
       {/* Header: 고정 */}
       {header && (
@@ -33,17 +33,17 @@ export function MobileLayout({ header, children, footer, className = '' }: Mobil
           {header}
         </header>
       )}
-      
+
       {/* Main: 나머지 공간 차지 + 내부 스크롤 */}
-      <main 
+      <main
         className="flex-1 w-full relative overflow-y-auto scrollbar-hide"
-        style={{ 
+        style={{
           WebkitOverflowScrolling: 'touch', // iOS 부드러운 스크롤
         }}
       >
         {children}
       </main>
-      
+
       {/* Footer: 고정 */}
       {footer && (
         <footer className="flex-shrink-0 z-40 relative">
