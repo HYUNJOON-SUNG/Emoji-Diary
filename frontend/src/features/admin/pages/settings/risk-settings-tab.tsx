@@ -31,10 +31,17 @@ export function RiskSettingsTab() {
     }, [setValue])
 
     const onSubmit = async (data: RiskDetectionSettings) => {
-        // Validation: High > Medium > Low
+        // Validation: High > Medium > Low (Period Score)
         if (data.high.scoreInPeriod <= data.medium.scoreInPeriod ||
             data.medium.scoreInPeriod <= data.low.scoreInPeriod) {
-            alert("위험 레벨 감지 기준은 [고위험 > 중위험 > 저위험] 순서여야 합니다.")
+            alert("기간 내 누적 점수 기준은 [고위험 > 중위험 > 저위험] 순서여야 합니다.")
+            return
+        }
+
+        // Validation: High > Medium > Low (Consecutive Score)
+        if (data.high.consecutiveScore <= data.medium.consecutiveScore ||
+            data.medium.consecutiveScore <= data.low.consecutiveScore) {
+            alert("연속 부정 감정 점수 기준은 [고위험 > 중위험 > 저위험] 순서여야 합니다.")
             return
         }
 
@@ -81,7 +88,7 @@ export function RiskSettingsTab() {
                     <div className="flex items-center gap-2">
                         <AdminInput
                             type="number"
-                            {...register(`${level}.scoreInPeriod`, { valueAsNumber: true, min: 1 })}
+                            {...register(`${level}.scoreInPeriod`, { valueAsNumber: true, min: 1, max: 200 })}
                             className="bg-white"
                         />
                         <span className="text-xs text-slate-400">점</span>
@@ -153,24 +160,52 @@ export function RiskSettingsTab() {
             </AdminCard>
 
             {/* Guide Card - Updated Content */}
-            <AdminCard className="bg-slate-50/50 border-dashed h-fit">
+            <AdminCard className="bg-slate-50/50 border-dashed h-full">
                 <AdminCardHeader>
                     <AdminCardTitle className="text-base">설정 가이드</AdminCardTitle>
                 </AdminCardHeader>
-                <AdminCardContent className="space-y-4 text-sm text-slate-600">
-                    <p>
-                        <strong>모니터링 기간:</strong> 설정된 기간 동안의 감정 기록을 분석합니다.
-                    </p>
-                    <div className="space-y-2">
-                        <strong>감지 기준 상세:</strong>
-                        <ul className="list-disc list-inside space-y-1 pl-2 text-xs">
+                <AdminCardContent className="space-y-6 text-sm text-slate-600">
+                    <div>
+                        <h4 className="font-semibold text-slate-900 mb-2">1. 감정 분석 점수 체계</h4>
+                        <p className="mb-2">KoBERT 모델이 분석한 감정 결과에 따라 위험 점수가 부여됩니다:</p>
+                        <ul className="list-disc list-inside space-y-1 pl-1 text-xs bg-white p-3 rounded border border-slate-200">
                             <li>
-                                <span className="font-medium text-slate-700">연속 부정 감정 점수:</span> 연속적으로 부정적인 일기를 작성했을 때의 누적 위험도입니다.
+                                <span className="font-bold text-red-500">고위험 (2점)</span>: <span className="text-slate-700">슬픔, 분노</span>
                             </li>
                             <li>
-                                <span className="font-medium text-slate-700">기간 내 누적 점수:</span> 모니터링 기간 전체에서의 부정 감정 총합입니다.
+                                <span className="font-bold text-orange-500">중위험 (1점)</span>: <span className="text-slate-700">불안, 혐오</span>
+                            </li>
+                            <li>
+                                <span className="font-bold text-slate-400">비위험 (0점)</span>: <span className="text-slate-500">행복, 중립, 당황</span>
                             </li>
                         </ul>
+                    </div>
+
+                    <div>
+                        <h4 className="font-semibold text-slate-900 mb-2">2. 판정 로직 상세</h4>
+                        <div className="space-y-3">
+                            <div>
+                                <span className="font-medium text-slate-800 block mb-1">• 연속 부정 감정 점수</span>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    가장 최근 일기부터 과거로 거슬러 올라가며, <span className="underline decoration-slate-300 underline-offset-2">끊기지 않고 연속된</span> 부정 감정 일기들의 점수 합계입니다. 단 하루라도 부정 감정이 아니면 계산이 중단됩니다.
+                                </p>
+                            </div>
+                            <div>
+                                <span className="font-medium text-slate-800 block mb-1">• 기간 내 누적 점수</span>
+                                <p className="text-xs text-slate-500 leading-relaxed">
+                                    설정된 <span className="font-medium">모니터링 기간</span> 내에 발생한 모든 부정 감정 일기의 점수 합계입니다. 연속성과 관계없이 빈도수를 체크합니다.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-semibold text-slate-900 mb-2">3. 우선순위</h4>
+                        <p className="text-xs text-slate-500 bg-blue-50 text-blue-700 p-3 rounded border border-blue-100">
+                            판정은 <strong>High &gt; Medium &gt; Low</strong> 순서로 진행됩니다.
+                            <br />
+                            상위 레벨의 기준을 충족하면 하위 레벨 기준을 충족하더라도 상위 레벨로 판정됩니다.
+                        </p>
                     </div>
                 </AdminCardContent>
             </AdminCard>

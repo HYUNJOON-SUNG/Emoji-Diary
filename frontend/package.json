@@ -44,14 +44,17 @@
             "react-day-picker": "^8.10.1",
             "react-dom": "^18.3.1",
             "react-hook-form": "^7.67.0",
+            "react-markdown": "^10.1.0",
             "react-resizable-panels": "^2.1.9",
             "react-router-dom": "^7.9.6",
             "recharts": "^2.15.4",
+            "remark-gfm": "^4.0.1",
             "sonner": "^2.0.7",
             "tailwind-merge": "^3.4.0",
             "vaul": "^1.1.2"
       },
       "devDependencies": {
+            "@tailwindcss/typography": "^0.5.19",
             "@tailwindcss/vite": "^4.1.18",
             "@types/node": "^20.19.25",
             "@types/react": "^19.2.7",

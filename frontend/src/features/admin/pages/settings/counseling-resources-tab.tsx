@@ -218,10 +218,10 @@ function ResourceDialog({
                                     className="flex h-10 w-full rounded-lg border border-slate-200 bg-white/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                                 >
                                     <option value="">선택</option>
-                                    <option value="상담센터">상담센터</option>
-                                    <option value="정신건강">정신건강</option>
-                                    <option value="병원">병원</option>
-                                    <option value="기타">기타</option>
+                                    <option value="긴급상담">긴급상담</option>
+                                    <option value="전문상담">전문상담</option>
+                                    <option value="상담전화">상담전화</option>
+                                    <option value="의료기관">의료기관</option>
                                 </select>
                                 {errors.category && <span className="text-xs text-red-500">선택 필수</span>}
                             </div>
@@ -244,7 +244,7 @@ function ResourceDialog({
                                 className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                 {...register("isUrgent")}
                             />
-                            <label htmlFor="isUrgent" className="text-sm font-medium text-slate-700">긴급 상담 가능 (메인 노출)</label>
+                            <label htmlFor="isUrgent" className="text-sm font-medium text-slate-700">긴급 상담 기관으로 표시</label>
                         </div>
 
                         <div className="space-y-2">

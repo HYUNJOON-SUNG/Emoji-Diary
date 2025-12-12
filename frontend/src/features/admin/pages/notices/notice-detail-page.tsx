@@ -5,7 +5,8 @@ import { AdminPageHeader } from "../../components/ui/admin-page-header"
 import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "../../components/ui/admin-card"
 import { AdminButton } from "../../components/ui/admin-button"
 import { ArrowLeft, Calendar, Eye, Pin, User, Edit, Trash2 } from "lucide-react"
-
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 export function NoticeDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -97,13 +98,9 @@ export function NoticeDetailPage() {
                         </div>
                     </div>
                 </AdminCardHeader>
-                <AdminCardContent className="p-8 min-h-[300px] prose prose-slate max-w-none">
-                    {/* 
-                       Assuming html content. If markdown, would use react-markdown. 
-                       For security, ideally use a sanitizer. 
-                       Here assuming raw HTML from editor.
-                     */}
-                    <div dangerouslySetInnerHTML={{ __html: notice.content }} />
+
+                <AdminCardContent className="p-8 min-h-[300px] prose prose-slate max-w-none prose-headings:text-slate-900 prose-p:text-slate-600 prose-a:text-indigo-600 prose-strong:text-slate-900 prose-ul:list-disc prose-ol:list-decimal">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{notice.content}</ReactMarkdown>
                 </AdminCardContent>
             </AdminCard>
         </div>

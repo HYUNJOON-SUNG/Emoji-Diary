@@ -8,7 +8,8 @@ import { AdminCard, AdminCardContent } from "../../components/ui/admin-card"
 import { noticesApi, Notice } from "../../api/notices"
 import { ArrowLeft, Save, Eye, Edit3 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 interface NoticeFormData {
     title: string
     content: string
@@ -23,7 +24,7 @@ export default function NoticeFormPage() {
     const [loading, setLoading] = React.useState(false)
     const [activeTab, setActiveTab] = React.useState<"edit" | "preview">("edit")
 
-    const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<NoticeFormData>({
+    const { register, handleSubmit, setValue, watch, formState: { errors, isDirty }, reset } = useForm<NoticeFormData>({
         defaultValues: {
             title: "",
             content: "",
@@ -32,20 +33,50 @@ export default function NoticeFormPage() {
         }
     })
 
+    // Prevent browser refresh/close when form is dirty
+    React.useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [isDirty]);
+
     // Watch for preview
+    const title = watch("title")
     const content = watch("content")
 
     React.useEffect(() => {
         if (isEditMode) {
             setLoading(true)
             noticesApi.getNotice(id).then(data => {
-                setValue("title", data.title)
-                setValue("content", data.content)
-                setValue("isPublic", data.isPublic)
-                setValue("isPinned", data.isPinned)
+                // reset with data to set defaultValues and dirty state to false
+                reset({
+                    title: data.title,
+                    content: data.content,
+                    isPublic: data.isPublic,
+                    isPinned: data.isPinned
+                });
             }).finally(() => setLoading(false))
         }
-    }, [id, isEditMode, setValue])
+    }, [id, isEditMode, reset])
+
+    const handleCancel = () => {
+        if (isDirty) {
+            if (window.confirm("작성 중인 내용이 있습니다. 정말 나가시겠습니까?")) {
+                navigate("/admin/notices"); // Explicitly go to list for safety, or -1
+            }
+        } else {
+            navigate("/admin/notices");
+        }
+    }
 
     const onSubmit = async (data: NoticeFormData) => {
         setLoading(true)
@@ -55,6 +86,8 @@ export default function NoticeFormPage() {
             } else {
                 await noticesApi.createNotice(data)
             }
+            // Reset form state to avoid triggering blocker
+            reset(data);
             navigate("/admin/notices")
         } catch (error) {
             console.error("Failed to save notice", error)
@@ -69,7 +102,7 @@ export default function NoticeFormPage() {
                 title={isEditMode ? "공지사항 수정" : "새 공지사항 작성"}
                 description={isEditMode ? "기존 공지사항을 수정합니다." : "새로운 공지사항을 등록합니다."}
                 action={
-                    <AdminButton variant="outline" onClick={() => navigate(-1)}>
+                    <AdminButton variant="outline" onClick={handleCancel}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         목록으로
                     </AdminButton>
@@ -81,18 +114,25 @@ export default function NoticeFormPage() {
                     <div className="md:col-span-2 space-y-4">
                         {/* Title */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">제목</label>
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-medium text-slate-700">제목</label>
+                                <span className={cn("text-xs font-mono", (title?.length || 0) >= 200 ? "text-red-500 font-bold" : "text-slate-400")}>
+                                    {title?.length || 0}/200
+                                </span>
+                            </div>
                             <AdminInput
                                 placeholder="공지사항 제목을 입력하세요"
+                                maxLength={200}
                                 {...register("title", { required: "제목은 필수입니다", maxLength: 200 })}
                             />
                             {errors.title && <p className="text-xs text-red-500">{errors.title.message}</p>}
                         </div>
 
+
                         {/* Content Editor / Preview */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-slate-700">내용</label>
+                                <label className="text-sm font-medium text-slate-700">내용 (Markdown 지원)</label>
                                 <div className="flex bg-slate-100 rounded-lg p-1">
                                     <button
                                         type="button"
@@ -120,13 +160,17 @@ export default function NoticeFormPage() {
                             <AdminCard className="min-h-[400px] overflow-hidden">
                                 {activeTab === "edit" ? (
                                     <textarea
-                                        className="w-full h-[400px] p-4 text-sm resize-none focus:outline-none bg-transparent"
-                                        placeholder="공지사항 내용을 HTML 형식 또는 텍스트로 입력하세요..."
+                                        className="w-full h-[400px] p-4 text-sm resize-none focus:outline-none bg-transparent font-mono"
+                                        placeholder="# 제목&#13;&#10;- 목록 아이템&#13;&#10;**굵게**"
                                         {...register("content", { required: "내용은 필수입니다" })}
                                     />
                                 ) : (
-                                    <div className="p-6 prose prose-slate max-w-none h-[400px] overflow-y-auto bg-slate-50/50">
-                                        <div dangerouslySetInnerHTML={{ __html: content || "<p class='text-slate-400 italic'>내용이 없습니다.</p>" }} />
+                                    <div className="p-6 prose prose-slate max-w-none h-[400px] overflow-y-auto bg-slate-50/50 prose-headings:text-slate-900 prose-p:text-slate-600 prose-a:text-indigo-600 prose-strong:text-slate-900 prose-ul:list-disc prose-ol:list-decimal">
+                                        {content ? (
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                                        ) : (
+                                            <p className='text-slate-400 italic'>내용이 없습니다.</p>
+                                        )}
                                     </div>
                                 )}
                             </AdminCard>

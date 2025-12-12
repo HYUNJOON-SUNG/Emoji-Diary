@@ -1,6 +1,6 @@
-import axios from "@/lib/axios"
+import { adminApiClient } from "@/services/api"
 
-const BASE_URL = "/admin/auth"
+const BASE_URL = "/auth"
 
 export interface LoginResponse {
     success: boolean
@@ -25,18 +25,14 @@ export interface RefreshResponse {
 
 export const adminAuthApi = {
     login: async (email: string, password: string): Promise<LoginResponse> => {
-        const response = await axios.post(BASE_URL + "/login", { email, password })
+        const response = await adminApiClient.post(BASE_URL + "/login", { email, password })
         return response.data
     },
     refresh: async (refreshToken: string): Promise<RefreshResponse> => {
-        const response = await axios.post(BASE_URL + "/refresh", { refreshToken })
+        const response = await adminApiClient.post(BASE_URL + "/refresh", { refreshToken })
         return response.data
     },
-    logout: async (token: string) => {
-        await axios.post(
-            BASE_URL + "/logout",
-            {}, // Empty body as backend ignores it
-            { headers: { Authorization: `Bearer ${token}` } }
-        )
+    logout: async () => {
+        await adminApiClient.post(BASE_URL + "/logout", {})
     },
 }

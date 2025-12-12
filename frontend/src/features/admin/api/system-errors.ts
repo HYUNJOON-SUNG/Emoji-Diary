@@ -1,6 +1,6 @@
-import axios from "@/lib/axios"
+import { adminApiClient } from "@/services/api"
 
-const BASE_URL = "/admin/error-logs"
+const BASE_URL = "/error-logs"
 
 export type ErrorLevel = "INFO" | "WARN" | "ERROR"
 
@@ -23,13 +23,6 @@ export interface ErrorLogListResponse {
     logs: ErrorLogItem[]
     total: number
     summary: ErrorLogSummary
-    // Pagination metadata might be missing in DTO view? 
-    // Controller returns ErrorLogListResponse.
-    // Spec 5.1 mentioned pagination. AdminErrorLogController accepts page/limit.
-    // DTO view (Step 1024) showed ONLY total, summary, logs.
-    // It did NOT show totalPages, number, size.
-    // Checking AdminErrorLogService might reveal if it calculates pages.
-    // If not, frontend must calculate totalPages = Math.ceil(total / size).
 }
 
 export interface ErrorLogDetailResponse {
@@ -54,7 +47,7 @@ export interface SystemErrorListParams {
 
 export const systemErrorsApi = {
     getSystemErrors: async (params: SystemErrorListParams): Promise<ErrorLogListResponse> => {
-        const response = await axios.get(BASE_URL, {
+        const response = await adminApiClient.get(BASE_URL, {
             params: {
                 page: params.page || 1,
                 limit: params.size || 20,
@@ -68,7 +61,7 @@ export const systemErrorsApi = {
     },
 
     getSystemError: async (id: number | string): Promise<ErrorLogDetailResponse> => {
-        const response = await axios.get(`${BASE_URL}/${id}`)
+        const response = await adminApiClient.get(`${BASE_URL}/${id}`)
         return response.data.data
-    }
+    },
 }

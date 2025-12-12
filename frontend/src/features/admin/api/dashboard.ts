@@ -1,6 +1,6 @@
-import axios from "@/lib/axios"
+import { adminApiClient } from "@/services/api"
 
-const BASE_URL = "/admin/dashboard"
+const BASE_URL = "/dashboard"
 
 export interface StatsData {
     totalUsers: {
@@ -69,7 +69,7 @@ export const dashboardApi = {
         activeUserType: "dau" | "wau" | "mau" = "dau",
         newUserPeriod: "daily" | "weekly" | "monthly" = "daily"
     ): Promise<StatsData> => {
-        const response = await axios.get(`${BASE_URL}/stats`, {
+        const response = await adminApiClient.get(`${BASE_URL}/stats`, {
             params: {
                 averageDiariesPeriod,
                 riskLevelPeriod,
@@ -81,14 +81,14 @@ export const dashboardApi = {
     },
 
     getDiaryTrend: async (period: "weekly" | "monthly" | "yearly"): Promise<DiaryTrendData[]> => {
-        const response = await axios.get(`${BASE_URL}/diary-trend`, {
+        const response = await adminApiClient.get(`${BASE_URL}/diary-trend`, {
             params: { period }
         })
         return response.data.data.trend
     },
 
     getUserActivity: async (period: "weekly" | "monthly" | "yearly"): Promise<UserActivityData[]> => {
-        const response = await axios.get(`${BASE_URL}/user-activity-stats`, {
+        const response = await adminApiClient.get(`${BASE_URL}/user-activity-stats`, {
             params: {
                 period,
                 metrics: 'newUsers,withdrawnUsers'
@@ -98,7 +98,7 @@ export const dashboardApi = {
     },
 
     getRiskDistribution: async (period: "weekly" | "monthly" | "yearly"): Promise<RiskDistributionData[]> => {
-        const response = await axios.get(`${BASE_URL}/risk-level-distribution`, {
+        const response = await adminApiClient.get(`${BASE_URL}/risk-level-distribution`, {
             params: { period }
         })
         return mapRiskDistributionToArray(response.data.data)
