@@ -40,8 +40,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Loader2, TrendingUp } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Loader2, TrendingUp, BarChart2 } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { fetchChartStats, ChartDataPoint } from '../../services/diaryApi';
 
 /**
@@ -76,6 +76,19 @@ const emotionChartColors: { [key: string]: string } = {
   angry: '#ef4444',     // 분노 - red
   anxious: '#f59e0b',  // 불안 - amber
   disgust: '#8b5cf6',  // 혐오 - violet
+};
+
+/**
+ * 감정 점수 매핑 (주간 선 그래프용)
+ */
+const emotionScores: { [key: string]: number } = {
+  happy: 2,      // 행복 +2
+  neutral: 1,    // 중립 +1
+  surprised: 0,  // 당황 +0
+  anxious: -1,   // 불안 -1
+  disgust: -1,   // 혐오 -1
+  sad: -2,       // 슬픔 -2
+  angry: -2,     // 분노 -2
 };
 
 /**
@@ -201,14 +214,56 @@ export function EmotionChartView() {
       
       console.log('감정 통계 차트 데이터 로드:', { periodType, year, month, startStr, endStr });
       const data = await fetchChartStats(startStr, endStr, periodType);
-      console.log('감정 통계 차트 데이터 응답:', data);
-      setChartData(data);
+      
+      // 필터링: 주간일 경우 정확히 최근 7일치 데이터만 남김 (API가 월 전체를 줄 수도 있으므로)
+      if (periodType === 'weekly') {
+        const filteredData = generateLast7DaysData(data);
+        console.log('필터링된 주간 차트 데이터:', filteredData);
+        setChartData(filteredData);
+      } else {
+        console.log('감정 통계 차트 데이터 응답:', data);
+        setChartData(data);
+      }
     } catch (err) {
       console.error('감정 통계 차트 데이터 로드 실패:', err);
       setError('통계 데이터를 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * 최근 7일간의 날짜 데이터를 생성하고, API 응답 데이터를 매핑
+   * 데이터가 없는 날짜는 빈 데이터로 채움
+   */
+  const generateLast7DaysData = (apiData: ChartDataPoint[]): ChartDataPoint[] => {
+    const result: ChartDataPoint[] = [];
+    const today = new Date();
+    
+    // 7일 전부터 오늘까지 순회
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateStr = formatDateString(date);
+      
+      // API 데이터에서 해당 날짜 찾기
+      const found = apiData.find(d => d.date === dateStr);
+      
+      if (found) {
+        result.push({
+          ...found,
+          displayLabel: `${date.getMonth() + 1}/${date.getDate()}`
+        });
+      } else {
+        // 데이터 없으면 0으로 초기화
+        result.push({
+          date: dateStr,
+          displayLabel: `${date.getMonth() + 1}/${date.getDate()}`,
+          happy: 0, neutral: 0, surprised: 0, sad: 0, angry: 0, anxious: 0, disgust: 0, total: 0
+        });
+      }
+    }
+    return result;
   };
 
   /**
@@ -223,15 +278,6 @@ export function EmotionChartView() {
 
   /**
    * 감정 분포 통계 계산 (플로우 7.5)
-   * 
-   * 계산 내용:
-   * - 전체 기간 중 각 감정별 발생 빈도 합계
-   * - 빈도가 높은 순으로 정렬
-   * - 상위 5개 감정만 반환
-   * 
-   * 플로우 7.5 요구사항:
-   * - 우측 페이지: 전체 기간 중 가장 많이 느낀 감정
-   * - 감정별 발생 빈도 (개수)
    */
   const getEmotionDistribution = () => {
     const totals: { [key: string]: number } = {};
@@ -252,104 +298,403 @@ export function EmotionChartView() {
   };
 
   /**
-   * 커스텀 툴팁 컴포넌트 (플로우 7.5)
-   * 
-   * 표시 내용:
-   * - 날짜 (라벨)
-   * - 해당 날짜의 감정 정보 (감정명: 발생 빈도)
-   * 
-   * 플로우 7.5 요구사항:
-   * - 그래프 데이터 포인트 호버 → 해당 날짜의 감정 정보 툴팁 표시
+   * 주요 감정 찾기 (점수 계산용)
    */
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-stone-300">
-          {/* 날짜 표시 */}
-          <p className="text-sm text-stone-800 mb-2">{label}</p>
-          
-          {/* 감정별 빈도 표시 (값이 0보다 큰 것만) */}
-          {payload
-            .filter((entry: any) => entry.value > 0)
-            .map((entry: any) => (
-              <p key={entry.dataKey} className="text-xs" style={{ color: entry.color }}>
-                {emotionLabels[entry.dataKey]}: {entry.value}회
-              </p>
-            ))}
-        </div>
-      );
-    }
-    return null;
+  const getPrimaryEmotion = (dataPoint: ChartDataPoint): string | null => {
+    if (dataPoint.total === 0) return null;
+    
+    let maxCount = 0;
+    let primary = null;
+    
+    Object.keys(emotionScores).forEach(emotion => {
+      const count = dataPoint[emotion as keyof ChartDataPoint] as number;
+      if (count > maxCount) {
+        maxCount = count;
+        primary = emotion;
+      }
+    });
+    
+    return primary;
   };
 
   /**
-   * 차트 렌더링 (플로우 7.5)
-   * 
-   * 표시 내용:
-   * - X축: 날짜 (일별 또는 주별)
-   * - Y축: 감정 발생 빈도
-   * - 각 감정별 색상으로 구분
-   * - 선 그래프 또는 막대 그래프
-   * 
-   * 인터랙션:
-   * - 데이터 포인트 호버 → CustomTooltip 표시
-   * 
-   * 플로우 7.5 요구사항:
-   * - 감정 변화 추이 그래프 표시
-   * - 막대 그래프 또는 선 그래프로 감정 변화 추이 표시
-   * - X축: 날짜 (일별 또는 주별)
-   * - Y축: 감정 발생 빈도
-   * - 각 감정별 색상으로 구분
+   * 주간 꺾은선 그래프 렌더링
    */
-  const renderChart = () => {
-    // 데이터가 없는 경우
-    if (chartData.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64 text-stone-500">
-          {periodType === 'weekly' ? '최근 7일간' : '최근 30일간'} 작성된 일기가 없습니다.
-        </div>
-      );
-    }
+  const renderWeeklyLineChart = () => {
+    // 데이터를 누적 점수로 변환
+    let cumulativeScore = 0;
+    const scoredData = chartData.map(d => {
+      const primaryEmotion = getPrimaryEmotion(d);
+      const dailyScore = primaryEmotion ? emotionScores[primaryEmotion] : 0;
+      
+      // 누적 합산 (일기가 없는 날은 0점 더함 => 변화 없음)
+      cumulativeScore += dailyScore;
+      
+      return {
+        ...d,
+        dailyScore,
+        cumulativeScore,
+        primaryEmotion // 툴팁용
+      };
+    });
 
-    // 실제 데이터가 있는 감정만 필터링
+    // Y축 도메인을 0을 기준으로 대칭되게 설정 (최대 절대값 사용)
+    const maxAbsScore = Math.max(
+      ...scoredData.map(d => Math.abs(d.cumulativeScore)),
+      4 // 최소 범위 확보 (점수가 작을 때를 대비)
+    );
+    // 여유 공간 추가
+    const domainMax = maxAbsScore + 1; 
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={scoredData} margin={{ top: 30, right: 20, bottom: 30, left: 35 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="displayLabel" 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            stroke="#9ca3af"
+            axisLine={false}
+            tickLine={false}
+            dy={10}
+            padding={{ left: 20, right: 20 }}
+          />
+          {/* Y축: 숫자 숨김, 눈금 없음, 도메인 설정 */}
+          <YAxis 
+            hide={true} 
+            padding={{ top: 0, bottom: 0 }}
+            domain={[-domainMax, domainMax]}
+          />
+          
+          {/* 기준선 (0점) */}
+          <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
+          
+          {/* Y축 레이블 (수동 배치, margin.left 영역 활용) */}
+          {/* 긍정 (Top) */}
+          <text x={30} y={40} textAnchor="end" fill="#3b82f6" fontSize={12} fontWeight="bold">긍정</text>
+          
+          {/* 0 (Center) - 차트 높이 300, top 30, bottom 30 => 높이 240, 중간 150 */}
+          {/* 정확한 위치는 도메인 대칭이므로 중앙 */}
+          <text x={30} y={150} textAnchor="end" fill="#9ca3af" fontSize={12} fontWeight="bold" dy={4}>0</text>
+          
+          {/* 부정 (Bottom) */}
+          <text x={30} y={265} textAnchor="end" fill="#ef4444" fontSize={12} fontWeight="bold">부정</text>
+
+          <Tooltip 
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                const emotionKey = data.primaryEmotion;
+                return (
+                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
+                    <p className="text-gray-500 text-xs mb-1">{data.displayLabel}</p>
+                    {emotionKey ? (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotionChartColors[emotionKey] }} />
+                           <span className="font-medium text-gray-900">{emotionLabels[emotionKey]}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          일일: {data.dailyScore > 0 ? '+' : ''}{data.dailyScore}점
+                        </div>
+                        <div className="text-xs font-semibold text-blue-600">
+                          누적: {data.cumulativeScore}점
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">기록 없음 (변화 없음)</p>
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          
+          <Line 
+            type="monotone" 
+            dataKey="cumulativeScore" 
+            stroke="#6366f1" 
+            strokeWidth={3} 
+            dot={(props) => {
+              const { cx, cy, payload } = props;
+              const emotionKey = payload.primaryEmotion;
+              if (!emotionKey) return <circle cx={cx} cy={cy} r={4} fill="#e5e7eb" stroke="none" />;
+              return (
+                <circle cx={cx} cy={cy} r={6} fill={emotionChartColors[emotionKey]} stroke="#fff" strokeWidth={2} />
+              );
+            }}
+            activeDot={{ r: 8 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  };
+  /**
+   * 월간 꺾은선 그래프 렌더링 (최근 30일)
+   */
+  const renderMonthlyLineChart = () => {
+    // 데이터를 누적 점수로 변환 (주간과 동일 로직)
+    let cumulativeScore = 0;
+    const scoredData = chartData.map(d => {
+      const primaryEmotion = getPrimaryEmotion(d);
+      const dailyScore = primaryEmotion ? emotionScores[primaryEmotion] : 0;
+      cumulativeScore += dailyScore;
+      return {
+        ...d,
+        dailyScore,
+        cumulativeScore,
+        primaryEmotion
+      };
+    });
+
+    // Y축 도메인 대칭 설정
+    const maxAbsScore = Math.max(
+      ...scoredData.map(d => Math.abs(d.cumulativeScore)),
+      4
+    );
+    const domainMax = maxAbsScore + 1;
+
+    // X축 틱 생성: [30일 전, ..., 매주 월요일, ..., 오늘]
+    // 데이터는 date: string ("YYYY-MM-DD") 형식을 가짐
+    const dates = scoredData.map(d => d.date);
+    if (dates.length === 0) return null;
+
+    const startDate = dates[0];
+    const endDate = dates[dates.length - 1];
+    
+    // 틱 날짜 선정
+    const tickDates = new Set<string>();
+    tickDates.add(startDate); // 시작일(30일 전)
+    tickDates.add(endDate);   // 오늘
+
+    // 매주 월요일 추가
+    dates.forEach(dateStr => {
+      const date = new Date(dateStr);
+      if (date.getDay() === 1) { // 1 = Monday
+        tickDates.add(dateStr);
+      }
+    });
+
+    const ticks = Array.from(tickDates).sort();
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={scoredData} margin={{ top: 30, right: 20, bottom: 30, left: 35 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="date" 
+            ticks={ticks}
+            tickFormatter={(dateStr) => {
+               // 날짜 포맷: MM/DD
+               const d = new Date(dateStr);
+               return `${d.getMonth() + 1}/${d.getDate()}`;
+            }}
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            stroke="#9ca3af"
+            axisLine={false}
+            tickLine={false}
+            dy={10}
+            padding={{ left: 20, right: 20 }}
+          />
+          <YAxis 
+            hide={true} 
+            padding={{ top: 0, bottom: 0 }}
+            domain={[-domainMax, domainMax]}
+          />
+          <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" />
+          
+          {/* Y축 레이블 */}
+          <text x={30} y={40} textAnchor="end" fill="#3b82f6" fontSize={12} fontWeight="bold">긍정</text>
+          <text x={30} y={150} textAnchor="end" fill="#9ca3af" fontSize={12} fontWeight="bold" dy={4}>0</text>
+          <text x={30} y={265} textAnchor="end" fill="#ef4444" fontSize={12} fontWeight="bold">부정</text>
+
+          <Tooltip 
+            content={({ active, payload, label }) => {
+              if (active && payload && payload.length) {
+                // 주간 집계 로직
+                // label(날짜) 기준 해당 주(월~일)의 데이터 집계
+                const currentDate = new Date(label);
+                
+                // 해당 주의 월요일 구하기
+                const day = currentDate.getDay();
+                const diff = currentDate.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+                const monday = new Date(currentDate.setDate(diff));
+                monday.setHours(0,0,0,0);
+                
+                // 해당 주의 일요일 구하기
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                sunday.setHours(23,59,59,999);
+
+                // 범위 내 데이터 필터링
+                const weeklyData = scoredData.filter(d => {
+                  const dDate = new Date(d.date);
+                  return dDate >= monday && dDate <= sunday;
+                });
+
+                // 감정 카운트 집계
+                const counts: {[key: string]: number} = {};
+                weeklyData.forEach(d => {
+                   Object.keys(emotionChartColors).forEach(emotion => {
+                      if (d[emotion as keyof ChartDataPoint] > 0) {
+                         counts[emotion] = (counts[emotion] || 0) + (d[emotion as keyof ChartDataPoint] as number);
+                      }
+                   });
+                });
+
+                // 상위 3개 감정 추출
+                const sortedEmotions = Object.entries(counts)
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 3);
+
+                return (
+                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100 min-w-[150px]">
+                    <p className="text-gray-500 text-xs mb-2">
+                       {monday.getMonth()+1}/{monday.getDate()} - {sunday.getMonth()+1}/{sunday.getDate()} 주차
+                    </p>
+                    {sortedEmotions.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {sortedEmotions.map(([emotion, count]) => (
+                          <div key={emotion} className="flex items-center justify-between gap-3">
+                             <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: emotionChartColors[emotion] }} />
+                                <span className="text-xs font-medium text-gray-700">{emotionLabels[emotion]}</span>
+                             </div>
+                             <span className="text-xs font-semibold text-gray-900">{count}회</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-xs">기록 없음</p>
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          
+          <Line 
+            type="monotone" 
+            dataKey="cumulativeScore" 
+            stroke="#6366f1" 
+            strokeWidth={3} 
+            dot={(props) => {
+              const { cx, cy, payload } = props;
+              // X축 틱에 포함된 날짜만 점 표시
+              if (ticks.includes(payload.date)) {
+                 const emotionKey = payload.primaryEmotion;
+                 return (
+                    <circle cx={cx} cy={cy} r={5} fill={emotionKey ? emotionChartColors[emotionKey] : '#9ca3af'} stroke="#fff" strokeWidth={2} />
+                 );
+              }
+              return <circle cx={cx} cy={cy} r={0} />;
+            }}
+            activeDot={{ r: 6 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  };
+  /**
+  /**
+   * 감정 분포 막대 그래프 렌더링 (주간/월간 공용)
+   * - x축: 7가지 모든 감정
+   * - y축: 횟수
+   * - 데이터: 선택된 기간(주간/월간)의 감정 발생 횟수 합계
+   */
+  const renderEmotionBarChart = () => {
+    // 7가지 감정 초기화
+    const initialData = Object.keys(emotionLabels).map(key => ({
+      emotion: key,
+      name: emotionLabels[key],
+      count: 0,
+      fill: emotionChartColors[key]
+    }));
+
+    // 데이터 집계
+    chartData.forEach(d => {
+      Object.keys(emotionChartColors).forEach(emotion => {
+        const count = d[emotion as keyof ChartDataPoint] as number;
+        const target = initialData.find(item => item.emotion === emotion);
+        if (target) {
+          target.count += count;
+        }
+      });
+    });
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={initialData} margin={{ top: 30, right: 20, bottom: 20, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <XAxis 
+            dataKey="name" 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            stroke="#9ca3af"
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis 
+            allowDecimals={false}
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            stroke="#9ca3af"
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip 
+            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0].payload;
+                return (
+                  <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100">
+                    <div className="flex items-center gap-2 mb-1">
+                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: data.fill }} />
+                       <span className="font-medium text-gray-900">{data.name}</span>
+                    </div>
+                    <p className="text-gray-500 text-xs">{data.count}회</p>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  /**
+   * 기존 차트 렌더링 (월간용 보존)
+   */
+  const renderDefaultChart = () => {
+    // 차트 타입에 따라 컴포넌트 선택
+    const ChartComponent = chartType === 'line' ? LineChart : BarChart;
+    const DataComponent = chartType === 'line' ? Line : Bar;
+    
+    // 실제 데이터가 있는 감정만 필터링 (기존 로직)
     const activeEmotions = Object.keys(emotionChartColors).filter(emotion => {
       return chartData.some(dataPoint => dataPoint[emotion as keyof ChartDataPoint] > 0);
     });
 
-    // 차트 타입에 따라 컴포넌트 선택
-    const ChartComponent = chartType === 'line' ? LineChart : BarChart;
-    const DataComponent = chartType === 'line' ? Line : Bar;
-
     return (
       <ResponsiveContainer width="100%" height={300}>
-        <ChartComponent data={chartData}>
-          {/* 그리드 선 */}
+        <ChartComponent data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#d6d3d1" opacity={0.3} />
-          
-          {/* X축: 날짜 (플로우 7.5) */}
           <XAxis 
             dataKey="displayLabel" 
             tick={{ fill: '#57534e', fontSize: 11 }}
             stroke="#a8a29e"
           />
-          
-          {/* Y축: 감정 발생 빈도 (플로우 7.5) */}
           <YAxis 
             tick={{ fill: '#57534e', fontSize: 11 }}
             stroke="#a8a29e"
             allowDecimals={false}
           />
-          
-          {/* 툴팁 (플로우 7.5) */}
           <Tooltip content={<CustomTooltip />} />
-          
-          {/* 범례 */}
-          <Legend 
-            wrapperStyle={{ fontSize: '11px' }}
-            formatter={(value) => emotionLabels[value] || value}
-          />
-          
-          {/* 감정별 데이터 라인/바 (플로우 7.5) */}
+          <Legend wrapperStyle={{ fontSize: '11px' }} formatter={(value) => emotionLabels[value] || value} />
           {activeEmotions.map(emotion => (
             <DataComponent
               key={emotion}
@@ -366,75 +711,94 @@ export function EmotionChartView() {
     );
   };
 
+  /**
+   * 커스텀 툴팁 컴포넌트 (기존)
+   */
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-stone-300">
+          <p className="text-sm text-stone-800 mb-2">{label}</p>
+          {payload
+            .filter((entry: any) => entry.value > 0)
+            .map((entry: any) => (
+              <p key={entry.dataKey} className="text-xs" style={{ color: entry.color }}>
+                {emotionLabels[entry.dataKey]}: {entry.value}회
+              </p>
+            ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   const emotionDistribution = getEmotionDistribution();
+
+
 
   return (
     <div className="space-y-6">
-      {/* 
-        Controls - 기간 및 차트 타입 선택 (플로우 7.5)
+      {/* Controls - 기간 및 차트 타입 선택 */}
+      <div className="flex flex-col items-center gap-4">
         
-        레이아웃:
-        - 좌측 열: 주간 버튼 + 선 그래프 버튼
-        - 우측 열: 월간 버튼 + 막대 그래프 버튼
-        
-        플로우 7.5 요구사항:
-        - 기간 선택: 주간/월간 단위 전환 버튼
-        - "주간" 선택: 최근 7일 감정 분포
-        - "월간" 선택: 최근 30일 감정 분포
-      */}
-      <div className="flex gap-4 justify-center">
-        {/* Left Column - Weekly & Line Chart */}
-        <div className="flex flex-col items-center gap-3">
-          {/* 주간 버튼 (플로우 7.5) */}
-          <button
-            onClick={() => setPeriodType('weekly')}
-            className={`px-6 py-2 rounded-lg transition-colors text-sm w-[120px] whitespace-nowrap ${
-              periodType === 'weekly'
-                ? 'bg-blue-500 text-white'
-                : 'bg-white/50 text-slate-700 hover:bg-white/80'
-            }`}
-          >
-            주간
-          </button>
+        {/* 통합 컨트롤 영역 */}
+        <div className="flex flex-col gap-3 items-center">
           
-          {/* 선 그래프 버튼 (플로우 7.5) */}
-          <button
-            onClick={() => setChartType('line')}
-            className={`px-6 py-2 rounded-lg transition-colors text-sm w-[120px] whitespace-nowrap ${
-              chartType === 'line'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white/50 text-stone-700 hover:bg-white/80'
-            }`}
+          {/* 1. 기간 선택 (Toggle Style) */}
+          <div 
+            className="bg-stone-100 p-1 rounded-lg flex w-[280px] min-w-[280px] shrink-0" 
+            style={{ width: '280px', minWidth: '280px' }}
           >
-            선 그래프
-          </button>
-        </div>
+             <button
+              onClick={() => setPeriodType('weekly')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                periodType === 'weekly'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              주간
+            </button>
+            <button
+              onClick={() => setPeriodType('monthly')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                periodType === 'monthly'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              월간
+            </button>
+          </div>
 
-        {/* Right Column - Monthly & Bar Chart */}
-        <div className="flex flex-col items-center gap-3">
-          {/* 월간 버튼 (플로우 7.5) */}
-          <button
-            onClick={() => setPeriodType('monthly')}
-            className={`px-6 py-2 rounded-lg transition-colors text-sm w-[120px] whitespace-nowrap ${
-              periodType === 'monthly'
-                ? 'bg-blue-500 text-white'
-                : 'bg-white/50 text-slate-700 hover:bg-white/80'
-            }`}
+          {/* 2. 차트 타입 선택 (Toggle Style) - 주간/월간 모두 표시 */}
+          <div 
+            className="bg-stone-100 p-1 rounded-lg flex w-[280px] min-w-[280px] shrink-0"
+            style={{ width: '280px', minWidth: '280px' }}
           >
-            월간
-          </button>
-          
-          {/* 막대 그래프 버튼 (플로우 7.5) */}
-          <button
-            onClick={() => setChartType('bar')}
-            className={`px-6 py-2 rounded-lg transition-colors text-sm w-[120px] whitespace-nowrap ${
-              chartType === 'bar'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white/50 text-stone-700 hover:bg-white/80'
-            }`}
-          >
-            막대 그래프
-          </button>
+            <button
+              onClick={() => setChartType('line')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${
+                chartType === 'line'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              선 그래프
+            </button>
+            <button
+              onClick={() => setChartType('bar')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-3 whitespace-nowrap ${
+                chartType === 'bar'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              막대 그래프
+            </button>
+          </div>
         </div>
       </div>
 
@@ -452,62 +816,41 @@ export function EmotionChartView() {
         </div>
       )}
 
-      {/* 
-        Chart - 감정 변화 추이 그래프 (플로우 7.5)
-        
-        표시 내용:
-        - TrendingUp 아이콘 + 제목
-        - 선 그래프 또는 막대 그래프
-        - X축: 날짜, Y축: 감정 발생 빈도
-        - 각 감정별 색상으로 구분
-        
-        플로우 7.5 요구사항:
-        - 감정 변화 추이 그래프 표시
-      */}
+      {/* Chart - 감정 변화 추이 그래프 */}
       {!isLoading && !error && (
         <div className="bg-white/80 rounded-lg p-4 border border-stone-300">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-5 h-5 text-blue-700" />
             <h3 className="text-sm text-stone-800">
-              {periodType === 'weekly' ? '최근 7일간' : '최근 30일간'} 감정 변화
+              {periodType === 'weekly' 
+                ? (chartType === 'line' ? '최근 7일간 감정 변화' : '이번주 감정 분포')
+                : (chartType === 'line' ? '최근 30일간 감정 변화' : '이번달 감정 분포')}
             </h3>
           </div>
-          {renderChart()}
+          {/* 렌더링 로직 분기 */}
+          {periodType === 'weekly' 
+            ? (chartType === 'line' ? renderWeeklyLineChart() : renderEmotionBarChart())
+            : (chartType === 'line' ? renderMonthlyLineChart() : renderEmotionBarChart())
+          }
         </div>
       )}
 
-      {/* 
-        Emotion Summary - 감정 통계 요약 (플로우 7.5)
-        
-        표시 내용:
-        - 이번 기간 주요 감정 (TOP 5)
-        - 각 감정별 색상 박스
-        - 감정명 (한글)
-        - 발생 빈도 (개수)
-        
-        플로우 7.5 요구사항 (EmotionStatsPage 우측 페이지):
-        - 전체 기간 중 가장 많이 느낀 감정
-        - 감정별 발생 빈도 (개수)
-        
-        NOTE: 이 요약은 좌측 페이지에 표시되지만,
-        우측 페이지에도 유사한 통계가 표시됩니다.
-      */}
+      {/* Emotion Summary - 이번주 감정 통계 */}
       {!isLoading && !error && emotionDistribution.length > 0 && (
         <div className="bg-white/80 rounded-lg p-4 border border-stone-300">
-          <h4 className="text-sm text-stone-800 mb-3">이번 기간 주요 감정</h4>
+          <h4 className="text-sm text-stone-800 mb-3">
+            {periodType === 'weekly' ? '이번주 감정 통계' : '이번달 주요 감정'}
+          </h4>
           <div className="space-y-2">
             {emotionDistribution.map(([emotion, count]) => (
               <div key={emotion} className="flex items-center gap-3">
-                {/* 감정 색상 박스 */}
                 <div
                   className="w-4 h-4 rounded"
                   style={{ backgroundColor: emotionChartColors[emotion] }}
                 />
-                {/* 감정명 */}
                 <span className="text-sm text-stone-700 flex-1">
                   {emotionLabels[emotion]}
                 </span>
-                {/* 발생 빈도 */}
                 <span className="text-sm text-stone-800">{count}회</span>
               </div>
             ))}

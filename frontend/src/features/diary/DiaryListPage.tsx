@@ -33,31 +33,49 @@ import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, CalendarDays, Loader2, X, HelpCircle, ArrowLeft } from 'lucide-react';
 import { searchDiaries, DiarySearchParams, DiarySearchResult, DiaryDetail } from '../../services/diaryApi';
 
+import happyImg from '../../assets/행복.png';
+import neutralImg from '../../assets/중립.png';
+import embarrassedImg from '../../assets/당황.png';
+import sadImg from '../../assets/슬픔.png';
+import angerImg from '../../assets/분노.png';
+import anxietyImg from '../../assets/불안.png';
+import disgustImg from '../../assets/혐오.png';
+
+// ... imports
+
 interface DiaryListPageProps {
   onDateClick?: (date: Date) => void;
-  onDiaryClick?: (date: Date) => void; // 일기 클릭 콜백 (onDateClick과 동일하지만 명확성을 위해 별도 prop)
-  onBack?: () => void; // 뒤로가기 콜백 (요구사항 12)
+  onDiaryClick?: (date: Date) => void;
+  onBack?: () => void;
 }
 
-/**
- * KoBERT 감정 종류 (7가지)
- * [API 명세서 Section 5.1] emotions 파라미터는 KoBERT 감정 종류를 사용
- * [ERD 설계서 참고 - Diaries 테이블] emotion: ENUM (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)
- */
 const KOBERT_EMOTIONS = ['행복', '중립', '당황', '슬픔', '분노', '불안', '혐오'];
+// ...
+
+const KOBERT_EMOTIONS_MAP: { [key: string]: { image: string } } = {
+  '행복': { image: happyImg },
+  '중립': { image: neutralImg },
+  '당황': { image: embarrassedImg },
+  '슬픔': { image: sadImg },
+  '분노': { image: angerImg },
+  '불안': { image: anxietyImg },
+  '혐오': { image: disgustImg },
+};
 
 /**
- * KoBERT 감정별 색상 매핑
+ * KoBERT 감정별 색상 매핑 (삭제됨 - 모노크롬 스타일 적용)
  */
-const emotionColors: { [key: string]: string } = {
-  '행복': 'bg-sky-200',
-  '중립': 'bg-stone-200',
-  '당황': 'bg-gray-200',
-  '슬픔': 'bg-red-200',
-  '분노': 'bg-rose-300',
-  '불안': 'bg-pink-200',
-  '혐오': 'bg-rose-200',
-};
+// const emotionColors = ...
+
+
+
+
+
+// ... (inside component)
+
+// ...
+
+
 
 export function DiaryListPage({ onDateClick, onDiaryClick, onBack }: DiaryListPageProps) {
   const [searchResult, setSearchResult] = useState<DiarySearchResult | null>(null);
@@ -276,10 +294,10 @@ export function DiaryListPage({ onDateClick, onDiaryClick, onBack }: DiaryListPa
                     key={emotion}
                     type="button"
                     onClick={() => handleEmotionToggle(emotion)}
-                    className={`px-2.5 py-1.5 text-xs rounded-full border transition-colors ${
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                       emotionCategories.includes(emotion)
-                        ? `${emotionColors[emotion]} border-stone-400 text-stone-900 font-medium`
-                        : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-100'
+                        ? 'bg-white border-stone-900 text-stone-900 font-bold shadow-sm'
+                        : 'bg-white border-stone-200 text-stone-400 hover:text-stone-600 hover:border-stone-300'
                     }`}
                   >
                     {emotion}
@@ -360,8 +378,17 @@ export function DiaryListPage({ onDateClick, onDiaryClick, onBack }: DiaryListPa
                     {/* Content */}
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-center justify-between mb-1">
-                         <div className={`px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1 ${emotionColors[diary.emotion] || 'bg-stone-200'}`}>
-                           <span>{diary.emotion}</span>
+                         <div className="flex items-center gap-2">
+                           <div className="px-2.5 py-0.5 rounded-full text-[10px] font-medium border bg-white border-stone-200 text-stone-600">
+                             {diary.emotion}
+                           </div>
+                           {KOBERT_EMOTIONS_MAP[diary.emotion]?.image && (
+                             <img 
+                               src={KOBERT_EMOTIONS_MAP[diary.emotion]?.image} 
+                               alt={diary.emotion} 
+                               className="w-5 h-5 object-contain"
+                             />
+                           )}
                          </div>
                          {diary.weather && (
                            <span className="text-[10px] text-stone-400 flex items-center gap-0.5">

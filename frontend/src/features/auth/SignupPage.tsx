@@ -392,7 +392,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
       const response = await sendVerificationCodeForSignup({ email });
       setSuccess(response.message);
       setCodeSentAt(response.sentAt);
-      setTimeRemaining(300); // 5분 리셋
+      setTimeRemaining(3); // 5분 리셋
       setTimerActive(true);
       setCodeExpired(false);
       setVerificationCode(['', '', '', '', '', '']);
@@ -497,7 +497,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
     }
 
     if (codeExpired) {
-      setError('인증 시간이 만료되었습니다. 재발송해주세요.');
+      setError('인증 시간 만료\n코드를 재발송해주세요.');
       return;
     }
     
@@ -862,7 +862,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     onBlur={handleNameBlur}
-                    placeholder="홍길동"
+                    placeholder="이름을 입력해주세요"
                     disabled={isLoading}
                     className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-stone-300 rounded-lg outline-none text-stone-800 placeholder:text-stone-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 min-h-[44px]"
                   />
@@ -953,7 +953,10 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
                   <div className="text-center">
                     <p className={`text-sm ${codeExpired ? 'text-rose-600' : 'text-blue-600'}`}>
                       {codeExpired ? (
-                        '인증 시간이 만료되었습니다. 인증 코드를 재발송해주세요.'
+                        <>
+                          인증 시간 만료<br />
+                          코드를 재발송해주세요.
+                        </>
                       ) : (
                         `남은 시간: ${formatTime(timeRemaining)}`
                       )}
@@ -1145,7 +1148,7 @@ export function SignupPage({ onSignupSuccess, onBackToLogin }: SignupPageProps) 
               {/* Error Message */}
               {error && (
                 <div className="p-3 bg-rose-50 border border-rose-300 rounded-lg">
-                  <p className="text-xs text-rose-700">{error}</p>
+                  <p className="text-xs text-rose-700 whitespace-pre-line text-center">{error}</p>
                 </div>
               )}
 

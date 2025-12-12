@@ -25,6 +25,9 @@ export default function App() {
         
         {/* 관리자 화면 */}
         <Route path="/admin/*" element={<AdminApp />} />
+        
+        {/* 그 외 모든 경로는 /user로 리다이렉트 (404 처리) */}
+        <Route path="*" element={<Navigate to="/user" replace />} />
       </Routes>
     </BrowserRouter>
   );

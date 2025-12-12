@@ -11,7 +11,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X, Loader2, ArrowLeft } from 'lucide-react';
+import { Phone, ExternalLink, Clock, Heart, AlertTriangle, MessageCircle, Building, Filter, X, Loader2, ArrowLeft, HelpCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getCounselingResources, type CounselingResource } from '../../services/counselingResourcesApi';
 import { categoryLabels, categoryColors } from '../../services/supportResources';
 
@@ -79,6 +80,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
   const [resources, setResources] = useState<ReturnType<typeof convertToSupportResource>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // 상담 기관 목록 조회
   useEffect(() => {
@@ -146,12 +148,21 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
+        
+        {/* 도움말 버튼 - 오른쪽 상단 고정 */}
+        <button
+          onClick={() => setShowHelpModal(true)}
+          className="absolute top-0 right-0 p-2 active:bg-gray-100 rounded-xl transition-colors text-stone-400 hover:text-stone-600 active:text-stone-700 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="도움말"
+        >
+          <HelpCircle className="w-5 h-5" />
+        </button>
+
         <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
           <Heart className="w-8 h-8 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-stone-800 mb-2">도움말 & 리소스</h2>
-          <p className="text-sm text-stone-600">언제든 도움을 요청할 수 있습니다</p>
+          <h2 className="text-stone-800 font-bold text-lg">상담 연결 리소스</h2>
         </div>
       </div>
 
@@ -217,15 +228,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
               <span>{label}</span>
             </button>
           ))}       </div>
-        {selectedCategory !== 'all' && (
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className="w-full py-2.5 text-xs text-stone-600 hover:text-stone-800 flex items-center justify-center gap-1 min-h-[44px]"
-          >
-            <X className="w-3.5 h-3.5" />
-            <span>필터 해제</span>
-          </button>
-        )}
+
       </div>
 
       {/* 리소스 목록 */}
@@ -319,6 +322,105 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
           </>
         )}
       </div>
+
+      {/* 도움말 모달 */}
+      <AnimatePresence>
+        {showHelpModal && (
+          <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4 overflow-hidden">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHelpModal(false)}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              style={{ maxHeight: '85%', maxWidth: '95%' }}
+            >
+              {/* 닫기 버튼 */}
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 text-stone-400 hover:text-stone-600 transition-colors rounded-lg hover:bg-black/5 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="p-6 space-y-6 overflow-y-auto scrollbar-hide flex-1">
+                <div className="text-center space-y-4 pt-2">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 flex items-center justify-center mb-2">
+                    <Heart className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-stone-800">
+                    도움을 요청하는 것은 용기입니다
+                  </h3>
+                  <p className="text-sm text-stone-600 leading-relaxed break-keep">
+                    혼자서 감정을 감당하기 어려울 때, 전문가의 도움을 받는 것은 매우 현명한 선택입니다. 당신의 감정과 고민은 소중하며, 언제든 도움을 요청할 수 있습니다.
+                  </p>
+                </div>
+
+                {/* 긴급한 경우 박스 */}
+                <div className="bg-white border-2 border-rose-100 rounded-xl p-5 space-y-3 shadow-sm">
+                  <div className="flex items-center gap-2 text-rose-600 mb-1">
+                    <AlertTriangle className="w-5 h-5" />
+                    <h4 className="text-sm font-bold">긴급한 경우</h4>
+                  </div>
+                  <p className="text-sm text-stone-700 leading-relaxed break-keep">
+                    자살 충동이나 자해 생각이 든다면 즉시 <span className="font-bold text-rose-600">1393</span>(자살예방상담전화) 또는 <span className="font-bold text-rose-600">1577-0199</span> <br></br>(정신건강 위기상담)로 연락해주세요.
+                  </p>
+                  <div className="pt-2 text-xs text-stone-500 font-medium border-t border-rose-50 mt-2">
+                    ※ 24시간 상담 가능합니다.
+                  </div>
+                </div>
+
+                {/* 상담이 도움이 되는 경우 */}
+                <div className="space-y-3 bg-white/50 p-4 rounded-xl border border-blue-100">
+                  <h4 className="text-sm font-bold text-stone-800 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-blue-500" />
+                    상담이 도움이 되는 경우
+                  </h4>
+                  <ul className="space-y-2 text-sm text-stone-600">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                      <span>지속적인 우울감이나 불안감</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                      <span>일상생활에 지장을 주는 감정 변화</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                      <span>수면 문제나 식욕 변화</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                      <span>대인관계의 어려움</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                      <span>스트레스 관리의 어려움</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* 닫기 버튼 */}
+                <button 
+                  onClick={() => setShowHelpModal(false)}
+                  className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  확인했습니다
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -68,6 +68,11 @@ public class Diary {
     @Column(name = "weather")
     private Weather weather;
 
+    // 작성 당시 페르소나 (persona) - Snapshot
+    @Enumerated(EnumType.STRING)
+    @Column(name = "persona")
+    private User.Persona persona;
+
     // AI 생성 이미지 URL (image_url)
     @Column(name = "image_url", length = 500)
     private String imageUrl;

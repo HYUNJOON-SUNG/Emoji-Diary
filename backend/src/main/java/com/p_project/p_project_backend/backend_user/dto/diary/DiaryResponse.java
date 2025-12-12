@@ -27,6 +27,7 @@ public class DiaryResponse {
     private List<String> images; // User images
     private String imageUrl; // AI Image
     private String aiComment;
+    private String persona; // Snapshot Persona
     private Object recommendedFood; // JSON parsed object
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
