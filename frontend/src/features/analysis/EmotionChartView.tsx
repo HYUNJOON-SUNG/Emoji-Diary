@@ -82,9 +82,9 @@ const emotionChartColors: { [key: string]: string } = {
  * 감정 점수 매핑 (주간 선 그래프용)
  */
 const emotionScores: { [key: string]: number } = {
-  happy: 2,      // 행복 +2
-  neutral: 1,    // 중립 +1
-  surprised: 0,  // 당황 +0
+  happy: 3,      // 행복 +3
+  neutral: 2,    // 중립 +2
+  surprised: 1,  // 당황 +1
   anxious: -1,   // 불안 -1
   disgust: -1,   // 혐오 -1
   sad: -2,       // 슬픔 -2
