@@ -486,31 +486,13 @@ export const DiaryWritingPage = forwardRef<{
     setImages(images.filter((_, i) => i !== index));
   };
 
-  /**
-   * 위험 신호 분석 및 세션 저장
-   * 
-   * [백엔드 API 사용]
-   * - 백엔드에 이미 위험 신호 분석 API가 구현되어 있음
-   * - POST /api/risk-detection/mark-shown: 세션 저장 (markShown 메서드가 내부적으로 analyze를 호출하여 최신 위험 레벨로 세션 저장)
-   * 
-   * [백엔드 구현 확인]
-   * - RiskDetectionService.markShown(): 내부적으로 analyze()를 호출하여 최신 위험 레벨을 계산한 후 세션 저장
-   *   - 같은 날짜의 세션이 있으면 업데이트, 없으면 새로 생성
-   *   - 세션은 Risk_Detection_Sessions 테이블에 저장되며, 관리자 대시보드의 위험 레벨 분포 통계에 사용됨
-   * 
-   * [주의사항]
-   * - markShown()이 내부적으로 analyze()를 호출하므로, analyze()를 별도로 호출할 필요 없음
-   * - 일기 작성/수정 후 위험 신호를 계산하여 세션에 저장하면, 관리자 대시보드에서 위험 레벨 분포 통계를 조회할 수 있음
-   */
   const calculateAndSaveRiskSignals = async () => {
     try {
-      // 백엔드의 markShown API를 호출하여 위험 신호 분석 및 세션 저장 수행
-      // markShown()이 내부적으로 analyze()를 호출하여 최신 위험 레벨을 계산한 후 세션 저장
-      // 세션은 Risk_Detection_Sessions 테이블에 저장되며, 관리자 대시보드의 위험 레벨 분포 통계에 사용됨
+
       await apiClient.post('/risk-detection/mark-shown');
       console.log('위험 신호 분석 및 세션 저장 완료');
     } catch (error: any) {
-      // 위험 신호 분석 실패는 일기 저장에 영향을 주지 않음
+
       console.error('위험 신호 분석 및 세션 저장 실패:', error);
       // 에러를 throw하지 않음 (일기 저장은 성공한 것으로 처리)
     }
@@ -655,62 +637,100 @@ export const DiaryWritingPage = forwardRef<{
         };
 
         // PUT /api/diaries/{diaryId}
-        // API 명세서: diaryId는 숫자 (BIGINT)
-        // 백엔드가 KoBERT 감정 재분석, AI 이미지 재생성, AI 코멘트 재생성, 음식 추천 재생성 처리
-        const diaryId = String(existingDiary.id); // 숫자 또는 문자열로 변환
+        // AI 재분석 여부 확인 (백엔드 로직과 동일하게 프론트에서도 판단)
+        // - 본문(content) 변경 여부
+        // - 날씨(weather) 변경 여부
+        // - 페르소나 변경 여부
+        let isPersonaChanged = false;
+        if (existingDiary?.persona) {
+          const savedPersonaKorean = enumToPersona(existingDiary.persona);
+          const userStr = localStorage.getItem('user');
+          let currentPersonaKorean = '베프'; // 기본값
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            currentPersonaKorean = user.persona || '베프';
+          }
+          if (savedPersonaKorean !== currentPersonaKorean) {
+            isPersonaChanged = true;
+          }
+        }
+
+        const isContentChanged = content !== existingDiary!.content;
+        const isWeatherChanged = weather !== existingDiary!.weather;
+        const isAiAnalysisTriggered = isContentChanged || isWeatherChanged || isPersonaChanged;
+
+        const diaryId = String(existingDiary.id);
         savedDiary = await updateDiary(diaryId, dateKey, updateRequest);
         console.log('일기 수정 완료:', savedDiary);
+
+        // 6. 위험 신호 점수 계산 및 백엔드 전송
+        try {
+          await calculateAndSaveRiskSignals();
+        } catch (riskError) {
+          console.error('위험 신호 점수 계산 실패:', riskError);
+        }
+
+        if (savedDiary) {
+          if (isAiAnalysisTriggered) {
+            // 1. AI 분석이 수행된 경우 (본문/날씨/페르소나 변경) -> 모달 표시
+            const emotionData = KOBERT_EMOTIONS[savedDiary.emotion as keyof typeof KOBERT_EMOTIONS];
+            onFinish({
+              emotion: savedDiary.emotion || '중립', // [수정] 이모지가 아니라 감정 이름('행복' 등)을 전달해야 모달에서 매핑됨
+              emotionName: emotionData?.name || savedDiary.emotion || '중립',
+              emotionCategory: savedDiary.emotionCategory || 'neutral',
+              aiComment: savedDiary.aiComment || '',
+              recommendedFood: savedDiary.recommendedFood,
+              imageUrl: savedDiary.imageUrl,
+              date: selectedDate,
+              diaryId: savedDiary.id,
+            });
+          } else {
+            // 2. 메타데이터만 변경된 경우 -> 바로 상세 이동
+            if (onSaveSuccess) onSaveSuccess(dateKey);
+          }
+        }
+
       } else {
         // 새 작성 모드 (플로우 3.3)
         const createRequest: CreateDiaryRequest = {
           date: dateKey,
           title: title.trim(),
-          content: content.trim(), // API 명세서: content
+          content: content.trim(),
           mood: mood.trim() || undefined,
           weather: weather || undefined,
           activities: activities.length > 0 ? activities : undefined,
-          images: imageUrls.length > 0 ? imageUrls : undefined, // API 명세서: images (사용자 업로드 이미지)
-          // emotion, imageUrl 필드는 제거됨 (백엔드가 자동으로 생성)
+          images: imageUrls.length > 0 ? imageUrls : undefined,
         };
 
-        // POST /api/diaries
-        // 백엔드가 KoBERT 감정 분석, AI 이미지 생성, AI 코멘트 생성, 음식 추천 생성 처리
         savedDiary = await createDiary(createRequest);
         console.log('일기 저장 완료:', savedDiary);
+
+        // 6. 위험 신호 점수 계산 (새 작성)
+        try {
+          await calculateAndSaveRiskSignals();
+        } catch (riskError) {
+          console.error('위험 신호 점수 계산 실패:', riskError);
+        }
+
+        if (savedDiary) {
+          // 새 작성은 무조건 분석 실행 -> 모달 표시
+          const emotionData = KOBERT_EMOTIONS[savedDiary.emotion as keyof typeof KOBERT_EMOTIONS];
+          onFinish({
+            emotion: savedDiary.emotion || '중립', // [수정] 이모지가 아니라 감정 이름('행복' 등)을 전달해야 모달에서 매핑됨
+            emotionName: emotionData?.name || savedDiary.emotion || '중립',
+            emotionCategory: savedDiary.emotionCategory || 'neutral',
+            aiComment: savedDiary.aiComment || '',
+            recommendedFood: savedDiary.recommendedFood,
+            imageUrl: savedDiary.imageUrl,
+            date: selectedDate,
+            diaryId: savedDiary.id,
+          });
+        }
       }
 
-      // 5. 저장 완료 후 처리
-      // 백엔드 응답에서 emotion, imageUrl, aiComment, recommendedFood를 받음
+      // 5. 저장 완료 후 처리 (공통)
       if (onWritingComplete && selectedDate) {
         onWritingComplete(selectedDate);
-      }
-
-      // 6. 위험 신호 점수 계산 및 백엔드 전송 (비동기 처리, 에러 발생해도 일기 저장은 성공)
-      // [프론트엔드 구현] 일기 작성/수정 후 위험 신호 점수 계산
-      try {
-        await calculateAndSaveRiskSignals();
-      } catch (riskError) {
-        console.error('위험 신호 점수 계산 실패:', riskError);
-        // 위험 신호 점수 계산 실패해도 일기 저장은 성공한 것으로 처리
-      }
-
-      if (isEditMode && onSaveSuccess) {
-        // 수정 모드: 바로 상세보기로 이동 (플로우 4.3)
-        onSaveSuccess(dateKey);
-      } else if (savedDiary) {
-        // 새 작성 모드: 감정 분석 모달 표시 (플로우 3.4)
-        // 백엔드 응답에서 KoBERT 분석 결과 사용
-        const emotionData = KOBERT_EMOTIONS[savedDiary.emotion as keyof typeof KOBERT_EMOTIONS];
-        onFinish({
-          emotion: emotionData?.emoji || '😐', // 백엔드 응답의 KoBERT 분석 결과 이모지
-          emotionName: emotionData?.name || savedDiary.emotion || '중립', // 백엔드 응답의 KoBERT 분석 결과 이름
-          emotionCategory: savedDiary.emotionCategory || 'neutral', // 백엔드 응답의 감정 카테고리
-          aiComment: savedDiary.aiComment || '', // AI 코멘트 전달
-          recommendedFood: savedDiary.recommendedFood, // 추천 음식 정보 전달
-          imageUrl: savedDiary.imageUrl, // AI 생성 이미지 URL 전달
-          date: selectedDate,
-          diaryId: savedDiary.id, // 일기 ID 전달 (장소 추천 기능에서 사용)
-        });
       }
 
     } catch (err: any) {
@@ -875,14 +895,7 @@ export const DiaryWritingPage = forwardRef<{
                 className="w-full px-5 py-5 min-h-[300px] text-base leading-relaxed bg-white dark:bg-stone-900/60 rounded-xl border border-stone-200 dark:border-stone-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all resize-none placeholder:text-stone-400"
                 style={{ lineHeight: '1.8' }}
               />
-              {isAnalyzingEmotion && (
-                <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] rounded-xl flex flex-col items-center justify-center z-10 transition-all">
-                  <div className="bg-white dark:bg-stone-800 p-4 rounded-full shadow-2xl mb-4 animate-bounce">
-                    <Sparkles className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <p className="text-emerald-800 dark:text-emerald-200 font-medium animate-pulse">AI가 감정을 분석하고 있어요...</p>
-                </div>
-              )}
+
             </div>
           </section>
 
@@ -1034,6 +1047,33 @@ export const DiaryWritingPage = forwardRef<{
           </div>
         </div>
       )}
+      {/* Full-screen Loading Overlay */}
+      {(isAnalyzingEmotion || isSaving) && (
+        <div className="fixed inset-0 z-[100] bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-auto touch-none">
+          <div className="bg-white dark:bg-stone-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 border border-emerald-100 dark:border-emerald-900/30 max-w-xs mx-4 w-full">
+            <div className="relative">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
+              <div className="relative bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-full">
+                {isAnalyzingEmotion ? (
+                  <Sparkles className="w-8 h-8 text-emerald-500 animate-pulse" />
+                ) : (
+                  <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                )}
+              </div>
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-bold text-emerald-950 dark:text-emerald-50">
+                {isAnalyzingEmotion ? 'AI 감정 분석 중' : '일기 저장 중'}
+              </h3>
+              <p className="text-sm text-stone-500 dark:text-stone-400">
+                {isAnalyzingEmotion ? '오늘의 감정을 분석하고 있어요...' : '잠시만 기다려주세요...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 });

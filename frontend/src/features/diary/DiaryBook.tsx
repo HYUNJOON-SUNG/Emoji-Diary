@@ -167,6 +167,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
     setExistingDiaryData(null);
     setDirection(1); // For animation
     setTimeout(() => {
+      setShowMapOnReadingLoad(false);
       setViewMode('writing');
       setDirection(0);
     }, 200);
@@ -337,6 +338,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
       console.error('Failed to load diary for editing:', error);
     }
     setTimeout(() => {
+      setShowMapOnReadingLoad(false);
       setViewMode('writing');
       setDirection(0);
     }, 200);
@@ -770,13 +772,14 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           onViewResources={handleViewResources}
           riskLevel={riskAnalysis?.riskLevel as 'low' | 'medium' | 'high'}
           reasons={riskAnalysis?.reasons || []}
-          urgentCounselingPhones={[]} // 필요한 경우 추가
+          urgentCounselingPhones={riskAnalysis?.urgentCounselingPhones || []}
         />
 
         {/* 감정 분석 결과 모달 */}
         <EmotionAnalysisModal
           isOpen={showEmotionAnalysis}
           onClose={handleCloseEmotionAnalysis}
+          onCloseToCalendar={handleCloseEmotionAnalysis} // 모달 닫으면 읽기 모드로 이동
           emotion={analysisEmotion}
           emotionName={analysisEmotionName}
           emotionCategory={analysisEmotionCategory}
@@ -785,6 +788,7 @@ export function DiaryBook({ onUserUpdate, onLogout, onAccountDeleted }: DiaryBoo
           imageUrl={analysisImageUrl}
           // date={analysisDate || new Date()} // Removed
           onMapRecommendation={handleEmotionAnalysisMapRecommendation}
+          isSimple={true} // [수정] 작성/수정 완료 시 심플 모달 표시
         />
 
         {/* 

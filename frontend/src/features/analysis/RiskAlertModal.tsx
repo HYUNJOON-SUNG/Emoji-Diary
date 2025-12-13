@@ -52,7 +52,7 @@
  * - 사용자가 마이페이지에서 알림 설정을 활성화해야 모달 표시됨
  * 
  * 디자인:
- * - 파란색 톤온톤 색상 (high: cyan, medium: sky, low: blue)
+ * - 위험 심각도별 색상 (high: rose, medium: amber, low: blue)
  * - 경고 아이콘 + 제목 + 메시지
  * - 감지된 패턴 표시 (reasons)
  * - 긴급 연락처 (high 레벨만)
@@ -79,42 +79,35 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
    * 위험 레벨별 색상 테마 (플로우 9.1)
    * 
    * 디자인 컨셉:
-   * - 파란색 톤온톤 (안정감 + 신뢰감)
-   * - High: cyan (가장 강한 경고)
-   * - Medium: sky (중간 경고)
-   * - Low: blue (가벼운 주의)
-   * 
-   * 색상 구성:
-   * - bg: 배경색
-   * - border: 테두리 색
-   * - text: 텍스트 색
-   * - icon: 아이콘 색
-   * - button: 버튼 색
+   * - 위험 심각도에 따른 직관적 색상
+   * - High: Rose (긴급/위험) - 빨간색
+   * - Medium: Amber (주의/경고) - 노란색/주황색
+   * - Low: Blue (참고/알림) - 파란색
    */
   const getRiskColor = () => {
     switch (riskLevel) {
       case 'high':
         return {
-          bg: 'bg-cyan-50',
-          border: 'border-cyan-400',
-          text: 'text-cyan-900',
-          icon: 'text-cyan-700',
-          button: 'bg-cyan-100 hover:bg-cyan-200', // 버튼 배경색: 연한 톤
+          bg: 'bg-rose-50',
+          border: 'border-rose-400',
+          text: 'text-rose-900',
+          icon: 'text-rose-600',
+          button: 'bg-rose-100 hover:bg-rose-200', // 버튼 배경색: 연한 톤
         };
       case 'medium':
         return {
-          bg: 'bg-sky-50',
-          border: 'border-sky-300',
-          text: 'text-sky-900',
-          icon: 'text-sky-700',
-          button: 'bg-sky-100 hover:bg-sky-200',
+          bg: 'bg-amber-50',
+          border: 'border-amber-400',
+          text: 'text-amber-900',
+          icon: 'text-amber-600',
+          button: 'bg-amber-100 hover:bg-amber-200',
         };
       case 'low':
         return {
           bg: 'bg-blue-50',
           border: 'border-blue-300',
           text: 'text-blue-900',
-          icon: 'text-blue-700',
+          icon: 'text-blue-600',
           button: 'bg-blue-100 hover:bg-blue-200',
         };
     }
@@ -138,11 +131,6 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
 
   /**
    * 위험 레벨별 메시지 (플로우 9.2)
-   * 
-   * 메시지 내용:
-   * - High: 전문가 도움 강력 권장
-   * - Medium: 감정 상태 확인 및 필요시 상담 권장
-   * - Low: 자기 돌아보기 권장
    */
   const getMessage = () => {
     switch (riskLevel) {
@@ -205,9 +193,9 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
                   - [수정] 붉은 계열로 표시하여 위험 강조
                 */}
               {reasons.length > 0 && (
-                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-xs mb-2 font-semibold text-red-700">감지된 패턴:</p>
-                  <ul className="space-y-2 text-xs text-red-600">
+                <div className={`p-4 rounded-lg border ${colors.bg} ${colors.border}`}>
+                  <p className={`text-xs mb-2 font-semibold ${colors.text}`}>감지된 패턴:</p>
+                  <ul className={`space-y-2 text-xs ${colors.text}`}>
                     {reasons.map((reason, index) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="mt-0.5 flex-shrink-0">•</span>

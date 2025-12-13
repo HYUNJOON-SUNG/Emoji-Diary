@@ -123,7 +123,7 @@
  *    - 출력: 그림일기 형태의 이미지 URL
  */
 
-import { X, MapPin } from 'lucide-react';
+import { X, MapPin, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 // import { getEmotionImage } from '../../utils/emotionImages'; // 직접 임포트로 대체
 
@@ -217,6 +217,11 @@ interface EmotionAnalysisModalProps {
    * - 방금 작성한 일기의 상세보기 페이지로 이동
    */
   onCloseToCalendar?: () => void;
+
+  /**
+   * 심플 모드 여부 (작성/수정 완료 시 간단한 피드백용)
+   */
+  isSimple?: boolean;
 }
 
 /**
@@ -272,6 +277,7 @@ export function EmotionAnalysisModal({
   error,
   onMapRecommendation,
   onCloseToCalendar,
+  isSimple = false,
 }: EmotionAnalysisModalProps) {
   // 모달이 닫혀있으면 렌더링하지 않음
   if (!isOpen) return null;
@@ -297,8 +303,6 @@ export function EmotionAnalysisModal({
         <>
           {/* 
             배경 딤 처리 (Backdrop)
-            - Absolute positioning inside the container to respect mobile frame/layout
-            - Z-Index high to cover content
           */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -310,7 +314,6 @@ export function EmotionAnalysisModal({
 
           {/* 
             모달 컨테이너
-            - Absolute positioning
           */}
           <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none overflow-hidden">
             <motion.div
@@ -318,268 +321,204 @@ export function EmotionAnalysisModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', duration: 0.5 }}
-              className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full pointer-events-auto flex flex-col overflow-hidden"
-              style={{ maxHeight: '85%', maxWidth: '95%' }}
+              className={`relative bg-white rounded-2xl shadow-2xl w-full pointer-events-auto flex flex-col overflow-hidden ${isSimple ? 'max-w-xs' : 'max-w-md'}`}
+              style={{ maxHeight: '85%', maxWidth: isSimple ? '320px' : '95%' }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 모달 내부 컨텐츠 영역 */}
-              <div className="relative bg-white rounded-xl p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-hide" style={{ maxHeight: 'calc(85vh - 100px)' }}>
-
-                {/* 닫기 버튼 (우측 상단) */}
-                <button
-                  onClick={onClose}
-                  className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 p-2 rounded-full bg-stone-200 hover:bg-stone-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="닫기"
-                >
-                  <X className="w-5 h-5 text-stone-700" />
-                </button>
-
-                <div className="relative space-y-6">
-                  {/* 모달 제목 */}
-                  <div className="text-center">
-                    {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                    <h2 className="text-stone-900 text-lg font-bold">감정 분석 결과</h2>
+              {isSimple ? (
+                // ========== 심플 모드 UI (작성/수정 완료용) ==========
+                <div className="p-6 flex flex-col items-center justify-center text-center space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-stone-900">분석 완료!</h2>
+                    <p className="text-sm text-stone-500">AI가 일기 분석을 마쳤어요.</p>
                   </div>
 
-                  {/* 
-                    에러 상태 표시
-                    
-                    표시 조건:
-                    - AI 분석 실패 (KoBERT 또는 제미나이 API 에러)
-                    - 일기 저장은 성공했지만 AI 분석만 실패
-                    
-                    [AI 팀] AI 서비스 안정성 중요
-                  */}
-                  {error && (
-                    <div className="space-y-4 text-center">
-                      <div className="text-5xl">⚠️</div>
-                      <div className="space-y-2">
-                        <p className="text-sm text-stone-700">일기 저장은 완료되었으나,</p>
-                        <p className="text-sm text-stone-700">감정 분석에 실패했습니다.</p>
-                      </div>
-                      <div className="pt-2">
-                        <button
-                          onClick={onClose}
-                          className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors min-h-[44px]"
-                        >
-                          확인
-                        </button>
-                      </div>
+                  <div className="flex flex-col items-center gap-3">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', delay: 0.2 }}
+                      className="w-24 h-24"
+                    >
+                      <img src={emotionImage} alt={displayLabel} className="w-full h-full object-contain drop-shadow-md" />
+                    </motion.div>
+                    <span className="text-lg font-bold text-stone-800">{displayLabel}</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onCloseToCalendar) onCloseToCalendar();
+                    }}
+                    className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Check className="w-5 h-5" />
+                    확인
+                  </button>
+                </div>
+              ) : (
+                // ========== 기본 상세 UI ==========
+                /* 모달 내부 컨텐츠 영역 */
+                <div className="relative bg-white rounded-xl p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-hide" style={{ maxHeight: 'calc(85vh - 100px)' }}>
+
+                  {/* 닫기 버튼 (우측 상단) */}
+                  <button
+                    onClick={onClose}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 p-2 rounded-full bg-stone-200 hover:bg-stone-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    aria-label="닫기"
+                  >
+                    <X className="w-5 h-5 text-stone-700" />
+                  </button>
+
+                  <div className="relative space-y-6">
+                    {/* 모달 제목 */}
+                    <div className="text-center">
+                      <h2 className="text-stone-900 text-lg font-bold">감정 분석 결과</h2>
                     </div>
-                  )}
 
-                  {/* 
-                    성공 상태 표시
-                    
-                    표시 조건:
-                    - 에러 없음
-                    - emotion(사용자 선택 감정) 존재
-                    - emotionCategory(AI 분석 감정) 존재
-                  */}
-                  {!error && emotion && emotionCategory && (
-                    <div className="space-y-6">
-                      {/* 
-                        감정 표시 영역 (플로우 3.4)
-                        - KoBERT가 분석한 감정 이모지 (큰 크기)
-                        - KoBERT가 분석한 감정 카테고리 배지 (예: "행복", "슬픔")
-                          * 7가지 감정: 행복😊, 중립😐, 당황😳, 슬픔😢, 분노😠, 불안😰, 혐오🤢
-                      */}
-                      <div className="flex flex-col items-center space-y-4">
-                        {/* 
-                          감정 이모지 (스프링 애니메이션)
-                          - 0.2초 지연 후 확대 애니메이션
-                          - 플로우 3.4: KoBERT가 분석한 감정 이모지 표시
-                        */}
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', delay: 0.2 }}
-                          className="w-24 h-24 sm:w-28 sm:h-28"
-                        >
-                          <img
-                            src={emotionImage}
-                            alt={emotion}
-                            className="w-full h-full object-contain filter drop-shadow-md"
-                          />
-                        </motion.div>
-
-                        {/* 
-                          감정 카테고리 배지 (페이드인 애니메이션)
-                          - 0.3초 지연 후 표시
-                          - 플로우 3.4: KoBERT가 분석한 감정 레이블 표시 (예: "행복", "슬픔")
-                          - 감정별 색상 테마 적용 (긍정/중립/부정 구분)
-                        */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                          // [수정] 감정 배지 스타일: 하양 배경 + 검정 텍스트 (기존 필터 버튼 스타일)
-                          className="px-6 py-2 rounded-full border-2 bg-white border-stone-200 shadow-sm"
-                        >
-                          <span className="text-sm text-stone-900 font-bold">{displayLabel}</span>
-                        </motion.div>
+                    {/* 에러 상태 표시 */}
+                    {error && (
+                      <div className="space-y-4 text-center">
+                        <div className="text-5xl">⚠️</div>
+                        <div className="space-y-2">
+                          <p className="text-sm text-stone-700">일기 저장은 완료되었으나,</p>
+                          <p className="text-sm text-stone-700">감정 분석에 실패했습니다.</p>
+                        </div>
+                        <div className="pt-2">
+                          <button
+                            onClick={onClose}
+                            className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors min-h-[44px]"
+                          >
+                            확인
+                          </button>
+                        </div>
                       </div>
+                    )}
 
-                      {/* 
-                        AI 생성 이미지 영역 (플로우 3.4)
-                        
-                        [AI 팀] 나노바나나 API로 생성된 그림일기 이미지
-                        - 일기 내용과 감정을 반영하여 생성된 이미지
-                      */}
-                      {imageUrl && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.4 }}
-                          className="space-y-2"
-                        >
-                          <div className="flex items-center gap-2 justify-center">
-                            <div className="text-stone-900">🎨</div>
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-stone-900 font-bold">AI 그림 일기</p>
-                          </div>
-                          <div className="bg-white/80 border border-stone-300 rounded-lg p-2 overflow-hidden">
+                    {/* 성공 상태 표시 */}
+                    {!error && emotion && emotionCategory && (
+                      <div className="space-y-6">
+                        {/* 감정 표시 영역 */}
+                        <div className="flex flex-col items-center space-y-4">
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', delay: 0.2 }}
+                            className="w-24 h-24 sm:w-28 sm:h-28"
+                          >
                             <img
-                              src={imageUrl}
-                              alt="AI 생성 그림일기"
-                              className="w-full h-auto rounded-lg object-contain"
-                              style={{ maxHeight: '300px' }}
+                              src={emotionImage}
+                              alt={emotion}
+                              className="w-full h-full object-contain filter drop-shadow-md"
                             />
-                          </div>
-                        </motion.div>
-                      )}
+                          </motion.div>
 
-                      {/* 
-                        AI 코멘트 영역 (플로우 3.3의 핵심)
-                        
-                        [AI 팀] 제미나이 API로 생성된 코멘트
-                        - 입력: KoBERT 감정 분석 결과 + 사용자 선택 감정 + 페르소나
-                        - 출력: 페르소나 스타일에 맞는 공감 메시지 (2-3문장)
-                      */}
-                      {aiComment && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: imageUrl ? 0.5 : 0.4 }}
-                          className="space-y-2"
-                        >
-                          <div className="flex items-center gap-2 justify-center">
-                            <div className="text-stone-900">✨</div>
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-stone-900 font-bold">AI의 공감 한마디</p>
-                          </div>
-                          {/* [수정] DaySummaryPage와 동일한 스타일 적용 (배경, 테두리, 그림자) */}
-                          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-emerald-100">
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-sm text-stone-900 leading-relaxed text-center">
-                              {aiComment}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="px-6 py-2 rounded-full border-2 bg-white border-stone-200 shadow-sm"
+                          >
+                            <span className="text-sm text-stone-900 font-bold">{displayLabel}</span>
+                          </motion.div>
+                        </div>
 
-                      {/* 
-                        추천 음식 영역 (플로우 3.4)
-                        
-                        [AI 팀] 제미나이 API로 생성된 음식 추천
-                        - 입력: 일기 내용 + KoBERT 감정 분석 결과
-                        - 출력: { name: string, reason: string }
-                      */}
-                      {recommendedFood && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: imageUrl && aiComment ? 0.6 : imageUrl || aiComment ? 0.5 : 0.4 }}
-                          className="space-y-2"
-                        >
-                          <div className="flex items-center gap-2 justify-center">
-                            <div className="text-stone-900">🍽️</div>
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-stone-900 font-bold">추천 음식</p>
-                          </div>
-                          {/* [수정] DaySummaryPage와 동일한 스타일 적용 (배경, 테두리 없음, 그림자) */}
-                          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-sm text-stone-900 font-bold mb-2 text-center">
-                              {recommendedFood.name}
-                            </p>
-                            {/* [디버깅용] 파란색 텍스트 - 테스트 완료 후 제거 가능 */}
-                            <p className="text-xs text-stone-900 leading-relaxed text-center">
-                              {recommendedFood.reason}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
+                        {/* AI 생성 이미지 영역 */}
+                        {imageUrl && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="space-y-2"
+                          >
+                            <div className="flex items-center gap-2 justify-center">
+                              <div className="text-stone-900">🎨</div>
+                              <p className="text-xs text-stone-900 font-bold">AI 그림 일기</p>
+                            </div>
+                            <div className="bg-white/80 border border-stone-300 rounded-lg p-2 overflow-hidden">
+                              <img
+                                src={imageUrl}
+                                alt="AI 생성 그림일기"
+                                className="w-full h-auto rounded-lg object-contain"
+                                style={{ maxHeight: '300px' }}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
 
-                      {/* 
-                        액션 버튼 영역 (플로우 3.4)
-                        
-                        사용자 선택지:
-                        1. "장소 추천" 버튼 (감정 분석 성공 시만 표시)
-                           - 클릭 → 장소 추천 화면으로 이동
-                           - 모달 닫기
-                        2. "닫기" 버튼
-                           - 클릭 → 방금 작성한 일기의 상세보기 페이지로 이동
-                      */}
-                      <div className="pt-2 flex gap-3">
-                        {/* 
-                          맛집 추천 버튼 (플로우 8.1 경로 A: 일기 저장 후 감정 분석 모달에서)
-                          
-                          표시 조건:
-                          - 감정 분석 성공 (onMapRecommendation 콜백 존재)
-                          - 추천 음식 정보가 있는 경우 (recommendedFood.name 존재)
-                          - 일기 저장 완료 후 감정 분석 모달에서만 표시
-                          
-                          동작 (플로우 8.1):
-                          - 클릭 시 onMapRecommendation() 콜백 호출
-                          - DiaryBook의 handleMapRecommendation 실행
-                          - setShowMapRecommendation(true) 설정
-                          - viewMode = 'reading' 유지
-                          - 좌측: 카카오 지도 / 우측: 장소 리스트 표시
-                          
-                          전달 데이터:
-                          - emotion: 사용자 선택 감정 이모지
-                          - emotionCategory: AI 분석 감정 카테고리
-                          - 추천 음식 이름을 기반으로 맛집 추천
-                          
-                          플로우 8.1 요구사항 (경로 A):
-                          - 감정 분석 모달에서 "OO 맛집 추천" 버튼 클릭
-                          - → 장소 추천 화면으로 이동 (추천 음식 기반)
-                        */}
-                        {onMapRecommendation && recommendedFood?.name && (
+                        {/* AI 코멘트 영역 */}
+                        {aiComment && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: imageUrl ? 0.5 : 0.4 }}
+                            className="space-y-2"
+                          >
+                            <div className="flex items-center gap-2 justify-center">
+                              <div className="text-stone-900">✨</div>
+                              <p className="text-xs text-stone-900 font-bold">AI의 공감 한마디</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-emerald-100">
+                              <p className="text-sm text-stone-900 leading-relaxed text-center">
+                                {aiComment}
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* 추천 음식 영역 */}
+                        {recommendedFood && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: imageUrl && aiComment ? 0.6 : imageUrl || aiComment ? 0.5 : 0.4 }}
+                            className="space-y-2"
+                          >
+                            <div className="flex items-center gap-2 justify-center">
+                              <div className="text-stone-900">🍽️</div>
+                              <p className="text-xs text-stone-900 font-bold">추천 음식</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-4 shadow-sm">
+                              <p className="text-sm text-stone-900 font-bold mb-2 text-center">
+                                {recommendedFood.name}
+                              </p>
+                              <p className="text-xs text-stone-900 leading-relaxed text-center">
+                                {recommendedFood.reason}
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* 액션 버튼 영역 */}
+                        <div className="pt-2 flex gap-3">
+                          {onMapRecommendation && recommendedFood?.name && (
+                            <button
+                              onClick={() => {
+                                onMapRecommendation();
+                              }}
+                              className="flex-1 px-4 py-2.5 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition-colors shadow-none flex items-center justify-center gap-2 font-medium"
+                            >
+                              <MapPin className="w-3.5 h-3.5" />
+                              <span className="text-sm text-teal-700">{recommendedFood.name} 맛집 추천</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => {
-                              onMapRecommendation(); // 장소 추천 화면으로 이동 (상위 컴포넌트에서 모달 닫기 처리함)
+                              onClose();
+                              if (onCloseToCalendar) {
+                                onCloseToCalendar();
+                              }
                             }}
-                            className="flex-1 px-4 py-2.5 bg-teal-100 text-teal-700 rounded-lg hover:bg-teal-200 transition-colors shadow-none flex items-center justify-center gap-2 font-medium"
+                            className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-md`}
                           >
-                            <MapPin className="w-3.5 h-3.5" />
-                            {/* 맛집 추천 버튼 텍스트: 초록색(Teal)으로 변경 (기존 유지) */}
-                            <span className="text-sm text-teal-700">{recommendedFood.name} 맛집 추천</span>
+                            닫기
                           </button>
-                        )}
-                        {/* 
-                          닫기 버튼 (플로우 3.4)
-                          - 클릭 → 방금 작성한 일기의 상세보기 페이지로 이동
-                          - DiaryWritingPage의 handleEmotionModalClose에서 처리
-                        */}
-                        <button
-                          onClick={() => {
-                            onClose(); // 모달 닫기
-                            if (onCloseToCalendar) {
-                              // 플로우 3.4: 방금 작성한 일기의 상세보기로 이동
-                              onCloseToCalendar();
-                            }
-                          }}
-                          className={`${onMapRecommendation ? 'flex-1' : 'w-full'} px-4 py-2.5 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-md`}
-                        >
-                          닫기
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </div>
         </>
