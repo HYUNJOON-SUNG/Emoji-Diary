@@ -104,6 +104,23 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
     loadResources();
   }, [selectedCategory]);
 
+  // 모달 스크롤 잠금
+  useEffect(() => {
+    const mainContent = document.getElementById('mobile-main-content');
+    if (!mainContent) return;
+
+    if (showHelpModal) {
+      mainContent.style.overflow = 'hidden';
+    } else {
+      mainContent.style.overflow = 'auto'; // scrollbar-hide 클래스가 있어서 auto로 해도 스크롤바는 안 보임
+    }
+    return () => {
+      if (mainContent) {
+        mainContent.style.overflow = 'auto';
+      }
+    };
+  }, [showHelpModal]);
+
   const filteredResources = resources;
 
   const getCategoryIcon = (category: string) => {
@@ -342,70 +359,63 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-              style={{ maxHeight: '85%', maxWidth: '95%' }}
+              className="relative w-full max-w-sm bg-emerald-50 border-2 border-emerald-100 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               {/* 닫기 버튼 */}
               <button
                 onClick={() => setShowHelpModal(false)}
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 text-stone-400 hover:text-stone-600 transition-colors rounded-lg hover:bg-black/5 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="absolute top-2 right-2 p-2 text-stone-400 hover:text-stone-600 transition-colors rounded-lg hover:bg-black/5 z-10"
               >
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="p-6 space-y-6 overflow-y-auto scrollbar-hide flex-1">
-                <div className="text-center space-y-4 pt-2">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-blue-100 flex items-center justify-center mb-2">
-                    <Heart className="w-6 h-6 text-blue-600" />
+              <div className="p-5 flex flex-col h-full">
+                <div className="text-center space-y-2 mb-4">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Heart className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <h3 className="text-lg font-bold text-stone-800">
+                  <h3 className="text-base font-bold text-stone-800">
                     도움을 요청하는 것은 용기입니다
                   </h3>
-                  <p className="text-sm text-stone-600 leading-relaxed break-keep">
-                    혼자서 감정을 감당하기 어려울 때, 전문가의 도움을 받는 것은 매우 현명한 선택입니다. 당신의 감정과 고민은 소중하며, 언제든 도움을 요청할 수 있습니다.
+                  <p className="text-xs text-stone-600 leading-relaxed break-keep">
+                    전문가의 도움은 현명한 선택입니다. 언제든 도움을 요청하세요.
                   </p>
                 </div>
 
                 {/* 긴급한 경우 박스 */}
-                <div className="bg-white border-2 border-rose-100 rounded-xl p-5 space-y-3 shadow-sm">
-                  <div className="flex items-center gap-2 text-rose-600 mb-1">
-                    <AlertTriangle className="w-5 h-5" />
-                    <h4 className="text-sm font-bold">긴급한 경우</h4>
+                <div className="bg-white border border-rose-100 rounded-xl p-3 space-y-2 shadow-sm mb-3">
+                  <div className="flex items-center gap-1.5 text-rose-600">
+                    <AlertTriangle className="w-4 h-4" />
+                    <h4 className="text-xs font-bold">긴급한 경우 (24시간)</h4>
                   </div>
-                  <p className="text-sm text-stone-700 leading-relaxed break-keep">
-                    자살 충동이나 자해 생각이 든다면 즉시 <span className="font-bold text-rose-600">1393</span>(자살예방상담전화) 또는 <span className="font-bold text-rose-600">1577-0199</span> <br></br>(정신건강 위기상담)로 연락해주세요.
+                  <p className="text-xs text-stone-700 leading-relaxed break-keep">
+                    자살 충동 등 위기 시 즉시 연락주세요.<br />
+                    <span className="font-bold text-rose-600">1393</span>(자살예방) 또는 <span className="font-bold text-rose-600">1577-0199</span>
                   </p>
-                  <div className="pt-2 text-xs text-stone-500 font-medium border-t border-rose-50 mt-2">
-                    ※ 24시간 상담 가능합니다.
-                  </div>
                 </div>
 
                 {/* 상담이 도움이 되는 경우 */}
-                <div className="space-y-3 bg-white/50 p-4 rounded-xl border border-blue-100">
-                  <h4 className="text-sm font-bold text-stone-800 flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-blue-500" />
+                <div className="space-y-2 bg-white/50 p-3 rounded-xl border border-emerald-100 mb-4 flex-1">
+                  <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
                     상담이 도움이 되는 경우
                   </h4>
-                  <ul className="space-y-2 text-sm text-stone-600">
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                  <ul className="space-y-1.5 text-xs text-stone-600">
+                    <li className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400" />
                       <span>지속적인 우울감이나 불안감</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                    <li className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400" />
                       <span>일상생활에 지장을 주는 감정 변화</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                    <li className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400" />
                       <span>수면 문제나 식욕 변화</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
+                    <li className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400" />
                       <span>대인관계의 어려움</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-400 ml-1" />
-                      <span>스트레스 관리의 어려움</span>
                     </li>
                   </ul>
                 </div>
@@ -413,7 +423,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
                 {/* 닫기 버튼 */}
                 <button
                   onClick={() => setShowHelpModal(false)}
-                  className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20"
+                  className="w-full py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/20 mt-auto"
                 >
                   확인했습니다
                 </button>

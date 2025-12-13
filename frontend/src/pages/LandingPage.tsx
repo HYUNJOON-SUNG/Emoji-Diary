@@ -36,7 +36,7 @@ export function LandingPage({ onOpenBook }: LandingPageProps) {
               Emoji Diary
             </h1>
             <p className="text-base text-emerald-800 dark:text-emerald-200/80 font-medium">
-              나의 감정을 기록하는<br />특별한 숲속 공간
+              나의 감정을 기록하는<br />특별한 다이어리
             </p>
           </div>
 

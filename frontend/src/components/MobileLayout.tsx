@@ -36,6 +36,7 @@ export function MobileLayout({ header, children, footer, className = '' }: Mobil
 
       {/* Main: 나머지 공간 차지 + 내부 스크롤 */}
       <main
+        id="mobile-main-content"
         className="flex-1 w-full relative overflow-y-auto scrollbar-hide"
         style={{
           WebkitOverflowScrolling: 'touch', // iOS 부드러운 스크롤
