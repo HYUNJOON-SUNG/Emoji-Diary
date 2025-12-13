@@ -160,7 +160,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-0 left-0 p-2 active:bg-emerald-50/50 dark:active:bg-emerald-900/30 rounded-full transition-colors text-emerald-600 dark:text-emerald-400 active:text-emerald-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+            className="absolute top-0 left-0 p-2 rounded-full transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-800/30 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -170,7 +170,7 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
         {/* 도움말 버튼 - 오른쪽 상단 고정 */}
         <button
           onClick={() => setShowHelpModal(true)}
-          className="absolute top-0 right-0 p-2 active:bg-emerald-50/50 dark:active:bg-emerald-900/30 rounded-full transition-colors text-emerald-400 dark:text-emerald-500 hover:text-emerald-600 active:text-emerald-700 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+          className="absolute top-0 right-0 p-2 rounded-full transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-800/30 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
           aria-label="도움말"
         >
           <HelpCircle className="w-5 h-5" />
@@ -225,8 +225,8 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
           <button
             onClick={() => setSelectedCategory('all')}
             className={`px-3 py-2.5 text-xs rounded-xl transition-all font-medium min-h-[44px] border ${selectedCategory === 'all'
-                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
-                : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
+              : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
               }`}
           >
             전체
@@ -236,8 +236,8 @@ export function SupportResourcesPage({ showRiskWarning, riskLevel, riskReasons, 
               key={key}
               onClick={() => setSelectedCategory(key)}
               className={`px-3 py-2.5 text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 font-medium min-h-[44px] border ${selectedCategory === key
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
-                  : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-transparent'
+                : 'bg-white/50 dark:bg-stone-900/50 text-stone-700 dark:text-stone-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/30 border-stone-200 dark:border-stone-800'
                 }`}
             >
               <span className={selectedCategory === key ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}>

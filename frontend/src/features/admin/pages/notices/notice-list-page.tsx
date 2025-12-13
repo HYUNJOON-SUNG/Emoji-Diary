@@ -98,19 +98,30 @@ export default function NoticeListPage() {
 
     return (
         <div className="space-y-6">
-            <AdminPageHeader
-                title="공지사항 관리"
-                description="서비스 공지사항을 등록하고 관리합니다."
-                action={
-                    <AdminButton onClick={() => navigate("new")}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        새 공지사항
-                    </AdminButton>
-                }
-            />
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <AdminPageHeader
+                    title="공지사항 관리"
+                    description="서비스 공지사항을 등록하고 관리합니다."
+                    action={
+                        <AdminButton onClick={() => navigate("new")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            새 공지사항
+                        </AdminButton>
+                    }
+                />
+            </motion.div>
 
             {/* Filters & Search */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm">
+            <motion.div
+                className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+            >
                 <form onSubmit={handleSearch} className="relative w-full md:w-96">
                     <AdminInput
                         placeholder="제목 또는 작성자로 검색..."
@@ -135,10 +146,15 @@ export default function NoticeListPage() {
                         </button>
                     ))}
                 </div>
-            </div>
+            </motion.div>
 
             {/* Table */}
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <motion.div
+                className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+            >
                 <AdminTable>
                     <AdminTableHeader>
                         <AdminTableRow className="hover:bg-transparent">
@@ -233,7 +249,7 @@ export default function NoticeListPage() {
                         )}
                     </AdminTableBody>
                 </AdminTable>
-            </div>
+            </motion.div>
 
             {/* Pagination */}
             {data && totalPages > 1 && (

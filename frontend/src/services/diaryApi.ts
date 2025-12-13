@@ -660,7 +660,7 @@ export async function fetchRecentDiaries(startDate: string, endDate: string): Pr
       const diaries = response.data.data.diaries || [];
       // 날짜순 정렬 (최신순)
       return diaries
-        .map((diary: DiaryDetail) => ({
+        .map((diary: any) => ({
           ...diary,
           id: diary.id != null ? String(diary.id) : '',
           activities: diary.activities || [],

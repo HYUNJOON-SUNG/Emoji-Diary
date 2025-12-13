@@ -82,7 +82,7 @@ export function CounselingResourcesTab() {
                                                     </span>
                                                     {resource.isUrgent && (
                                                         <span className="inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-bold animate-pulse">
-                                                            긴급상담
+                                                            긴급
                                                         </span>
                                                     )}
                                                 </div>

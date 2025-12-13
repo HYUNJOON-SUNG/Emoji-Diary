@@ -27,8 +27,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, Search, Navigation, ZoomIn, ZoomOut, Layers, X, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
-import { type Place, type RecommendedFood } from '@/services/placeApi';
+import { MapPin, Navigation, ZoomIn, ZoomOut, X, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { type Place } from '@/services/placeApi';
 import { fetchDiaryById } from '@/services/diaryApi';
 
 // 카카오맵 타입 선언
@@ -64,8 +64,6 @@ export function KakaoMapRecommendation({
   isOpen,
   onClose,
   diaryId,
-  emotion,
-  emotionCategory,
   isInline = false,
   hideFoodRecommendation = false,
 }: KakaoMapRecommendationProps) {
@@ -829,19 +827,19 @@ export function KakaoMapRecommendation({
   };
 
   /**
-   * 지도 타입 전환 (플로우 8.2)
+   * 지도 타입 전환 (플로우 8.2) - 현재 미사용 (추후 확장 가능)
    * - 일반지도, 스카이뷰, 하이브리드 전환
    */
-  const [mapType, setMapType] = useState<'ROADMAP' | 'SKYVIEW' | 'HYBRID'>('ROADMAP');
+  // const [mapType, setMapType] = useState<'ROADMAP' | 'SKYVIEW' | 'HYBRID'>('ROADMAP');
 
-  const handleMapTypeChange = () => {
-    if (mapRef.current && window.kakao && window.kakao.maps) {
-      // 지도 타입 순환: ROADMAP -> SKYVIEW -> HYBRID -> ROADMAP
-      const nextType = mapType === 'ROADMAP' ? 'SKYVIEW' : mapType === 'SKYVIEW' ? 'HYBRID' : 'ROADMAP';
-      setMapType(nextType);
-      mapRef.current.setMapTypeId(window.kakao.maps.MapTypeId[nextType]);
-    }
-  };
+  // const handleMapTypeChange = () => {
+  //   if (mapRef.current && window.kakao && window.kakao.maps) {
+  //     // 지도 타입 순환: ROADMAP -> SKYVIEW -> HYBRID -> ROADMAP
+  //     const nextType = mapType === 'ROADMAP' ? 'SKYVIEW' : mapType === 'SKYVIEW' ? 'HYBRID' : 'ROADMAP';
+  //     setMapType(nextType);
+  //     mapRef.current.setMapTypeId(window.kakao.maps.MapTypeId[nextType]);
+  //   }
+  // };
 
   const handleReloadLocation = async () => {
     const location = await getCurrentLocation();
@@ -866,7 +864,7 @@ export function KakaoMapRecommendation({
           <div className="flex items-start gap-3">
             <button
               onClick={onClose}
-              className="mt-0.5 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-emerald-600 hover:text-emerald-700 active:bg-emerald-50 shrink-0"
+              className="mt-0.5 p-1.5 rounded-lg transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 shrink-0"
               aria-label="뒤로가기"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -978,8 +976,8 @@ export function KakaoMapRecommendation({
                     <button
                       onClick={() => handleSortChange('distance')}
                       className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${sortBy === 'distance'
-                          ? 'bg-white text-stone-800 shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700'
+                        ? 'bg-white text-stone-800 shadow-sm'
+                        : 'text-stone-500 hover:text-stone-700'
                         }`}
                     >
                       거리순
@@ -987,8 +985,8 @@ export function KakaoMapRecommendation({
                     <button
                       onClick={() => handleSortChange('name')}
                       className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${sortBy === 'name'
-                          ? 'bg-white text-stone-800 shadow-sm'
-                          : 'text-stone-500 hover:text-stone-700'
+                        ? 'bg-white text-stone-800 shadow-sm'
+                        : 'text-stone-500 hover:text-stone-700'
                         }`}
                     >
                       이름순
@@ -1012,8 +1010,8 @@ export function KakaoMapRecommendation({
                       <div
                         key={place.id}
                         className={`bg-stone-50 rounded-lg p-4 border transition-all cursor-pointer ${isSelected
-                            ? 'bg-emerald-50 border-emerald-400 shadow-md'
-                            : 'border-stone-200 hover:bg-stone-100 hover:border-emerald-300'
+                          ? 'bg-emerald-50 border-emerald-400 shadow-md'
+                          : 'border-stone-200 hover:bg-stone-100 hover:border-emerald-300'
                           }`}
                         onClick={() => handlePlaceSelect(place)}
                       >
@@ -1103,7 +1101,7 @@ export function KakaoMapRecommendation({
           <div className="flex items-start gap-3">
             <button
               onClick={onClose}
-              className="mt-1 p-1.5 hover:bg-stone-100 rounded-lg transition-colors text-emerald-600 hover:text-emerald-700 active:bg-emerald-50 shrink-0"
+              className="mt-1 p-1.5 rounded-lg transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 shrink-0"
               aria-label="뒤로가기"
             >
               <ArrowLeft className="w-6 h-6" />

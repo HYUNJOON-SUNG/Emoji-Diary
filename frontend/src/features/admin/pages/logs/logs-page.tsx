@@ -83,23 +83,39 @@ export default function LogsPage() {
 
     return (
         <div className="space-y-6">
-            <AdminPageHeader
-                title="에러 로그 모니터링"
-                description="시스템에서 발생한 예외 상황 로그를 조회합니다."
-            />
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <AdminPageHeader
+                    title="에러 로그 모니터링"
+                    description="시스템에서 발생한 예외 상황 로그를 조회합니다."
+                />
+            </motion.div>
 
             {/* Stats Cards (Spec 5.1) */}
             {data && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <motion.div
+                    className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.4 }}
+                >
                     <StatCard label="전체 로그" value={data.total} icon={FileText} color="text-slate-600 bg-slate-50" />
                     <StatCard label="ERROR" value={data.summary.error} icon={AlertOctagon} color="text-red-600 bg-red-50" />
                     <StatCard label="WARN" value={data.summary.warn} icon={AlertTriangle} color="text-amber-600 bg-amber-50" />
                     <StatCard label="INFO" value={data.summary.info} icon={Info} color="text-blue-600 bg-blue-50" />
-                </div>
+                </motion.div>
             )}
 
             {/* Filters */}
-            <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm">
+            <motion.div
+                className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between bg-white/50 p-4 rounded-xl border border-slate-200 shadow-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+            >
                 <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
                     <form onSubmit={handleSearch} className="relative w-full md:w-80">
                         <AdminInput
@@ -142,9 +158,14 @@ export default function LogsPage() {
                         </button>
                     ))}
                 </div>
-            </div>
+            </motion.div>
 
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+            <motion.div
+                className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.4 }}
+            >
                 <AdminTable>
                     <AdminTableHeader>
                         <AdminTableRow>
@@ -208,7 +229,7 @@ export default function LogsPage() {
                         )}
                     </AdminTableBody>
                 </AdminTable>
-            </div>
+            </motion.div>
 
             {/* Pagination */}
             {totalPages > 1 && (

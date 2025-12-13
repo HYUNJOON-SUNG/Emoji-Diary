@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, X, HelpCircle, ArrowLeft } from 'lucide-react';
 import { searchDiaries, DiarySearchParams, DiarySearchResult, DiaryDetail } from '../../services/diaryApi';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import happyImg from '../../assets/행복.png';
 import neutralImg from '../../assets/중립.png';
@@ -172,20 +173,31 @@ export function DiaryListPage({ onDateClick, onDiaryClick, onBack }: DiaryListPa
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
         <div className="p-4 space-y-4 pb-24">
 
+
           {/* Help Section (Collapsible) */}
-          {showHelp && (
-            <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-4 rounded-2xl text-xs text-stone-600 dark:text-stone-300 border border-emerald-100 dark:border-emerald-800 animate-in slide-in-from-top-2 shadow-sm">
-              <h4 className="font-bold text-emerald-800 dark:text-emerald-200 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                검색 도움말
-              </h4>
-              <ul className="space-y-1.5 pl-4 relative before:absolute before:left-1.5 before:top-1.5 before:bottom-1.5 before:w-px before:bg-emerald-200 dark:before:bg-emerald-800">
-                <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">제목이나 내용의 단어로 검색할 수 있어요.</li>
-                <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">필터를 눌러 날짜나 감정별로 모아보세요.</li>
-                <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">검색된 일기를 누르면 상세 내용을 볼 수 있어요.</li>
-              </ul>
-            </div>
-          )}
+          <AnimatePresence>
+            {showHelp && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -20 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-4 rounded-2xl text-xs text-stone-600 dark:text-stone-300 border border-emerald-100 dark:border-emerald-800 shadow-sm mx-1">
+                  <h4 className="font-bold text-emerald-800 dark:text-emerald-200 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    검색 도움말
+                  </h4>
+                  <ul className="space-y-1.5 pl-4 relative before:absolute before:left-1.5 before:top-1.5 before:bottom-1.5 before:w-px before:bg-emerald-200 dark:before:bg-emerald-800">
+                    <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">제목이나 내용의 단어로 검색할 수 있어요.</li>
+                    <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">필터를 눌러 날짜나 감정별로 모아보세요.</li>
+                    <li className="relative pl-2 before:absolute before:left-0 before:top-1.5 before:w-1.5 before:h-px before:bg-emerald-200">검색된 일기를 누르면 상세 내용을 볼 수 있어요.</li>
+                  </ul>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Search Bar & Filter Toggle */}
           <form onSubmit={(e) => { e.preventDefault(); }} className="sticky top-2 z-20 space-y-2" noValidate>

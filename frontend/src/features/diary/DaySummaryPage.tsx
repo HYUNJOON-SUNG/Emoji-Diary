@@ -360,7 +360,7 @@ export function DaySummaryPage({ selectedDate, onDataChange, onEdit, onStartWrit
             {onBackToCalendar && (
               <button
                 onClick={onBackToCalendar}
-                className="absolute top-5 left-5 p-2 active:bg-emerald-50 dark:active:bg-emerald-900/20 rounded-full transition-colors text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 active:text-emerald-800 dark:active:text-emerald-200 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
+                className="absolute top-5 left-5 p-2 rounded-full transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-800/30 touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
                 aria-label="뒤로가기"
               >
                 <ArrowLeft className="w-5 h-5" />

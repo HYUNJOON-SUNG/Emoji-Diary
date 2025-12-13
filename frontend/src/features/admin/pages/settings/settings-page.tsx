@@ -12,14 +12,25 @@ export default function SettingsPage() {
 
     return (
         <div className="space-y-6">
-            <AdminPageHeader
-                title="시스템 설정"
-                description="서비스 운영에 필요한 주요 설정과 리소스를 관리합니다."
-            />
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+            >
+                <AdminPageHeader
+                    title="시스템 설정"
+                    description="서비스 운영에 필요한 주요 설정과 리소스를 관리합니다."
+                />
+            </motion.div>
 
             <div className="flex flex-col space-y-4">
                 {/* Tab Navigation */}
-                <div className="flex p-1 space-x-1 bg-slate-100/80 rounded-xl w-fit backdrop-blur-sm border border-slate-200">
+                <motion.div
+                    className="flex p-1 space-x-1 bg-slate-100/80 rounded-xl w-fit backdrop-blur-sm border border-slate-200"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.4 }}
+                >
                     {[
                         { id: "risk", label: "위험 감지 기준" },
                         { id: "resources", label: "상담 기관 관리" },
@@ -31,7 +42,7 @@ export default function SettingsPage() {
                                 "relative px-4 py-2 text-sm font-medium rounded-lg transition-all z-0",
                                 activeTab === tab.id
                                     ? "text-indigo-700 shadow-sm"
-                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                                    : "text-slate-600 hover:text-slate-900 hover:text-slate-900 hover:bg-slate-200/50"
                             )}
                         >
                             {activeTab === tab.id && (
@@ -44,7 +55,7 @@ export default function SettingsPage() {
                             {tab.label}
                         </button>
                     ))}
-                </div>
+                </motion.div>
 
                 {/* Tab Content */}
                 <div className="relative min-h-[400px]">

@@ -359,7 +359,7 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
         {onBack && (
           <button
             onClick={onBack}
-            className="absolute top-6 left-0 p-2 active:bg-white/20 rounded-xl transition-colors text-emerald-800 dark:text-emerald-200 active:text-emerald-900 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute top-6 left-0 p-2 rounded-xl transition-colors text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-800/30 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="뒤로가기"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -414,14 +414,14 @@ export function EmotionStatsPage({ onDateClick, onBack, selectedDateFromParent, 
       {/* Month Navigation */}
       {viewMode !== 'chart' && (
         <div className="flex items-center justify-between bg-white/40 dark:bg-black/20 p-2 rounded-lg border border-white/30 dark:border-white/10 backdrop-blur-sm shadow-sm">
-          <button onClick={handlePrevMonth} className="p-1.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
-            <ChevronLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <button onClick={handlePrevMonth} className="p-1.5 rounded-md text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <h3 className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
             {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
           </h3>
-          <button onClick={handleNextMonth} className="p-1.5 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors">
-            <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <button onClick={handleNextMonth} className="p-1.5 rounded-md text-stone-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-stone-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors">
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       )}
