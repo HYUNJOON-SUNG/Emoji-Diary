@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Tailwind 다크모드 완전 비활성화 - dark: 클래스 무시 */
+@custom-variant dark (&:not(*));
+
+/* 브라우저 다크모드 영향 차단 */
+:root {
+    color-scheme: light only;
+}
+
 @layer utilities {
 
     /* Hide scrollbar for Chrome, Safari and Opera */

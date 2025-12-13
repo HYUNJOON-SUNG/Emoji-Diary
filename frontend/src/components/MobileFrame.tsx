@@ -15,9 +15,9 @@ interface MobileFrameProps {
 
 export function MobileFrame({ children }: MobileFrameProps) {
   return (
-    <div className="w-full min-h-screen flex justify-center bg-zinc-50 dark:bg-black transition-colors duration-500">
+    <div className="w-full min-h-screen flex justify-center bg-zinc-50 transition-colors duration-500">
       <div
-        className="w-full max-w-[480px] h-[100dvh] overflow-hidden bg-white dark:bg-zinc-900 shadow-xl relative flex flex-col transition-all duration-500"
+        className="w-full max-w-[480px] h-[100dvh] overflow-hidden bg-white shadow-xl relative flex flex-col transition-all duration-500"
       >
         {children}
       </div>
