@@ -229,7 +229,7 @@ export default function NoticeListPage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-8 w-8 text-slate-500 hover:text-indigo-600 relative z-10"
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`${notice.id}`) }}
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`${notice.id}/edit`) }}
                                                 >
                                                     <Edit size={16} />
                                                 </AdminButton>

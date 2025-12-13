@@ -70,7 +70,7 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [showPasswords, setShowPasswords] = useState({ new: false, confirm: false });
+  const [showPasswords, setShowPasswords] = useState({ new: false, confirm: false, delete: false });
   const [passwordError, setPasswordError] = useState('');
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(300);
@@ -81,6 +81,11 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   const passwordInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const newPasswordInputRef = useRef<HTMLInputElement>(null);
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
+
+  // Account Delete
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordError, setDeletePasswordError] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Persona
   const [currentPersona, setCurrentPersona] = useState('friend');
@@ -397,15 +402,29 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
   };
 
   const handleDeleteAccount = async () => {
+    // 비밀번호 입력 검증
+    if (!deletePassword.trim()) {
+      setDeletePasswordError('비밀번호를 입력해주세요.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setDeletePasswordError('');
+    setError('');
+
     try {
-      // deleteAccount는 password를 받지만, 계정 탈퇴는 비밀번호 없이도 가능하도록 수정 필요
-      // 일단 빈 문자열로 호출 (백엔드에서 처리)
-      await deleteAccount('');
-      // 세션 만료 및 랜딩페이지로 이동
+      // 비밀번호 재확인 후 계정 삭제
+      await deleteAccount(deletePassword);
+
+      // 성공 시 세션 만료 및 랜딩페이지로 이동
       localStorage.clear();
       onAccountDeleted();
     } catch (err) {
-      setError('계정 탈퇴 실패');
+      const errorMessage = err instanceof Error ? err.message : '계정 탈퇴에 실패했습니다.';
+      setDeletePasswordError(errorMessage);
+      console.error('계정 탈퇴 실패:', err);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -976,18 +995,60 @@ export function MyPage({ onBack, onAccountDeleted, onGoToSupport, onModalStateCh
                       </p>
                     </div>
                   </div>
+
+                  {/* 비밀번호 확인 입력 */}
+                  <div className="space-y-2">
+                    <label className="text-xs text-stone-600 block mb-1.5 ml-1 font-medium">비밀번호 확인</label>
+                    <div className="relative">
+                      <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${deletePasswordError ? 'text-rose-500' : 'text-stone-400'
+                        }`} />
+                      <input
+                        type={showPasswords.delete ? 'text' : 'password'}
+                        value={deletePassword}
+                        onChange={(e) => {
+                          setDeletePassword(e.target.value);
+                          if (deletePasswordError) setDeletePasswordError('');
+                        }}
+                        placeholder="비밀번호를 입력하세요"
+                        disabled={isDeletingAccount}
+                        className={`w-full pl-10 pr-10 py-2.5 text-sm bg-white border rounded-xl outline-none transition-all placeholder:text-stone-400 ${deletePasswordError
+                            ? 'border-rose-500 text-rose-900 focus:ring-2 focus:ring-rose-500/20 bg-rose-50/50'
+                            : 'border-stone-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                          }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, delete: !prev.delete }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1"
+                      >
+                        {showPasswords.delete ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {deletePasswordError && (
+                      <div className="flex items-center gap-1.5 mt-2 ml-1 text-rose-500 animate-in slide-in-from-left-1 duration-200">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <p className="text-xs font-medium">{deletePasswordError}</p>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex gap-3 pt-2">
                     <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-colors"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeletePassword('');
+                        setDeletePasswordError('');
+                      }}
+                      disabled={isDeletingAccount}
+                      className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-medium hover:bg-stone-200 transition-colors disabled:opacity-50"
                     >
                       취소
                     </button>
                     <button
                       onClick={handleDeleteAccount}
-                      className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-500/20"
+                      disabled={isDeletingAccount}
+                      className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-colors shadow-lg shadow-rose-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                     >
-                      탈퇴하기
+                      {isDeletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : '탈퇴하기'}
                     </button>
                   </div>
                 </motion.div>

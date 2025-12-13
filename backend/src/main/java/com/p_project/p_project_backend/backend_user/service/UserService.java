@@ -4,6 +4,7 @@ import com.p_project.p_project_backend.backend_user.dto.user.PasswordChangeReque
 import com.p_project.p_project_backend.backend_user.dto.user.PersonaUpdateRequest;
 import com.p_project.p_project_backend.backend_user.dto.user.UserResponse;
 import com.p_project.p_project_backend.exception.IncorrectPasswordException;
+import com.p_project.p_project_backend.exception.InvalidCredentialsException;
 import com.p_project.p_project_backend.entity.User;
 import com.p_project.p_project_backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -58,9 +59,18 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteAccount(String email) {
+    public void deleteAccount(String email, String password) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 비밀번호 검증
+        if (password == null || password.isEmpty()) {
+            throw new InvalidCredentialsException("비밀번호를 입력해주세요.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new InvalidCredentialsException("비밀번호가 일치하지 않습니다.");
+        }
 
         // Soft delete
         user.setDeletedAt(LocalDateTime.now());

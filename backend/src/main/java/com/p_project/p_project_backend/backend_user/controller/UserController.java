@@ -41,8 +41,11 @@ public class UserController {
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<?> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
-        userService.deleteAccount(userDetails.getUsername());
+    public ResponseEntity<?> deleteAccount(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> request) {
+        String password = request.get("password");
+        userService.deleteAccount(userDetails.getUsername(), password);
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "계정이 삭제되었습니다")));
     }
 }
