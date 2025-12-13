@@ -26,22 +26,41 @@ export interface UserInfo {
 
 export function useUserApp() {
   // ========== 상태 관리 ==========
-  
+
   /**
    * 현재 앱 화면 상태
    * - 기본값: 'landing' (항상 랜딩 페이지에서 시작)
    */
-  const [appState, setAppState] = useState<AppState>('landing');
-  
+  /**
+   * 현재 앱 화면 상태
+   * - 기본값: 토큰이 있으면 'diary', 없으면 'landing' (새로고침 시 세션 유지)
+   */
+  const [appState, setAppState] = useState<AppState>(() => {
+    return TokenStorage.hasValidToken() ? 'diary' : 'landing';
+  });
+
   /**
    * 로그인한 사용자 정보
    * - null: 로그인 안됨
-   * - { name, email }: 로그인됨
+   * - { name, email }: 로그인됨 (새로고침 시 localStorage에서 복원)
    */
-  const [user, setUser] = useState<UserInfo | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(() => {
+    if (TokenStorage.hasValidToken()) {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          return JSON.parse(userStr);
+        } catch (e) {
+          console.error('Failed to parse user state:', e);
+          return null;
+        }
+      }
+    }
+    return null;
+  });
 
   // ========== 이벤트 핸들러 ==========
-  
+
   /**
    * "일기장 열기" 버튼 클릭 핸들러 (플로우 1.2)
    * 
@@ -88,10 +107,10 @@ export function useUserApp() {
         console.error('Failed to parse user data:', e);
       }
     }
-    
+
     // 세션별 위험 경고 표시 상태 초기화 (새로운 로그인 세션 시작)
     sessionStorage.removeItem('riskAlertShown');
-    
+
     // 로그인 시에는 항상 다이어리로 바로 이동 (페르소나 설정 안 함)
     setAppState('diary');
   }, []);
@@ -115,10 +134,10 @@ export function useUserApp() {
         console.error('Failed to parse user data:', e);
       }
     }
-    
+
     // 세션별 위험 경고 표시 상태 초기화
     sessionStorage.removeItem('riskAlertShown');
-    
+
     // 회원가입 직후에만 페르소나 설정 화면으로 이동
     setAppState('persona-setup');
   }, []);
