@@ -1,6 +1,6 @@
 import * as React from "react"
 import { NavLink, useLocation } from "react-router-dom"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import {
     LayoutDashboard,
     Megaphone,

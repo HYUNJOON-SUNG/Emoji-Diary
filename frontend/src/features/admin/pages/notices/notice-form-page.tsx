@@ -7,7 +7,7 @@ import { AdminInput } from "../../components/ui/admin-input"
 import { AdminCard, AdminCardContent } from "../../components/ui/admin-card"
 import { noticesApi, Notice } from "../../api/notices"
 import { ArrowLeft, Save, Eye, Edit3 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 interface NoticeFormData {

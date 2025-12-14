@@ -5,9 +5,9 @@
  * 사용자 정보 로딩 및 업데이트 관리
  */
 import { useState, useEffect, useCallback } from 'react';
-import { getCurrentUser, updateUser } from '../../services/authApi';
+import { getCurrentUser, updateUser } from '@/features/user/auth/api/authApi';
 import { useAsync } from '../../hooks/use-async';
-import type { User } from '../../types';
+import type { User } from '@/shared/types';
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);

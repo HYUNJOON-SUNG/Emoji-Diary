@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 // Ensure you have lucide-react installed for loading spinner if needed, 
 // or use a simple SVG. For now, we'll use a className for spinner.
 import { Loader2 } from "lucide-react"

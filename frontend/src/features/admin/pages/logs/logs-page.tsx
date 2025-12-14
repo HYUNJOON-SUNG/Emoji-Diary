@@ -6,7 +6,7 @@ import { AdminInput } from "../../components/ui/admin-input"
 import { AdminCard, AdminCardContent } from "../../components/ui/admin-card"
 import { systemErrorsApi, ErrorLogListResponse, ErrorLogDetailResponse, ErrorLevel } from "../../api/system-errors"
 import { Search, AlertTriangle, Info, AlertOctagon, ChevronLeft, ChevronRight, X, Terminal, Activity, FileText } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import * as Dialog from "@radix-ui/react-dialog"
 import { motion, AnimatePresence } from "framer-motion"
 

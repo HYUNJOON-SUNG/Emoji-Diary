@@ -7,7 +7,7 @@ import { AdminTable, AdminTableBody, AdminTableCell, AdminTableHead, AdminTableH
 import { noticesApi, NoticeListResponse } from "../../api/notices"
 import { Plus, Search, Pin, PinOff, Eye, Trash2, Edit, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 // For dropdowns, we might need a simple custom one or Radix UI. 
 // For now, let's stick to simple inline actions or basic buttons.
 

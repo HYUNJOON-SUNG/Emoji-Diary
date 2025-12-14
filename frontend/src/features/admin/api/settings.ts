@@ -1,4 +1,4 @@
-import { adminApiClient } from "@/services/api"
+import { adminApiClient } from "@/shared/api/client"
 
 const RISKS_URL = "/settings/risk-detection"
 const RESOURCES_URL = "/settings/counseling-resources"

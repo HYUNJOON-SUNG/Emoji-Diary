@@ -2,7 +2,7 @@ import * as React from "react"
 import { AdminPageHeader } from "../../components/ui/admin-page-header"
 import { RiskSettingsTab } from "./risk-settings-tab"
 import { CounselingResourcesTab } from "./counseling-resources-tab"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 type Tab = "risk" | "resources"

@@ -9,7 +9,7 @@ import {
 } from "recharts"
 import { Users, BookOpen, Activity, UserPlus, FileText, AlertTriangle, PieChart as PieIcon, BarChart3 as BarIcon } from "lucide-react"
 import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 // Colors for charts
 const COLORS = {

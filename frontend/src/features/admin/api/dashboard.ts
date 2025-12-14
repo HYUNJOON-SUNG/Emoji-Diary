@@ -1,4 +1,4 @@
-import { adminApiClient } from "@/services/api"
+import { adminApiClient } from "@/shared/api/client"
 
 const BASE_URL = "/dashboard"
 
