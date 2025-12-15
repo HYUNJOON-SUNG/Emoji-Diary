@@ -8,7 +8,7 @@ from template.prompt import Prompt
 prompt = Prompt()
 
 # 추후 환경변수로 관리
-api_key = "REDACTED_API_KEY"
+api_key = "${Gemini_API_KEY}"
 
 def nano_banana(diary_content, sex, weather=None):
     system_prompt = prompt.nano_banana

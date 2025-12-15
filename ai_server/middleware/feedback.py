@@ -5,7 +5,7 @@ from template.prompt import Prompt
 prompt = Prompt()
 
 # 추후 환경변수로 관리
-api_key = "REDACTED_API_KEY"
+api_key = "${Gemini_API_KEY}"
 genai.configure(api_key=api_key)
 
 def choice_persona(persona_list):
