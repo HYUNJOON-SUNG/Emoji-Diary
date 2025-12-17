@@ -1,0 +1,324 @@
+/**
+ * Axios API 인스턴스 통합 설정
+ * - 사용자용 (`apiClient`) 및 관리자용 (`adminApiClient`) 인스턴스 제공
+ * - JWT 토큰 자동 주입 및 자동 갱신 (Refresh Token) 로직 구현
+ */
+
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { TokenStorage } from '@/features/user/auth/api/authApi';
+
+/**
+ * Base URL 설정 (환경 변수 사용)
+ */
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+/**
+ * 사용자 API용 Axios 인스턴스
+ * - 모든 요청에 사용자 JWT 토큰 자동 추가
+ */
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
+  timeout: 30000, // 30초 타임아웃
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+/**
+ * 사용자 Request Interceptor
+ * - 인증이 필요한 요청 헤더에 JWT 추가
+ */
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // 로그인, 회원가입, 비밀번호 재설정 관련 API는 토큰을 보내지 않음
+    if (config.url?.includes('/auth/login') ||
+      config.url?.includes('/auth/register') ||
+      config.url?.includes('/auth/password-reset')) {
+      return config;
+    }
+
+    const token = TokenStorage.getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error: AxiosError) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * 사용자 Response Interceptor
+ * - 401/403 에러 핸들링 및 토큰 자동 갱신
+ * - CORS 및 네트워크 에러 통합 처리
+ */
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // 성공 응답은 그대로 반환
+    // API 명세서에 따라 response.data.success 확인 필요
+    return response;
+  },
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // 401 또는 403 에러 (인증 실패 또는 권한 없음) 처리
+    // 토큰 만료로 인한 403도 처리하기 위해 403도 포함
+    // 로그인/회원가입 API는 인증이 필요 없으므로 interceptor를 건너뜀
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/register') ||
+      originalRequest?.url?.includes('/auth/password-reset');
+
+    const isTokenError = error.response?.status === 401 || error.response?.status === 403;
+
+    if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = TokenStorage.getRefreshToken();
+        if (!refreshToken) {
+          // Refresh token이 없으면 로그인 페이지로 리다이렉트
+          console.warn('토큰이 만료되었고 refresh token이 없습니다. 로그인 페이지로 이동합니다.');
+          TokenStorage.clearTokens();
+          localStorage.removeItem('user');
+          window.location.href = '/';
+          return Promise.reject(new Error('로그인이 필요합니다.'));
+        }
+
+        // 토큰 재발급 시도
+        // refresh API는 interceptor를 거치지 않도록 axios 인스턴스를 직접 생성
+        console.log('토큰이 만료되어 자동으로 재발급을 시도합니다...');
+        const refreshAxios = axios.create({
+          baseURL: BASE_URL,
+          timeout: 10000,
+        });
+        const refreshResponse = await refreshAxios.post('/auth/refresh', {
+          refreshToken,
+        });
+
+        if (refreshResponse.data.success) {
+          const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+          TokenStorage.setTokens(accessToken, newRefreshToken);
+          console.log('토큰 재발급 성공. 원래 요청을 재시도합니다.');
+
+          // 원래 요청 재시도
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          return apiClient(originalRequest);
+        } else {
+          throw new Error('토큰 재발급에 실패했습니다.');
+        }
+      } catch (refreshError: any) {
+        // 토큰 재발급 실패 시 로그인 페이지로 리다이렉트
+        console.error('토큰 재발급 실패:', refreshError);
+        TokenStorage.clearTokens();
+        localStorage.removeItem('user');
+
+        // 사용자에게 피드백 제공
+        if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+          // Refresh token도 만료된 경우
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else {
+          // 네트워크 오류 등 기타 오류
+          alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
+        }
+
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // CORS 오류 또는 네트워크 오류 처리
+    if (!error.response) {
+      // CORS 오류 감지
+      if (error.message?.includes('CORS') || error.code === 'ERR_NETWORK' || error.code === 'ERR_FAILED') {
+        const corsError = new Error('CORS 오류: 백엔드 서버의 CORS 설정을 확인해주세요. 백엔드에서 http://localhost:3000을 허용하도록 설정해야 합니다.');
+        (corsError as any).isCorsError = true;
+        return Promise.reject(corsError);
+      }
+      // 일반 네트워크 오류
+      const networkError = new Error('서버에 연결할 수 없습니다. 백엔드 서버가 실행 중인지 확인해주세요.');
+      (networkError as any).isNetworkError = true;
+      return Promise.reject(networkError);
+    }
+
+    // 기타 에러 처리
+    const errorData = error.response.data as { error?: { message?: string; code?: string }; message?: string };
+
+    // 백엔드 에러 메시지 추출 (여러 형식 지원)
+    let errorMessage = '요청 처리 중 오류가 발생했습니다.';
+
+    if (errorData?.error?.message) {
+      errorMessage = errorData.error.message;
+    } else if (errorData?.message) {
+      errorMessage = errorData.message;
+    }
+
+    // "No static resource" 에러인 경우 더 명확한 메시지 제공
+    if (errorMessage.includes('No static resource') || errorMessage.includes('NoResourceFoundException')) {
+      errorMessage = '요청한 API 엔드포인트가 백엔드에 구현되지 않았습니다.';
+    }
+
+    throw new Error(errorMessage);
+  }
+);
+
+/**
+ * 관리자 API용 Axios 인스턴스
+ * - 관리자 JWT 토큰 사용
+ * - Base URL: /api/admin
+ */
+export const adminApiClient: AxiosInstance = axios.create({
+  baseURL: `${BASE_URL}/admin`,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Mutex 관련 변수
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+/**
+ * 관리자 Request Interceptor
+ * - 관리자 토큰 자동 주입
+ */
+adminApiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    // [명세서 1.1] 관리자 Access Token 가져오기
+    const adminToken = localStorage.getItem('admin_access_token');
+    if (adminToken && config.headers) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+    }
+
+    return config;
+  },
+  (error: AxiosError) => {
+    return Promise.reject(error);
+  }
+);
+
+/**
+ * 관리자 Response Interceptor
+ * - 401 에러 시 관리자 토큰 갱신 (Mutex 패턴 적용)
+ */
+adminApiClient.interceptors.response.use(
+  (response: AxiosResponse) => {
+    return response;
+  },
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // 401 또는 403 에러 (인증 실패) 처리
+    const isTokenError = error.response?.status === 401 || error.response?.status === 403;
+    // [수정] url이 상대 경로('/auth/login')일 경우를 대비해 '/admin' prefix 제거하고 체크
+    const isAuthEndpoint = originalRequest?.url?.includes('auth/login') ||
+      originalRequest?.url?.includes('auth/refresh');
+
+    if (isTokenError && originalRequest && !originalRequest._retry && !isAuthEndpoint) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
+            return adminApiClient(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = localStorage.getItem('admin_refresh_token');
+        if (!refreshToken) {
+          throw new Error('Refresh token이 없습니다.');
+        }
+
+        // 토큰 재발급 시도
+        console.log('관리자 토큰이 만료되어 자동으로 재발급을 시도합니다...');
+        const refreshAxios = axios.create({
+          baseURL: BASE_URL,
+          timeout: 10000,
+        });
+        const refreshResponse = await refreshAxios.post('/admin/auth/refresh', {
+          refreshToken,
+        });
+
+        if (refreshResponse.data.success) {
+          const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+          // [명세서 1.1] 관리자 Access Token 및 Refresh Token 저장
+          localStorage.setItem('admin_access_token', accessToken);
+          localStorage.setItem('admin_refresh_token', newRefreshToken);
+          console.log('관리자 토큰 재발급 성공. 원래 요청을 재시도합니다.');
+
+          processQueue(null, accessToken);
+          isRefreshing = false;
+
+          // 원래 요청 재시도
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          return adminApiClient(originalRequest);
+        } else {
+          throw new Error('토큰 재발급에 실패했습니다.');
+        }
+      } catch (refreshError: any) {
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
+        // 토큰 재발급 실패 시 관리자 로그인 페이지로 리다이렉트
+        console.error('관리자 토큰 재발급 실패:', refreshError);
+        // [명세서 1.1] 관리자 Access Token 및 Refresh Token 삭제
+        localStorage.removeItem('admin_access_token');
+        localStorage.removeItem('admin_refresh_token');
+
+        // 사용자에게 피드백 제공 (중복 alert 방지는 브라우저가 어느정도 처리하나, 명시적으로는 추가 state 필요)
+        // 여기서는 에러 발생 시 즉시 리다이렉트
+        if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+          alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+        } else {
+          alert('인증 정보를 갱신하는 중 오류가 발생했습니다. 다시 로그인해주세요.');
+        }
+
+        window.location.href = '/admin/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // 기타 에러 처리
+    // [수정] 로그인/토큰갱신 요청 실패 시에는 리다이렉트 하지 않음 (!isAuthEndpoint 추가)
+    if (isTokenError && !originalRequest?._retry && !isAuthEndpoint) {
+      // [명세서 1.1] 관리자 Access Token 및 Refresh Token 제거
+      localStorage.removeItem('admin_access_token');
+      localStorage.removeItem('admin_refresh_token');
+      window.location.href = '/admin/login';
+    }
+
+    return Promise.reject(error);
+  }
+);
+

@@ -1,0 +1,38 @@
+package com.p_project.p_project_backend.backend_user.dto.user;
+
+import com.p_project.p_project_backend.entity.User;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import java.time.LocalDateTime;
+
+/**
+ * 사용자 정보 응답 DTO
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserResponse {
+    private Long id;
+    private String email;
+    private String name;
+    private User.Persona persona;
+    private LocalDateTime createdAt;
+
+    private User.Gender gender;
+
+    public static UserResponse from(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .persona(user.getPersona())
+                .gender(user.getGender())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+}
