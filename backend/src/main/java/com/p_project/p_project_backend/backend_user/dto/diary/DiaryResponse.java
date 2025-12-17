@@ -10,6 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * 일기 상세 정보 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,15 +23,15 @@ public class DiaryResponse {
     private LocalDate date;
     private String title;
     private String content;
-    private String emotion; // "행복" (Korean label or Enum name)
+    private String emotion;
     private String mood;
     private String weather;
-    private List<String> activities; // Not directly in Diary entity, might need separate table or JSON
-    private List<String> images; // User images
-    private String imageUrl; // AI Image
+    private List<String> activities;
+    private List<String> images;
+    private String imageUrl;
     private String aiComment;
-    private String persona; // Snapshot Persona
-    private Object recommendedFood; // JSON parsed object
+    private String persona;
+    private Object recommendedFood;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

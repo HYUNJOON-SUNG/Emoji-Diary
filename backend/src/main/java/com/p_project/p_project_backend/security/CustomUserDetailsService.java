@@ -10,12 +10,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 
+/**
+ * 사용자 인증 정보 로드 서비스
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    /**
+     * 사용자 정보 조회 (이메일 기반, 탈퇴 여부 확인)
+     */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)

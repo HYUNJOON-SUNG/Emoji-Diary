@@ -4,8 +4,11 @@ import {
   getDiaryTrend,
   getUserActivityStats,
   getRiskLevelDistribution
-} from '../../../services/adminApi';
+} from '../api/adminApi';
 
+/**
+ * 대시보드 통계 데이터 인터페이스
+ */
 interface DashboardStats {
   totalUsers: number;
   activeUsers: {
@@ -39,6 +42,18 @@ interface DashboardStats {
   }>;
 }
 
+/**
+ * 관리자 대시보드 데이터 로드 Hook
+ * - 각종 통계 데이터(사용자, 일기, 위험도 등)를 주기별로 조회
+ * @param avgDiariesPeriod - 평균 일기 조회 기간
+ * @param riskLevelPeriod - 위험도 통계 조회 기간
+ * @param diaryTrendPeriod - 일기 트렌드 조회 기간
+ * @param userActivityPeriod - 사용자 활동 통계 조회 기간
+ * @param riskDistributionPeriod - 위험도 분포 조회 기간
+ * @param selectedMetrics - 선택된 활동 지표
+ * @param activeUserType - 활성 사용자 기준 (DAU/WAU/MAU)
+ * @param newUserPeriod - 신규 사용자 집계 기간
+ */
 export function useDashboardData(
   avgDiariesPeriod: 'week' | 'month' | 'year',
   riskLevelPeriod: 'week' | 'month' | 'year',
@@ -54,6 +69,9 @@ export function useDashboardData(
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중 상태 (기존 데이터 유지)
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * 대시보드 데이터 API 호출
+   */
   const fetchDashboardData = useCallback(async (
     avgDiariesPeriod: 'week' | 'month' | 'year',
     riskLevelPeriod: 'week' | 'month' | 'year',
@@ -73,7 +91,6 @@ export function useDashboardData(
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
-      // [API 명세서 Section 10.2.1-10.2.4]
       // 각 영역별 독립적인 period 파라미터 전달
       const [statsRes, trendRes, activityRes, riskRes] = await Promise.all([
         getDashboardStats({
@@ -194,6 +211,7 @@ export function useDashboardData(
     }
   }, []);
 
+  // 초기 데이터 로드 및 기간 변경 시 재로딩
   useEffect(() => {
     const loadStats = async () => {
       // 기존 데이터가 있으면 isRefreshing, 없으면 isLoading

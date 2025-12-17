@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 공지사항 수정 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,4 +22,3 @@ public class NoticeUpdateResponse {
     private String content;
     private LocalDateTime updatedAt;
 }
-

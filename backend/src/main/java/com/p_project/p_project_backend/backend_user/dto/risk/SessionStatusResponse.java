@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 세션 상태 응답 DTO
+ */
 @Getter
 @Builder
 @AllArgsConstructor

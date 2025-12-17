@@ -17,6 +17,9 @@ public class CounselingResourceService {
 
     private final CounselingResourceRepository counselingResourceRepository;
 
+    /**
+     * 상담 기관 목록 조회 (카테고리별 필터링)
+     */
     @Transactional(readOnly = true)
     public List<CounselingResourceResponse> getCounselingResources(String category) {
         List<CounselingResource> resources = fetchResources(category);

@@ -1,69 +1,14 @@
 /**
- * ========================================
- * 위험 신호 알림 모달 컴포넌트
- * ========================================
- * 
- * [플로우 9.1: 자동 위험 분석]
- * 
- * **트리거**:
- * - 로그인 성공 후 다이어리 메인 화면 진입 시 **한 번만** 실행
- * 
- * **분석 과정**:
- * - 시스템: 관리자가 설정한 모니터링 기간(관리자 명세서 5.2 참조)만큼 최근 일기 데이터 조회
- * - 감정 패턴 분석:
- *   * 연속 부정 감정 일수 계산
- *   * 부정 감정 발생 횟수 계산
- *   * 위험 레벨 판정 (none/low/medium/high)
- * 
- * **위험 레벨 기준**:
- * - 시스템이 관리자가 설정한 기준(관리자 명세서 5.2 참조)에 따라 위험 레벨을 판정합니다
- * - **High**: 관리자가 설정한 High 레벨 판정 기준을 충족하는 경우
- * - **Medium**: 관리자가 설정한 Medium 레벨 판정 기준을 충족하는 경우 (High 기준 미충족 시)
- * - **Low**: 관리자가 설정한 Low 레벨 판정 기준을 충족하는 경우 (High/Medium 기준 미충족 시)
- * - **None**: 위의 기준을 모두 충족하지 않는 경우
- * 
- * [플로우 9.2: 위험 알림 모달 표시]
- * 
- * **조건**:
- * - 위험 레벨이 low 이상인 경우
- * 
- * **표시 시점**: 로그인 성공 후 다이어리 메인 화면 진입 시 **한 번만** 표시
- * - 세션 중에는 다시 표시하지 않음
- * - 로그아웃 후 재로그인 시에만 다시 확인
- * 
- * **모달 내용**:
- * - 위험 레벨별 아이콘 및 색상
- * - 위험 레벨별 메시지:
- *   * High: "위험 신호가 감지되었습니다"
- *   * Medium: "감정 상태를 확인해주세요"
- *   * Low: "감정 돌아보기"
- * - 감지된 위험 신호 이유 목록 표시
- * - High 레벨인 경우: 관리자가 설정한 긴급 상담 기관의 전화번호 표시 (관리자 명세서 5.3의 "긴급 상담 기관으로 표시"로 설정된 기관의 전화번호)
- * 
- * **사용자 선택지**:
- * 1. **"상담 연결 리소스 보기" 버튼**
- *    - 클릭 → 지원 리소스 페이지로 이동
- *    - 모달 닫기
- * 2. **"닫기" 버튼**
- *    - 클릭 → 모달 닫기 (메인 화면 계속 사용)
- * 
- * 알림 설정 비활성화 시:
- * - 위험 레벨이 low 이상이어도 모달 표시 안 함
- * - 사용자가 마이페이지에서 알림 설정을 활성화해야 모달 표시됨
- * 
- * 디자인:
- * - 위험 심각도별 색상 (high: rose, medium: amber, low: blue)
- * - 경고 아이콘 + 제목 + 메시지
- * - 감지된 패턴 표시 (reasons)
- * - 긴급 연락처 (high 레벨만)
- * - 액션 버튼 (도움말 보기, 닫기)
+ * 위험 신호 알림 모달
+ * - 로그인 직후 자동 분석된 위험 레벨(Low/Medium/High) 경고
+ * - 감지된 패턴 및 긴급 연락처(High) 표시
  */
 
 import { AlertTriangle, X, ExternalLink, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * RiskAlertModal Props (플로우 9.1, 9.2)
+ * Props Interface
  */
 interface RiskAlertModalProps {
   isOpen: boolean; // 모달 표시 여부
@@ -76,14 +21,8 @@ interface RiskAlertModalProps {
 
 export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, reasons, urgentCounselingPhones = [] }: RiskAlertModalProps) {
   /**
-   * 위험 레벨별 색상 테마 (플로우 9.1)
-   * 
-   * 디자인 컨셉:
-   * - 위험 심각도에 따른 직관적 색상
-   * - High: Rose (긴급/위험) - 빨간색
-   * - Medium: Amber (주의/경고) - 노란색/주황색
-   * - Low: Blue (참고/알림) - 파란색
-   */
+ * 위험 레벨별 색상 테마 반환
+ */
   const getRiskColor = () => {
     switch (riskLevel) {
       case 'high':
@@ -116,8 +55,8 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
   const colors = getRiskColor();
 
   /**
-   * 위험 레벨별 제목 (플로우 9.2)
-   */
+ * 제목 텍스트 반환
+ */
   const getTitle = () => {
     switch (riskLevel) {
       case 'high':
@@ -130,8 +69,8 @@ export function RiskAlertModal({ isOpen, onClose, onViewResources, riskLevel, re
   };
 
   /**
-   * 위험 레벨별 메시지 (플로우 9.2)
-   */
+ * 경고 메시지 반환
+ */
   const getMessage = () => {
     switch (riskLevel) {
       case 'high':

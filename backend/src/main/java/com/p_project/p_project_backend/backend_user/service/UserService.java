@@ -21,6 +21,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
@@ -28,6 +31,9 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    /**
+     * 페르소나 수정
+     */
     @Transactional
     public UserResponse updatePersona(String email, PersonaUpdateRequest request) {
         User user = userRepository.findByEmail(email)
@@ -40,6 +46,9 @@ public class UserService {
         return UserResponse.from(user);
     }
 
+    /**
+     * 비밀번호 변경
+     */
     @Transactional
     public void changePassword(String email, PasswordChangeRequest request) {
         User user = userRepository.findByEmail(email)
@@ -58,6 +67,9 @@ public class UserService {
         userRepository.save(user);
     }
 
+    /**
+     * 회원 탈퇴 (Soft Delete)
+     */
     @Transactional
     public void deleteAccount(String email, String password) {
         User user = userRepository.findByEmail(email)

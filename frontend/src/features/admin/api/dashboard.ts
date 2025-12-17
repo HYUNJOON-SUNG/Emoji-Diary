@@ -63,6 +63,9 @@ const mapRiskDistributionToArray = (data: any): RiskDistributionData[] => {
 }
 
 export const dashboardApi = {
+    /**
+     * 주요 통계 지표 조회
+     */
     getStats: async (
         averageDiariesPeriod: "weekly" | "monthly" | "yearly" = "monthly",
         riskLevelPeriod: "weekly" | "monthly" | "yearly" = "monthly",
@@ -80,6 +83,9 @@ export const dashboardApi = {
         return response.data.data
     },
 
+    /**
+     * 일지 작성 추이 조회
+     */
     getDiaryTrend: async (period: "weekly" | "monthly" | "yearly"): Promise<DiaryTrendData[]> => {
         const response = await adminApiClient.get(`${BASE_URL}/diary-trend`, {
             params: { period }
@@ -87,6 +93,9 @@ export const dashboardApi = {
         return response.data.data.trend
     },
 
+    /**
+     * 사용자 활동 추이 조회
+     */
     getUserActivity: async (period: "weekly" | "monthly" | "yearly"): Promise<UserActivityData[]> => {
         const response = await adminApiClient.get(`${BASE_URL}/user-activity-stats`, {
             params: {
@@ -97,6 +106,9 @@ export const dashboardApi = {
         return response.data.data.trend
     },
 
+    /**
+     * 위험 레벨 분포 조회
+     */
     getRiskDistribution: async (period: "weekly" | "monthly" | "yearly"): Promise<RiskDistributionData[]> => {
         const response = await adminApiClient.get(`${BASE_URL}/risk-level-distribution`, {
             params: { period }

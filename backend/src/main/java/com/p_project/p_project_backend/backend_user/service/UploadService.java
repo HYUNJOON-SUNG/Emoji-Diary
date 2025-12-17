@@ -16,9 +16,12 @@ import java.util.ArrayList;
 @Service
 public class UploadService {
 
-    // 로컬 저장 경로 (프로젝트 루트/images/user_uploads)
+    // 로컬 저장 경로
     private static final String UPLOAD_DIR = "images/user_uploads";
 
+    /**
+     * 이미지 업로드 (다중)
+     */
     public List<String> uploadImages(List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Files are empty");
@@ -68,6 +71,9 @@ public class UploadService {
         return imageUrls;
     }
 
+    /**
+     * 이미지 삭제
+     */
     public void deleteImage(String imageUrl) {
         if (imageUrl == null || imageUrl.isEmpty()) {
             return;

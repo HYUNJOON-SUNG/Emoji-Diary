@@ -9,6 +9,9 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 에러 로그 목록 조회 시 반환되는 개별 로그 정보
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,4 +36,3 @@ public class ErrorLogItem {
                 .build();
     }
 }
-

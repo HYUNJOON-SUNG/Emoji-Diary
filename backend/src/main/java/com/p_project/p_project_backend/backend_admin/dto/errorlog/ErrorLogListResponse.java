@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+/**
+ * 에러 로그 목록 조회 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,4 +21,3 @@ public class ErrorLogListResponse {
     private ErrorLogSummary summary;
     private List<ErrorLogItem> logs;
 }
-

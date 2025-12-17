@@ -11,12 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 
+/**
+ * 관리자 인증 정보 로드 서비스
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminDetailsService implements UserDetailsService {
 
     private final AdminRepository adminRepository;
 
+    /**
+     * 관리자 정보 조회 (이메일 기반)
+     */
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -30,4 +36,3 @@ public class AdminDetailsService implements UserDetailsService {
         );
     }
 }
-

@@ -5,6 +5,9 @@ import lombok.Getter;
 
 import java.util.List;
 
+/**
+ * 월별 일기 존재 여부 응답 DTO
+ */
 @Getter
 @Builder
 public class DiaryMonthlyResponse {

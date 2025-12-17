@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 위험 탐지 설정 변경 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +20,3 @@ public class RiskDetectionSettingsUpdateResponse {
     private String message;
     private LocalDateTime updatedAt;
 }
-

@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+/**
+ * 공지사항 목록 조회 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,4 +22,3 @@ public class NoticeListResponse {
     private Integer limit;
     private List<NoticeItem> notices;
 }
-

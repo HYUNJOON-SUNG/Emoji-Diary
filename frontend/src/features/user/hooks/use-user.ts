@@ -1,12 +1,10 @@
 /**
  * 사용자 정보 관리 Hook
- * 
- * @description
- * 사용자 정보 로딩 및 업데이트 관리
+ * - 사용자 데이터 로드 및 업데이트
  */
-import { useState, useEffect, useCallback } from 'react';
-import { getCurrentUser, updateUser } from '@/features/user/auth/api/authApi';
-import { useAsync } from '../../hooks/use-async';
+import { useState, useEffect } from 'react';
+import { getCurrentUser } from '@/features/user/auth/api/authApi';
+import { useAsync } from '@/shared/hooks/use-async';
 import type { User } from '@/shared/types';
 
 export function useUser() {
@@ -27,22 +25,11 @@ export function useUser() {
     }
   }, [data]);
 
-  const updateUserInfo = useCallback(async (updates: Partial<User>) => {
-    try {
-      const updated = await updateUser(updates);
-      setUser(updated);
-      return updated;
-    } catch (err) {
-      throw err;
-    }
-  }, []);
-
   return {
     user,
     isLoading,
     error,
-    loadUser,
-    updateUserInfo
+    loadUser
   };
 }
 

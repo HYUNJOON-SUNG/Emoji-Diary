@@ -37,7 +37,7 @@ public class AdminNoticeService {
     private final AdminRepository adminRepository;
 
     /**
-     * 공지사항 목록 조회 (페이징)
+     * 공지사항 목록 조회
      */
     @Transactional(readOnly = true)
     public NoticeListResponse getNoticeList(int page, int limit) {
@@ -61,7 +61,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 공지사항 상세 조회
+     * 공지사항 상세 조회 (관리자 정보 포함)
      */
     @Transactional(readOnly = true)
     public NoticeDetailResponse getNoticeDetail(Long noticeId) {
@@ -71,7 +71,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 공지사항 작성
+     * 신규 공지사항 생성
      */
     @Transactional
     public NoticeDetailResponse createNotice(NoticeCreateRequest request, Long adminId) {
@@ -149,7 +149,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 공지사항 고정/해제
+     * 공지사항 상단 고정 상태 토글
      */
     @Transactional
     public NoticePinResponse togglePin(Long noticeId, boolean isPinned) {
@@ -169,7 +169,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 공지사항 ID로 조회 (관리자 정보 포함)
+     * 공지사항 ID 조회 (관리자 포함)
      */
     private Notice findNoticeById(Long noticeId) {
         return noticeRepository.findByIdWithAdmin(noticeId)
@@ -180,7 +180,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 관리자 ID로 조회
+     * 관리자 ID 조회
      */
     private Admin findAdminById(Long adminId) {
         return adminRepository.findById(adminId)
@@ -191,7 +191,7 @@ public class AdminNoticeService {
     }
 
     /**
-     * 공지사항이 삭제되지 않았는지 검증
+     * 공지사항 삭제 여부 검증
      */
     private void validateNoticeNotDeleted(Notice notice, Long noticeId) {
         if (notice.getDeletedAt() != null) {

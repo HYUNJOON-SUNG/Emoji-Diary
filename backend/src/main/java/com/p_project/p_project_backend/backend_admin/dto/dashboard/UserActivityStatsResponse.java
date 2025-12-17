@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * 사용자 활동 통계 차트 응답 DTO
+ * 사용자 활동 통계 조회 응답 DTO
  */
 @Getter
 @Builder

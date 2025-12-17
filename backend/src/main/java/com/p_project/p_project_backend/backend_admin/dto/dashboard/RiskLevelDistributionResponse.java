@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 위험 레벨 분포 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

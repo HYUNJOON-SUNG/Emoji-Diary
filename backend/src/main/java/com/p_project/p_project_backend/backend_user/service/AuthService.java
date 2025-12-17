@@ -31,6 +31,9 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
+    /**
+     * 사용자 로그인
+     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = findActiveUser(request.getEmail());
@@ -48,11 +51,17 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * 이메일 중복 확인
+     */
     @Transactional(readOnly = true)
     public boolean checkEmailAvailability(String email) {
         return !isUserEmailTaken(email) && !adminRepository.existsByEmail(email);
     }
 
+    /**
+     * 이메일 인증 코드 발송
+     */
     @Transactional
     public void sendVerificationCode(String email) {
         if (isUserEmailTaken(email)) {
@@ -66,6 +75,9 @@ public class AuthService {
         emailService.sendVerificationCode(email, code);
     }
 
+    /**
+     * 이메일 인증 코드 검증
+     */
     @Transactional
     public void verifyEmailCode(String email, String code) {
         EmailVerificationCode evc = emailVerificationCodeRepository.findTopByEmailOrderByCreatedAtDesc(email)
@@ -83,6 +95,9 @@ public class AuthService {
         emailVerificationCodeRepository.save(evc);
     }
 
+    /**
+     * 회원 가입
+     */
     @Transactional
     public LoginResponse register(SignUpRequest request) {
         handleExistingUser(request.getEmail());
@@ -94,6 +109,9 @@ public class AuthService {
         return login(new LoginRequest(request.getEmail(), request.getPassword()));
     }
 
+    /**
+     * 비밀번호 재설정 인증 코드 발송
+     */
     @Transactional
     public void sendPasswordResetCode(String email) {
         if (!userRepository.existsByEmail(email)) {
@@ -112,6 +130,9 @@ public class AuthService {
         emailService.sendPasswordResetCode(email, code);
     }
 
+    /**
+     * 비밀번호 재설정 인증 코드 검증
+     */
     @Transactional
     public String verifyPasswordResetCode(String email, String code) {
         PasswordResetCode prc = passwordResetCodeRepository.findTopByEmailOrderByCreatedAtDesc(email)
@@ -132,6 +153,9 @@ public class AuthService {
         return resetToken;
     }
 
+    /**
+     * 비밀번호 재설정
+     */
     @Transactional
     public void resetPassword(PasswordResetConfirmRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
@@ -156,6 +180,9 @@ public class AuthService {
         passwordResetCodeRepository.save(prc);
     }
 
+    /**
+     * 토큰 갱신
+     */
     @Transactional
     public TokenResponse refreshToken(String refreshToken) {
         if (!tokenProvider.validateToken(refreshToken)) {
@@ -184,6 +211,9 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * 로그아웃
+     */
     @Transactional
     public void logout(String refreshToken) {
         refreshTokenRepository.findByToken(refreshToken)

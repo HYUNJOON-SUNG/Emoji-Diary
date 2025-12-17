@@ -3,6 +3,12 @@ import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 
+/**
+ * Vite 설정 파일
+ * - React, TailwindCSS 플러그인 설정
+ * - 경로 별칭 (@) 설정
+ * - 빌드 및 개발 서버 (프록시) 설정
+ */
 export default defineConfig({
   plugins: [
     react(),
@@ -11,6 +17,7 @@ export default defineConfig({
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
+      // 라이브러리 버전 고정 및 경로 매핑
       'vaul@1.1.2': 'vaul',
       'sonner@2.0.3': 'sonner',
       'recharts@2.15.2': 'recharts',
@@ -49,17 +56,21 @@ export default defineConfig({
       '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
       '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
       '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
+      // 소스 코드 루트 별칭
       '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
+    // 빌드 타겟 및 출력 디렉토리
     target: 'esnext',
     outDir: 'build',
   },
   server: {
+    // 개발 서버 포트 및 호스트 설정
     port: 3000,
     host: true,
     open: true,
+    // API 프록시 설정 (백엔드 연동)
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

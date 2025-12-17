@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 인자가 필요없는 생성자 생성
 @AllArgsConstructor // 모든 인자를 필요로하는 생성자 생성
 @Builder // 객체 생성 시 Builder를 활용하여 생성 가능
-// 이메일 인증 코드 DB(email_verification_codes)와 연동되는 자바 Entity 객체이다.
+/**
+ * 이메일 인증 코드 엔티티
+ */
 public class EmailVerificationCode {
 
     // 인증 코드 고유 ID (id)

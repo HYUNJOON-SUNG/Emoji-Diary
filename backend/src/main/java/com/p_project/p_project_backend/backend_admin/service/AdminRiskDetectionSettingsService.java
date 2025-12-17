@@ -37,8 +37,7 @@ public class AdminRiskDetectionSettingsService {
     private final AdminRepository adminRepository;
 
     /**
-     * 위험 신호 감지 기준 조회
-     * 없으면 기본값으로 생성
+     * 위험 감지 설정 조회 (없으면 기본값 생성)
      */
     @Transactional(readOnly = true)
     public RiskDetectionSettingsResponse getRiskDetectionSettings() {
@@ -49,13 +48,12 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 위험 신호 감지 기준 변경
+     * 위험 감지 설정 업데이트
      */
     @Transactional
     public RiskDetectionSettingsUpdateResponse updateRiskDetectionSettings(
             RiskDetectionSettingsRequest request,
-            Long adminId
-    ) {
+            Long adminId) {
         // 검증
         validateSettings(request);
 
@@ -81,10 +79,9 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 기본값으로 설정 생성
-     * 단일 레코드만 존재하므로 첫 생성 시 기본값으로 생성
+     * 기본 설정값 생성 및 저장
      */
-    @Transactional // createDefaultSettings는 쓰기 작업을 포함하므로 @Transactional 필요
+    @Transactional
     private RiskDetectionSettings createDefaultSettings() {
         LocalDateTime now = LocalDateTime.now();
         RiskDetectionSettings settings = RiskDetectionSettings.builder()
@@ -103,7 +100,7 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 설정 필드 업데이트
+     * 설정 필드 값 업데이트
      */
     private void updateSettingsFields(RiskDetectionSettings settings, RiskDetectionSettingsRequest request) {
         settings.setMonitoringPeriod(request.getMonitoringPeriod());
@@ -116,9 +113,7 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 설정 검증
-     * - High > Medium > Low (consecutiveScore)
-     * - High > Medium > Low (scoreInPeriod)
+     * 설정값 유효성 검증 (점수 계층 구조 확인)
      */
     private void validateSettings(RiskDetectionSettingsRequest request) {
         validateConsecutiveScore(request);
@@ -126,39 +121,35 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 연속 부정 감정 임계 점수 검증
+     * 연속 감정 점수 계층 구조 검증
      */
     private void validateConsecutiveScore(RiskDetectionSettingsRequest request) {
         validateScoreHierarchy(
                 request.getHigh().getConsecutiveScore(),
                 request.getMedium().getConsecutiveScore(),
-                "High의 연속 부정 감정 임계 점수는 Medium보다 커야 합니다"
-        );
+                "High의 연속 부정 감정 임계 점수는 Medium보다 커야 합니다");
         validateScoreHierarchy(
                 request.getMedium().getConsecutiveScore(),
                 request.getLow().getConsecutiveScore(),
-                "Medium의 연속 부정 감정 임계 점수는 Low보다 커야 합니다"
-        );
+                "Medium의 연속 부정 감정 임계 점수는 Low보다 커야 합니다");
     }
 
     /**
-     * 모니터링 기간 내 부정 감정 임계 점수 검증
+     * 기간 내 감정 점수 계층 구조 검증
      */
     private void validateScoreInPeriod(RiskDetectionSettingsRequest request) {
         validateScoreHierarchy(
                 request.getHigh().getScoreInPeriod(),
                 request.getMedium().getScoreInPeriod(),
-                "High의 모니터링 기간 내 부정 감정 임계 점수는 Medium보다 커야 합니다"
-        );
+                "High의 모니터링 기간 내 부정 감정 임계 점수는 Medium보다 커야 합니다");
         validateScoreHierarchy(
                 request.getMedium().getScoreInPeriod(),
                 request.getLow().getScoreInPeriod(),
-                "Medium의 모니터링 기간 내 부정 감정 임계 점수는 Low보다 커야 합니다"
-        );
+                "Medium의 모니터링 기간 내 부정 감정 임계 점수는 Low보다 커야 합니다");
     }
 
     /**
-     * 점수 계층 구조 검증 (상위 점수 > 하위 점수)
+     * 상위 점수가 하위 점수보다 큰지 검증
      */
     private void validateScoreHierarchy(Integer higherScore, Integer lowerScore, String errorMessage) {
         if (higherScore <= lowerScore) {
@@ -167,7 +158,7 @@ public class AdminRiskDetectionSettingsService {
     }
 
     /**
-     * 관리자 ID로 조회
+     * 관리자 ID 조회
      */
     private Admin findAdminById(Long adminId) {
         return adminRepository.findById(adminId)
@@ -177,4 +168,3 @@ public class AdminRiskDetectionSettingsService {
                 });
     }
 }
-

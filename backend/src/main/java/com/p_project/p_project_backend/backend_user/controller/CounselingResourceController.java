@@ -19,6 +19,9 @@ public class CounselingResourceController {
 
     private final CounselingResourceService counselingResourceService;
 
+    /**
+     * 상담 기관 목록 조회
+     */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getCounselingResources(
             @RequestParam(required = false) String category) {

@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getErrorLogList } from '../../../services/adminApi';
+import { getErrorLogList } from '../api/adminApi';
 import type { ErrorLog, LogStats } from '../types';
 
+/**
+ * 에러 로그 관리 Hook
+ * - 로그 목록 조회, 필터링, 검색 기능 제공
+ */
 export function useErrorLogs() {
   const [isLoading, setIsLoading] = useState(true);
   const [allLogs, setAllLogs] = useState<ErrorLog[]>([]);
@@ -19,6 +23,9 @@ export function useErrorLogs() {
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  /**
+   * 에러 로그 목록 조회
+   */
   const loadErrorLogs = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -43,6 +50,10 @@ export function useErrorLogs() {
     }
   }, []);
 
+  /**
+   * 필터 및 검색 적용
+   * - 레벨, 날짜, 검색어 기반 클라이언트 사이드 필터링
+   */
   const applyFilters = useCallback(() => {
     let filtered = [...allLogs];
 

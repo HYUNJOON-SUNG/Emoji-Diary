@@ -19,7 +19,6 @@ public class NoticeController {
 
     /**
      * 공지사항 목록 조회
-     * GET /api/notices
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getNotices(
@@ -36,7 +35,6 @@ public class NoticeController {
 
     /**
      * 공지사항 상세 조회
-     * GET /api/notices/{noticeId}
      */
     @GetMapping("/{noticeId}")
     public ResponseEntity<Map<String, Object>> getNoticeDetail(@PathVariable Long noticeId) {

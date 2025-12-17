@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 공지사항 고정 상태 변경 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +18,3 @@ public class NoticePinResponse {
     private Long id;
     private Boolean isPinned;
 }
-

@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+/**
+ * 상담 기관 목록 조회 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,4 +19,3 @@ import java.util.List;
 public class CounselingResourceListResponse {
     private List<CounselingResourceItem> resources;
 }
-

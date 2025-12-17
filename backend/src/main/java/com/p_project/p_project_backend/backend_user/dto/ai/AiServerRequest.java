@@ -6,6 +6,9 @@ import com.p_project.p_project_backend.entity.User.Persona;
 import lombok.Builder;
 import lombok.Getter;
 
+/**
+ * AI 서버 분석 요청 DTO
+ */
 @Getter
 @Builder
 public class AiServerRequest {

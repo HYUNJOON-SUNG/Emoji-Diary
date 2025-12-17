@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+/**
+ * 감정 추이 정보 응답 DTO
+ */
 @Getter
 @Builder
 @NoArgsConstructor

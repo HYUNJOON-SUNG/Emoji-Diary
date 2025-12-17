@@ -7,6 +7,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
+/**
+ * 관리자 토큰 재발급 요청 DTO
+ */
 @NoArgsConstructor
 public class AdminRefreshRequest {
     @NotBlank(message = "리프레시 토큰을 입력해주세요")

@@ -15,12 +15,18 @@ public class AuthController {
 
     private final AuthService authService;
 
+    /**
+     * 일반 사용자 로그인
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 이메일 중복 확인
+     */
     @PostMapping("/check-email")
     public ResponseEntity<?> checkEmail(@RequestBody @jakarta.validation.Valid EmailCheckRequest request) {
         boolean available = authService.checkEmailAvailability(request.getEmail());
@@ -33,6 +39,9 @@ public class AuthController {
         }
     }
 
+    /**
+     * 이메일 인증 코드 발송
+     */
     @PostMapping("/send-verification-code")
     public ResponseEntity<?> sendVerificationCode(@RequestBody EmailCheckRequest request) {
         authService.sendVerificationCode(request.getEmail());
@@ -40,6 +49,9 @@ public class AuthController {
                 .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
     }
 
+    /**
+     * 이메일 인증 코드 검증
+     */
     @PostMapping("/verify-code")
     public ResponseEntity<?> verifyCode(@RequestBody VerificationCodeRequest request) {
         authService.verifyEmailCode(request.getEmail(), request.getCode());
@@ -47,12 +59,18 @@ public class AuthController {
                 .ok(Map.of("success", true, "data", Map.of("verified", true, "message", "이메일 인증이 완료되었습니다")));
     }
 
+    /**
+     * 일반 사용자 회원가입
+     */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @jakarta.validation.Valid SignUpRequest request) {
         LoginResponse response = authService.register(request);
         return ResponseEntity.status(201).body(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 비밀번호 재설정 인증 코드 발송
+     */
     @PostMapping("/password-reset/send-code")
     public ResponseEntity<?> sendPasswordResetCode(@RequestBody PasswordResetRequest request) {
         authService.sendPasswordResetCode(request.getEmail());
@@ -60,6 +78,9 @@ public class AuthController {
                 .ok(Map.of("success", true, "data", Map.of("message", "인증 코드가 발송되었습니다", "expiresIn", 300)));
     }
 
+    /**
+     * 비밀번호 재설정 인증 코드 검증
+     */
     @PostMapping("/password-reset/verify-code")
     public ResponseEntity<?> verifyPasswordResetCode(@RequestBody PasswordResetVerifyRequest request) {
         String resetToken = authService.verifyPasswordResetCode(request.getEmail(), request.getCode());
@@ -67,18 +88,27 @@ public class AuthController {
                 .ok(Map.of("success", true, "data", Map.of("verified", true, "resetToken", resetToken)));
     }
 
+    /**
+     * 비밀번호 재설정
+     */
     @PostMapping("/password-reset/reset")
     public ResponseEntity<?> resetPassword(@RequestBody @jakarta.validation.Valid PasswordResetConfirmRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 재설정되었습니다")));
     }
 
+    /**
+     * 액세스 토큰 갱신
+     */
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
         TokenResponse response = authService.refreshToken(request.getRefreshToken());
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 로그아웃
+     */
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestBody RefreshTokenRequest request) {
         authService.logout(request.getRefreshToken());

@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 일기 작성 추이 그래프의 개별 데이터 포인트
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,4 +18,3 @@ public class DiaryTrendItem {
     private String date;
     private Long count;
 }
-

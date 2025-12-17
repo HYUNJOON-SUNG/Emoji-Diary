@@ -1,26 +1,6 @@
 /**
- * ====================================================================================================
  * 관리자 API 서비스
- * ====================================================================================================
- * 
- * @description
- * 관리자 기능을 위한 API 클라이언트
- * - 유스케이스: 관리자 기반 상세기능명세서 전체
- * - 플로우: 관리자 인증, 서비스 통계, 공지사항 관리, 시스템 설정, 에러 로그 조회
- * 
- * @features
- * 1. 관리자 인증 API
- * 2. 서비스 통계 API (대시보드)
- * 3. 공지사항 관리 API
- * 4. 시스템 설정 API
- * 5. 에러 로그 조회 API
- * 
- * @backend_requirements
- * - 모든 API는 관리자 JWT 토큰 필요 (Authorization: Bearer {adminAccessToken})
- * - Base URL: /api/admin
- * - JWT 토큰은 adminApiClient의 interceptor에서 자동으로 추가됩니다.
- * 
- * ====================================================================================================
+ * - 관리자 인증, 대시보드 통계, 공지사항 관리 등 (adminApiClient 사용)
  */
 
 import { adminApiClient } from '@/shared/api/client';
@@ -30,8 +10,7 @@ import { adminApiClient } from '@/shared/api/client';
 // ========================================
 
 /**
- * 관리자 로그인 (10.1.1)
- * POST /api/admin/auth/login
+ * 관리자 로그인 요청
  */
 export interface AdminLoginRequest {
   email: string;
@@ -52,11 +31,10 @@ export interface AdminLoginResponse {
 }
 
 /**
- * 관리자 로그인 함수
- * 
- * @param email - 관리자 이메일
- * @param password - 관리자 비밀번호
- * @returns 로그인 결과
+ * 관리자 로그인
+ * @param email 관리자 이메일
+ * @param password 관리자 비밀번호
+ * @returns 토큰 및 관리자 정보
  */
 export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
   try {
@@ -85,8 +63,7 @@ export async function adminLogin(email: string, password: string): Promise<Admin
 }
 
 /**
- * 관리자 토큰 재발급 (10.1.2)
- * POST /api/admin/auth/refresh
+ * 토큰 재발급 요청
  */
 export interface AdminRefreshRequest {
   refreshToken: string;
@@ -101,10 +78,9 @@ export interface AdminRefreshResponse {
 }
 
 /**
- * 관리자 토큰 재발급 함수
- * 
- * @param refreshToken - 관리자 리프레시 토큰
- * @returns 새로운 액세스 토큰과 리프레시 토큰
+ * 관리자 토큰 재발급
+ * @param refreshToken 리프레시 토큰
+ * @returns 새 액세스/리프레시 토큰
  */
 export async function adminRefresh(refreshToken: string): Promise<AdminRefreshResponse> {
   const response = await adminApiClient.post('/auth/refresh', { refreshToken });
@@ -124,8 +100,8 @@ export async function adminRefresh(refreshToken: string): Promise<AdminRefreshRe
 }
 
 /**
- * 관리자 로그아웃 (10.1.3)
- * POST /api/admin/auth/logout
+ * 관리자 로그아웃
+ * - 서버 로그아웃 처리 및 로컬 토큰 제거
  */
 export async function adminLogout(): Promise<{ success: true; data: { message: string } }> {
   const response = await adminApiClient.post('/auth/logout');
@@ -145,8 +121,7 @@ export async function adminLogout(): Promise<{ success: true; data: { message: s
 // ========================================
 
 /**
- * 서비스 통계 카드 (10.2.1)
- * GET /api/admin/dashboard/stats
+ * 서비스 통계 카드 조회 요청
  */
 export interface DashboardStatsRequest {
   averageDiariesPeriod?: 'weekly' | 'monthly' | 'yearly';
@@ -191,10 +166,9 @@ export interface DashboardStatsResponse {
 }
 
 /**
- * 서비스 통계 카드 조회 함수
- * 
- * @param params - 조회 파라미터
- * @returns 통계 카드 데이터
+ * 대시보드 주요 지표 조회
+ * @param params 통계 조회 조건
+ * @returns 주요 지표 데이터
  */
 export async function getDashboardStats(params?: DashboardStatsRequest): Promise<DashboardStatsResponse> {
   const queryParams: Record<string, string> = {};
@@ -213,8 +187,7 @@ export async function getDashboardStats(params?: DashboardStatsRequest): Promise
 }
 
 /**
- * 일지 작성 추이 차트 (10.2.2)
- * GET /api/admin/dashboard/diary-trend
+ * 일지 작성 추이 차트 요청
  */
 export interface DiaryTrendRequest {
   period: 'weekly' | 'monthly' | 'yearly';
@@ -234,10 +207,9 @@ export interface DiaryTrendResponse {
 }
 
 /**
- * 일지 작성 추이 차트 조회 함수
- * 
- * @param params - 조회 파라미터
- * @returns 일지 작성 추이 데이터
+ * 일지 작성 추이 조회
+ * @param params 조회 기간
+ * @returns 추이 차트 데이터
  */
 export async function getDiaryTrend(params: DiaryTrendRequest): Promise<DiaryTrendResponse> {
   const queryParams: Record<string, string | number> = { period: params.period };
@@ -254,8 +226,7 @@ export async function getDiaryTrend(params: DiaryTrendRequest): Promise<DiaryTre
 }
 
 /**
- * 사용자 활동 통계 차트 (10.2.3)
- * GET /api/admin/dashboard/user-activity-stats
+ * 사용자 활동 통계 요청
  */
 export interface UserActivityStatsRequest {
   period: 'weekly' | 'monthly' | 'yearly';
@@ -276,10 +247,9 @@ export interface UserActivityStatsResponse {
 }
 
 /**
- * 사용자 활동 통계 차트 조회 함수
- * 
- * @param params - 조회 파라미터
- * @returns 사용자 활동 통계 데이터
+ * 사용자 활동 통계 조회
+ * @param params 조회 기간 및 지표
+ * @returns 활동 통계 데이터
  */
 export async function getUserActivityStats(params: UserActivityStatsRequest): Promise<UserActivityStatsResponse> {
   const queryParams: Record<string, string | number | string> = { period: params.period };
@@ -300,8 +270,7 @@ export async function getUserActivityStats(params: UserActivityStatsRequest): Pr
 }
 
 /**
- * 위험 레벨 분포 통계 (10.2.4)
- * GET /api/admin/dashboard/risk-level-distribution
+ * 위험 레벨 분포 통계 요청
  */
 export interface RiskLevelDistributionRequest {
   period: 'weekly' | 'monthly' | 'yearly';
@@ -334,10 +303,9 @@ export interface RiskLevelDistributionResponse {
 }
 
 /**
- * 위험 레벨 분포 통계 조회 함수
- * 
- * @param params - 조회 파라미터
- * @returns 위험 레벨 분포 데이터
+ * 위험 레벨 분포 통계 조회
+ * @param params 조회 기간
+ * @returns 위험 레벨별 분포
  */
 export async function getRiskLevelDistribution(params: RiskLevelDistributionRequest): Promise<RiskLevelDistributionResponse> {
   const queryParams: Record<string, string | number> = { period: params.period };
@@ -356,25 +324,7 @@ export async function getRiskLevelDistribution(params: RiskLevelDistributionRequ
 // ========================================
 
 /**
- * 공지사항 인터페이스
- * 
- * [ERD 설계서 참고 - Notices 테이블]
- * - id: BIGINT (PK) → number (공지사항 고유 ID)
- * - admin_id: BIGINT (FK) → author (작성자, API 응답에서는 작성자 이름으로 반환, Admins.id 참조)
- * - title: VARCHAR(255) → string (공지사항 제목)
- * - content: TEXT → string (공지사항 내용, HTML 가능)
- * - is_pinned: BOOLEAN → isPinned (상단 고정 여부, 기본값: FALSE)
- * - views: INT → number (조회수, 기본값: 0, 조회 시 자동 증가)
- * - is_public: BOOLEAN → isPublic (공개 여부, 기본값: TRUE)
- * - created_at: DATETIME → createdAt (ISO 8601 형식)
- * - updated_at: DATETIME → updatedAt (ISO 8601 형식, NULL 가능)
- * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
- * 
- * [관계]
- * - Notices.admin_id → Admins.id (FK, CASCADE)
- * - 사용자 조회 시: is_public = TRUE AND deleted_at IS NULL인 공지사항만 표시
- * - 관리자 조회 시: deleted_at IS NULL인 모든 공지사항 표시
- * - 조회 시 views 자동 증가
+ * 공지사항 정보
  */
 export interface Notice {
   id: number; // 공지사항 고유 ID (ERD: Notices.id, BIGINT)
@@ -389,8 +339,7 @@ export interface Notice {
 }
 
 /**
- * 공지사항 목록 조회 (10.3.1)
- * GET /api/admin/notices
+ * 공지사항 목록 조회 요청
  */
 export interface NoticeListRequest {
   page?: number;
@@ -408,9 +357,8 @@ export interface NoticeListResponse {
 }
 
 /**
- * 공지사항 목록 조회 함수
- * 
- * @param params - 조회 파라미터
+ * 공지사항 목록 조회
+ * @param params 페이징 및 필터
  * @returns 공지사항 목록
  */
 export async function getNoticeList(params?: NoticeListRequest): Promise<NoticeListResponse> {
@@ -428,8 +376,7 @@ export async function getNoticeList(params?: NoticeListRequest): Promise<NoticeL
 }
 
 /**
- * 공지사항 상세 조회 (10.3.2)
- * GET /api/admin/notices/{noticeId}
+ * 공지사항 상세 조회 요청
  */
 export interface NoticeDetailResponse {
   success: true;
@@ -437,10 +384,9 @@ export interface NoticeDetailResponse {
 }
 
 /**
- * 공지사항 상세 조회 함수
- * 
- * @param noticeId - 공지사항 ID
- * @returns 공지사항 상세 정보
+ * 공지사항 상세 조회
+ * @param noticeId 공지사항 ID
+ * @returns 공지사항 상세
  */
 export async function getNoticeById(noticeId: number): Promise<NoticeDetailResponse> {
   const response = await adminApiClient.get(`/notices/${noticeId}`);
@@ -453,8 +399,7 @@ export async function getNoticeById(noticeId: number): Promise<NoticeDetailRespo
 }
 
 /**
- * 공지사항 작성 (10.3.2)
- * POST /api/admin/notices
+ * 공지사항 생성 요청
  */
 export interface CreateNoticeRequest {
   title: string;
@@ -469,9 +414,8 @@ export interface CreateNoticeResponse {
 }
 
 /**
- * 공지사항 작성 함수
- * 
- * @param notice - 공지사항 데이터
+ * 공지사항 생성
+ * @param notice 공지사항 정보
  * @returns 생성된 공지사항
  */
 export async function createNotice(notice: CreateNoticeRequest): Promise<CreateNoticeResponse> {
@@ -485,8 +429,7 @@ export async function createNotice(notice: CreateNoticeRequest): Promise<CreateN
 }
 
 /**
- * 공지사항 수정 (10.3.3)
- * PUT /api/admin/notices/{noticeId}
+ * 공지사항 수정 요청
  */
 export interface UpdateNoticeRequest {
   title: string;
@@ -501,10 +444,9 @@ export interface UpdateNoticeResponse {
 }
 
 /**
- * 공지사항 수정 함수
- * 
- * @param noticeId - 공지사항 ID
- * @param notice - 수정할 공지사항 데이터
+ * 공지사항 수정
+ * @param noticeId 공지사항 ID
+ * @param notice 수정할 정보
  * @returns 수정된 공지사항
  */
 export async function updateNotice(noticeId: number, notice: UpdateNoticeRequest): Promise<UpdateNoticeResponse> {
@@ -518,8 +460,7 @@ export async function updateNotice(noticeId: number, notice: UpdateNoticeRequest
 }
 
 /**
- * 공지사항 삭제 (10.3.4)
- * DELETE /api/admin/notices/{noticeId}
+ * 공지사항 삭제 요청
  */
 export interface DeleteNoticeResponse {
   success: true;
@@ -529,9 +470,8 @@ export interface DeleteNoticeResponse {
 }
 
 /**
- * 공지사항 삭제 함수
- * 
- * @param noticeId - 공지사항 ID
+ * 공지사항 삭제
+ * @param noticeId 공지사항 ID
  * @returns 삭제 결과
  */
 export async function deleteNotice(noticeId: number): Promise<DeleteNoticeResponse> {
@@ -545,8 +485,7 @@ export async function deleteNotice(noticeId: number): Promise<DeleteNoticeRespon
 }
 
 /**
- * 공지사항 고정/해제 (10.3.5)
- * PUT /api/admin/notices/{noticeId}/pin
+ * 공지사항 고정/해제 요청
  */
 export interface PinNoticeRequest {
   isPinned: boolean;
@@ -561,11 +500,10 @@ export interface PinNoticeResponse {
 }
 
 /**
- * 공지사항 고정/해제 함수
- * 
- * @param noticeId - 공지사항 ID
- * @param isPinned - 고정 여부
- * @returns 고정 상태
+ * 공지사항 고정 상태 변경
+ * @param noticeId 공지사항 ID
+ * @param isPinned 고정 여부
+ * @returns 변경된 상태
  */
 export async function pinNotice(noticeId: number, isPinned: boolean): Promise<PinNoticeResponse> {
   const response = await adminApiClient.put(`/notices/${noticeId}/pin`, { isPinned });
@@ -582,36 +520,8 @@ export async function pinNotice(noticeId: number, isPinned: boolean): Promise<Pi
 // ========================================
 
 /**
- * 위험 신호 감지 기준 (10.4.1, 10.4.2)
- * GET /api/admin/settings/risk-detection
- * PUT /api/admin/settings/risk-detection
- * 
- * [ERD 설계서 참고 - Risk_Detection_Settings 테이블]
- * - id: BIGINT (PK) → (단일 레코드만 존재, id=1, API 응답에 포함되지 않음)
- * - monitoring_period: INT → monitoringPeriod (모니터링 기간, 일, 기본값: 14, 범위: 1-365)
- * - high_consecutive_score: INT → high.consecutiveScore (High 레벨 연속 부정 감정 임계 점수, 기본값: 8, 범위: 1-100)
- * - high_score_in_period: INT → high.scoreInPeriod (High 레벨 모니터링 기간 내 부정 감정 임계 점수, 기본값: 12, 범위: 1-200)
- * - medium_consecutive_score: INT → medium.consecutiveScore (Medium 레벨 연속 부정 감정 임계 점수, 기본값: 5, 범위: 1-100)
- * - medium_score_in_period: INT → medium.scoreInPeriod (Medium 레벨 모니터링 기간 내 부정 감정 임계 점수, 기본값: 8, 범위: 1-200)
- * - low_consecutive_score: INT → low.consecutiveScore (Low 레벨 연속 부정 감정 임계 점수, 기본값: 2, 범위: 1-100)
- * - low_score_in_period: INT → low.scoreInPeriod (Low 레벨 모니터링 기간 내 부정 감정 임계 점수, 기본값: 4, 범위: 1-200)
- * - updated_at: DATETIME → updatedAt (수정일시, API 응답에 포함될 수 있음)
- * - updated_by: BIGINT (FK) → (수정한 관리자 ID, Admins.id 참조, API 응답에 포함되지 않을 수 있음)
- * 
- * [점수 기준]
- * - 고위험 부정 감정 (2점): 슬픔, 분노
- * - 중위험 부정 감정 (1점): 불안, 혐오
- * - consecutiveScore: 최근부터 거슬러 올라가며 연속으로 부정적 감정을 기록한 점수 합계
- * - scoreInPeriod: 모니터링 기간 내에서 부정 감정을 기록한 모든 날짜의 점수 합계 (연속 여부와 무관)
- * 
- * [검증 규칙]
- * - High의 consecutiveScore > Medium의 consecutiveScore > Low의 consecutiveScore
- * - High의 scoreInPeriod > Medium의 scoreInPeriod > Low의 scoreInPeriod
- * 
- * [관계]
- * - Risk_Detection_Settings.updated_by → Admins.id (FK, NULL 가능)
- * - 이 테이블은 단일 레코드만 존재 (id=1)
- * - 관리자가 설정을 변경할 때마다 UPDATE
+ * 위험 감지 기준 설정값
+ * - 모니터링 기간 및 레벨별 임계값 (Low/Medium/High)
  */
 export interface RiskDetectionSettings {
   monitoringPeriod: number; // 모니터링 기간 (일, ERD: Risk_Detection_Settings.monitoring_period, INT, 기본값: 14, 범위: 1-365)
@@ -635,9 +545,8 @@ export interface RiskDetectionSettingsResponse {
 }
 
 /**
- * 위험 신호 감지 기준 조회 함수
- * 
- * @returns 위험 신호 감지 기준 설정
+ * 위험 감지 기준 조회
+ * @returns 현재 설정값
  */
 export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsResponse> {
   const response = await adminApiClient.get('/settings/risk-detection');
@@ -650,10 +559,9 @@ export async function getRiskDetectionSettings(): Promise<RiskDetectionSettingsR
 }
 
 /**
- * 위험 신호 감지 기준 저장 함수
- * 
- * @param settings - 위험 신호 감지 기준 설정
- * @returns 저장 결과
+ * 위험 감지 기준 수정
+ * @param settings 새 설정값
+ * @returns 성공 여부
  */
 export async function updateRiskDetectionSettings(settings: RiskDetectionSettings): Promise<{ success: true; data: { message: string; updatedAt: string } }> {
   const response = await adminApiClient.put('/settings/risk-detection', settings);
@@ -666,25 +574,7 @@ export async function updateRiskDetectionSettings(settings: RiskDetectionSetting
 }
 
 /**
- * 상담 기관 리소스 (10.4.3-10.4.6)
- * 
- * [ERD 설계서 참고 - Counseling_Resources 테이블]
- * - id: BIGINT (PK) → number (상담 기관 고유 ID)
- * - name: VARCHAR(255) → string (기관명)
- * - category: ENUM → string (카테고리: 긴급상담, 전문상담, 상담전화, 의료기관)
- * - phone: VARCHAR(50) → string (전화번호, NULL 가능)
- * - website: VARCHAR(500) → string (웹사이트 URL, NULL 가능)
- * - description: TEXT → string (설명, NULL 가능)
- * - operating_hours: VARCHAR(255) → operatingHours (운영 시간, NULL 가능)
- * - is_urgent: BOOLEAN → isUrgent (긴급 상담 기관 여부, 기본값: FALSE, High 레벨 위험 신호 시 전화번호 표시)
- * - is_available: BOOLEAN → (이용 가능 여부, 기본값: TRUE, API 응답에 포함되지 않을 수 있음)
- * - created_at: DATETIME → (생성일시, API 응답에 포함되지 않을 수 있음)
- * - updated_at: DATETIME → (수정일시, API 응답에 포함되지 않을 수 있음)
- * - deleted_at: DATETIME → (소프트 삭제, API 응답에 포함되지 않음)
- * 
- * [관계]
- * - 관리자 페이지에서 상담 기관 리소스 관리 (추가/수정/삭제)
- * - is_urgent = TRUE인 기관의 전화번호는 High 레벨 위험 신호 표시 시 자동으로 포함됨
+ * 상담 기관 리소스 정보
  */
 export interface CounselingResource {
   id: number; // 상담 기관 고유 ID (ERD: Counseling_Resources.id, BIGINT)
@@ -698,8 +588,7 @@ export interface CounselingResource {
 }
 
 /**
- * 상담 기관 리소스 목록 조회 (10.4.3)
- * GET /api/admin/settings/counseling-resources
+ * 상담 기관 리소스 목록 조회 요청
  */
 export interface CounselingResourcesResponse {
   success: true;
@@ -709,9 +598,8 @@ export interface CounselingResourcesResponse {
 }
 
 /**
- * 상담 기관 리소스 목록 조회 함수
- * 
- * @returns 상담 기관 리소스 목록
+ * 상담 기관 목록 조회
+ * @returns 기관 목록
  */
 export async function getCounselingResources(): Promise<CounselingResourcesResponse> {
   const response = await adminApiClient.get('/settings/counseling-resources');
@@ -724,8 +612,7 @@ export async function getCounselingResources(): Promise<CounselingResourcesRespo
 }
 
 /**
- * 상담 기관 리소스 추가 (10.4.4)
- * POST /api/admin/settings/counseling-resources
+ * 상담 기관 추가 요청
  */
 export interface CreateCounselingResourceRequest {
   name: string;
@@ -743,10 +630,9 @@ export interface CreateCounselingResourceResponse {
 }
 
 /**
- * 상담 기관 리소스 추가 함수
- * 
- * @param resource - 상담 기관 리소스 데이터
- * @returns 생성된 상담 기관 리소스
+ * 상담 기관 추가
+ * @param resource 기관 정보
+ * @returns 생성된 기관 정보
  */
 export async function createCounselingResource(resource: CreateCounselingResourceRequest): Promise<CreateCounselingResourceResponse> {
   const response = await adminApiClient.post('/settings/counseling-resources', resource);
@@ -759,8 +645,7 @@ export async function createCounselingResource(resource: CreateCounselingResourc
 }
 
 /**
- * 상담 기관 리소스 수정 (10.4.5)
- * PUT /api/admin/settings/counseling-resources/{resourceId}
+ * 상담 기관 수정 요청
  */
 export interface UpdateCounselingResourceRequest {
   name: string;
@@ -778,11 +663,10 @@ export interface UpdateCounselingResourceResponse {
 }
 
 /**
- * 상담 기관 리소스 수정 함수
- * 
- * @param resourceId - 상담 기관 리소스 ID
- * @param resource - 수정할 상담 기관 리소스 데이터
- * @returns 수정된 상담 기관 리소스
+ * 상담 기관 수정
+ * @param resourceId 기관 ID
+ * @param resource 수정할 정보
+ * @returns 수정된 기관 정보
  */
 export async function updateCounselingResource(resourceId: number, resource: UpdateCounselingResourceRequest): Promise<UpdateCounselingResourceResponse> {
   const response = await adminApiClient.put(`/settings/counseling-resources/${resourceId}`, resource);

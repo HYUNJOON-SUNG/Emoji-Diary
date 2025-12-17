@@ -8,6 +8,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+/**
+ * 이메일 발송 서비스
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -15,12 +18,18 @@ public class EmailService {
 
     private final JavaMailSender javaMailSender;
 
+    /**
+     * 이메일 인증 코드 발송
+     */
     public void sendVerificationCode(String to, String code) {
         String subject = "[Emoji Diary] 이메일 인증 코드";
         String content = "인증 코드: " + code + "\n\n5분 이내에 입력해주세요.";
         sendEmail(to, subject, content);
     }
 
+    /**
+     * 비밀번호 재설정 인증 코드 발송
+     */
     public void sendPasswordResetCode(String to, String code) {
         String subject = "[Emoji Diary] 비밀번호 재설정 인증 코드";
         String content = "인증 코드: " + code + "\n\n5분 이내에 입력해주세요.";

@@ -9,6 +9,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 위험 레벨 기준 정보 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,4 +29,3 @@ public class RiskLevelCriteria {
     @Max(value = 200, message = "모니터링 기간 내 부정 감정 임계 점수는 200 이하여야 합니다")
     private Integer scoreInPeriod;
 }
-

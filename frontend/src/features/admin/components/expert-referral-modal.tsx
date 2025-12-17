@@ -11,6 +11,35 @@ interface ExpertReferralModalProps {
   onClose: () => void;
 }
 
+/**
+ * ====================================================================================================
+ * 전문가 연계 요청 모달 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 고위험군 사용자를 전문가(상담사, 의사 등)에게 연계 요청하는 모달
+ * - 유스케이스: 3.3 전문가 연계 관리
+ * - 플로우: 위험 관리 플로우
+ * 
+ * @features
+ * 1. 사용자 정보 요약 표시:
+ *    - 이름, ID, 현재 위험 점수 확인
+ * 2. 전문가 유형 선택:
+ *    - 상담사, 심리학자, 정신과 의사 중 선택
+ * 3. 긴급도 설정:
+ *    - High, Medium, Low 중 선택
+ * 4. 추가 메모 입력:
+ *    - 전문가에게 전달할 특이사항 작성
+ * 5. 확인 절차:
+ *    - 연계 요청 전 최종 확인 모달 표시 (실수 방지)
+ * 
+ * @props
+ * - user: 대상 사용자 정보 객체 { id, name, email, riskScore }
+ * - onClose: 모달 닫기 핸들러
+ * 
+ * ====================================================================================================
+ */
+
 export function ExpertReferralModal({ user, onClose }: ExpertReferralModalProps) {
   const [expertType, setExpertType] = useState<'psychologist' | 'counselor' | 'psychiatrist'>('counselor');
   const [urgency, setUrgency] = useState<'high' | 'medium' | 'low'>('medium');

@@ -10,6 +10,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 위험 탐지 설정 변경 요청 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,4 +37,3 @@ public class RiskDetectionSettingsRequest {
     @Valid
     private RiskLevelCriteria low;
 }
-

@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 추천 음식 정보 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

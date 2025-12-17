@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 공지사항 상세 정보 응답 DTO
+ */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NoticeDetailResponse {

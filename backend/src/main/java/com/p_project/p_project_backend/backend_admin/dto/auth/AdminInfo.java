@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 관리자 기본 정보 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,4 +28,3 @@ public class AdminInfo {
                 .build();
     }
 }
-

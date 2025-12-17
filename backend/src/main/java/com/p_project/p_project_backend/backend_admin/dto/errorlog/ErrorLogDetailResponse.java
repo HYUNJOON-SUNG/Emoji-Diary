@@ -9,6 +9,9 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * 에러 로그 상세 정보 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,4 +40,3 @@ public class ErrorLogDetailResponse {
                 .build();
     }
 }
-

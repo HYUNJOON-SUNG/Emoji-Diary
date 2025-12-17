@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 상담 기관 정보 DTO (목록 조회/상세 조회 공통)
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,4 +38,3 @@ public class CounselingResourceItem {
                 .build();
     }
 }
-

@@ -17,8 +17,7 @@ public class AdminErrorLogController {
     private final AdminErrorLogService adminErrorLogService;
 
     /**
-     * 에러 로그 목록 조회
-     * GET /api/admin/error-logs
+     * 서버 에러 로그 리스트 조회 (필터링 및 페이징 지원)
      */
     @GetMapping
     public ResponseEntity<?> getErrorLogList(
@@ -27,17 +26,14 @@ public class AdminErrorLogController {
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int limit
-    ) {
+            @RequestParam(defaultValue = "20") int limit) {
         ErrorLogListResponse response = adminErrorLogService.getErrorLogList(
-                level, startDate, endDate, search, page, limit
-        );
+                level, startDate, endDate, search, page, limit);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
     /**
-     * 에러 로그 상세 조회
-     * GET /api/admin/error-logs/{logId}
+     * 특정 에러 로그의 상세 정보(스택 트레이스 등) 조회
      */
     @GetMapping("/{logId}")
     public ResponseEntity<?> getErrorLogDetail(@PathVariable Long logId) {
@@ -45,4 +41,3 @@ public class AdminErrorLogController {
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 }
-

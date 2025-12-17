@@ -14,7 +14,7 @@ import json
 
 project_root = Path(__file__).parent
 
-# sys.path hacking is no longer needed if we run from the 'server' folder
+
 
 
 from middleware.anaysis_emotion import (
@@ -32,7 +32,7 @@ max_len = 128
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """앱 시작/종료 시 실행되는 함수"""
+    """서버 수명 주기 관리: 모델 리소스 로드 및 해제"""
     global emotion_model, tokenizer, vocab
     
     print("감정 분석 모델 로드 중...")
@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 class Weather(str, Enum):
+    """날씨 정보 열거형"""
     맑음 = "맑음"
     흐림 = "흐림"
     비 = "비"
@@ -73,6 +74,7 @@ class Weather(str, Enum):
     안개 = "안개"
 
 class Persona(str, Enum):
+    """페르소나 정보 열거형"""
     BEST_FRIEND = "BEST_FRIEND"
     PARENTS = "PARENTS"
     EXPERT = "EXPERT"
@@ -81,27 +83,32 @@ class Persona(str, Enum):
     POET = "POET"
 
 class Sex(str, Enum):
+    """성별 정보 열거형"""
     MALE = "MALE"
     FEMALE = "FEMALE"
 
 class AiServerRequest(BaseModel):
+    """AI 분석 요청 데이터 모델"""
     content: str
     weather: Optional[Weather] = None  
     persona: Persona
     gender: Sex  
 
 class EmotionAnalysisResult(BaseModel):
+    """감정 분석 결과 데이터 모델"""
     emotion: str
     confidence: float
     probabilities: dict
 
 @app.get("/")
 def read_root():
+    """서버 상태 확인용 루트 엔드포인트"""
     return {"test": "Hello, World!"}
 
 
 @app.post("/api/ai/diary")
 async def ai_analyze(request: AiServerRequest):
+    """일기 내용 분석: 감정 추출, 피드백 생성, 음식 추천, 이미지 생성 수행"""
     global emotion_model, tokenizer, vocab
     
     try:

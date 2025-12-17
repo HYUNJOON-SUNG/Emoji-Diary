@@ -37,6 +37,9 @@ public class DiaryService {
     private final DiaryImageRepository diaryImageRepository;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 일기 작성 및 AI 분석 요청
+     */
     @Transactional
     public DiaryResponse createDiary(User user, DiaryCreateRequest request) {
         validateDuplicateDiary(user, request.getDate());
@@ -50,6 +53,9 @@ public class DiaryService {
         return buildDiaryResponse(savedDiary, request.getActivities(), request.getImages());
     }
 
+    /**
+     * 일기 수정 (내용 변경 시 AI 재분석)
+     */
     @Transactional
     public DiaryResponse updateDiary(User user, Long diaryId, DiaryUpdateRequest request) {
         Diary diary = getOwnedDiary(user, diaryId);
@@ -74,11 +80,17 @@ public class DiaryService {
         return buildDiaryResponse(diary, request.getActivities(), request.getImages());
     }
 
+    /**
+     * 일기 상세 조회
+     */
     public DiaryResponse getDiary(User user, Long diaryId) {
         Diary diary = getOwnedDiary(user, diaryId);
         return buildDiaryResponse(diary, null, null);
     }
 
+    /**
+     * 날짜별 일기 조회
+     */
     public DiaryResponse getDiaryByDate(User user, LocalDate date) {
         Diary diary = diaryRepository.findByUserAndDate(user, date)
                 .orElseThrow(() -> new com.p_project.p_project_backend.exception.DiaryNotFoundException(
@@ -86,6 +98,9 @@ public class DiaryService {
         return buildDiaryResponse(diary, null, null);
     }
 
+    /**
+     * 월별 일기 목록 조회
+     */
     public DiaryMonthlyResponse getMonthlyDiaries(User user, int year, int month) {
         LocalDate startDate = LocalDate.of(year, month, 1);
         LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
@@ -102,6 +117,9 @@ public class DiaryService {
                 .build();
     }
 
+    /**
+     * 일기 검색
+     */
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> searchDiaries(User user, String keyword, LocalDate startDate,
             LocalDate endDate, List<Emotion> emotions, int page, int limit) {
@@ -122,6 +140,9 @@ public class DiaryService {
                 "diaries", diaryResponses);
     }
 
+    /**
+     * 일기 삭제
+     */
     @Transactional
     public void deleteDiary(User user, Long diaryId) {
         Diary diary = getOwnedDiary(user, diaryId);

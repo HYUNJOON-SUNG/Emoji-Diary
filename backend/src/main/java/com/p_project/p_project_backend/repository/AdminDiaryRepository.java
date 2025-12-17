@@ -8,15 +8,13 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * 관리자용 일기 리포지토리
+ */
 public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
 
        /**
-        * 기간별 일지 작성 개수 집계 (일별)
-        * 주간/월간 조회 시 사용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 일별 일지 작성 개수 (List<Object[]>: [0]=LocalDate date, [1]=Long count)
+        * 기간별 일기 작성 수 (일별)
         */
        @Query("SELECT d.date, COUNT(d.id) " +
                      "FROM Diary d " +
@@ -29,13 +27,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 기간별 일지 작성 개수 집계 (월별)
-        * 연간 조회 시 사용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 월별 일지 작성 개수 (List<Object[]>: [0]=Integer year, [1]=Integer month,
-        *         [2]=Long count)
+        * 기간별 일기 작성 수 (월별)
         */
        @Query("SELECT YEAR(d.date), MONTH(d.date), COUNT(d.id) " +
                      "FROM Diary d " +
@@ -48,10 +40,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 특정 날짜에 일기를 작성한 고유 사용자 수 (DAU)
-        * 
-        * @param date 조회할 날짜
-        * @return 고유 사용자 수
+        * 특정 날짜 작성자 수 (DAU)
         */
        @Query("SELECT COUNT(DISTINCT d.user.id) " +
                      "FROM Diary d " +
@@ -60,11 +49,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
        Long countDistinctUsersByDate(@Param("date") LocalDate date);
 
        /**
-        * 기간 내에 일기를 작성한 고유 사용자 수 (WAU/MAU)
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 고유 사용자 수
+        * 기간 내 작성자 수 (WAU/MAU)
         */
        @Query("SELECT COUNT(DISTINCT d.user.id) " +
                      "FROM Diary d " +
@@ -75,12 +60,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 기간별 일일 활성 사용자 수 집계 (일별)
-        * 주간/월간 조회 시 사용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 일별 DAU (List<Object[]>: [0]=LocalDate date, [1]=Long count)
+        * 기간별 활성 사용자 수 (일별)
         */
        @Query("SELECT d.date, COUNT(DISTINCT d.user.id) " +
                      "FROM Diary d " +
@@ -93,13 +73,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 기간별 일일 활성 사용자 수 집계 (월별)
-        * 연간 조회 시 사용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 월별 평균 DAU (List<Object[]>: [0]=Integer year, [1]=Integer month,
-        *         [2]=Long count)
+        * 기간별 활성 사용자 수 (월별)
         */
        @Query("SELECT YEAR(d.date), MONTH(d.date), COUNT(DISTINCT d.user.id) " +
                      "FROM Diary d " +
@@ -112,11 +86,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 특정 날짜에 일기를 작성한 사용자 ID 목록 조회
-        * 유지율 계산용
-        * 
-        * @param date 조회할 날짜
-        * @return 사용자 ID 목록
+        * 특정 날짜 작성자 ID 목록
         */
        @Query("SELECT DISTINCT d.user.id " +
                      "FROM Diary d " +
@@ -125,12 +95,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
        List<Long> findDistinctUserIdsByDate(@Param("date") LocalDate date);
 
        /**
-        * 기간 내에 일기를 작성한 사용자 ID 목록 조회
-        * 유지율 계산용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 사용자 ID 목록
+        * 기간 내 작성자 ID 목록
         */
        @Query("SELECT DISTINCT d.user.id " +
                      "FROM Diary d " +
@@ -141,9 +106,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
                      @Param("endDate") LocalDate endDate);
 
        /**
-        * 삭제되지 않은 전체 일지 작성 수 조회
-        * 
-        * @return 전체 일지 작성 수
+        * 전체 일기 수 조회
         */
        @Query("SELECT COUNT(d.id) " +
                      "FROM Diary d " +
@@ -151,12 +114,7 @@ public interface AdminDiaryRepository extends JpaRepository<Diary, Long> {
        Long countTotalDiaries();
 
        /**
-        * 기간별 일지 작성 수 조회
-        * 이전 기간 대비 증감 계산용
-        * 
-        * @param startDate 기간 시작일
-        * @param endDate   기간 종료일
-        * @return 일지 작성 수
+        * 기간 내 일기 수 조회
         */
        @Query("SELECT COUNT(d.id) " +
                      "FROM Diary d " +

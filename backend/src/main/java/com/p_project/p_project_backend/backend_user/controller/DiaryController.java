@@ -22,6 +22,9 @@ public class DiaryController {
         private final DiaryService diaryService;
         private final UserRepository userRepository;
 
+        /**
+         * 일기 작성
+         */
         @PostMapping
         public ResponseEntity<?> createDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -32,6 +35,9 @@ public class DiaryController {
                                 "data", diaryService.createDiary(user, request)));
         }
 
+        /**
+         * 일기 수정
+         */
         @PutMapping("/{diaryId}")
         public ResponseEntity<?> updateDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -43,6 +49,9 @@ public class DiaryController {
                                 "data", diaryService.updateDiary(user, diaryId, request)));
         }
 
+        /**
+         * 일기 상세 조회
+         */
         @GetMapping("/{diaryId}")
         public ResponseEntity<?> getDiary(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -53,6 +62,9 @@ public class DiaryController {
                                 "data", diaryService.getDiary(user, diaryId)));
         }
 
+        /**
+         * 날짜별 일기 조회
+         */
         @GetMapping("/date/{date}")
         public ResponseEntity<?> getDiaryByDate(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -64,6 +76,9 @@ public class DiaryController {
                                 "data", diaryService.getDiaryByDate(user, date)));
         }
 
+        /**
+         * 월별 일기 목록 조회 (캘린더용)
+         */
         @GetMapping("/calendar")
         public ResponseEntity<?> getMonthlyDiaries(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -75,6 +90,9 @@ public class DiaryController {
                                 "data", diaryService.getMonthlyDiaries(user, year, month)));
         }
 
+        /**
+         * 일기 검색 (키워드/날짜/감정)
+         */
         @GetMapping("/search")
         public ResponseEntity<?> searchDiaries(
                         @AuthenticationPrincipal UserDetails userDetails,
@@ -89,6 +107,9 @@ public class DiaryController {
                                 diaryService.searchDiaries(user, keyword, startDate, endDate, emotions, page, limit)));
         }
 
+        /**
+         * 일기 삭제
+         */
         @DeleteMapping("/{diaryId}")
         public ResponseEntity<?> deleteDiary(
                         @AuthenticationPrincipal UserDetails userDetails,

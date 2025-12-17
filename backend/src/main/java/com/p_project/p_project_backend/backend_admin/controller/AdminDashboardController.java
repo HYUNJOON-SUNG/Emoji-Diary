@@ -19,8 +19,7 @@ public class AdminDashboardController {
     private final AdminDashboardService adminDashboardService;
 
     /**
-     * 서비스 통계 카드 조회
-     * GET /api/admin/dashboard/stats
+     * 서비스 주요 통계 카드 (가입자 수, 일기 작성 수 등) 조회
      */
     @GetMapping("/stats")
     public ResponseEntity<?> getDashboardStats(
@@ -34,8 +33,7 @@ public class AdminDashboardController {
     }
 
     /**
-     * 위험 레벨 분포 통계 조회
-     * GET /api/admin/dashboard/risk-level-distribution
+     * 사용자 위험 레벨 분포 통계 조회
      */
     @GetMapping("/risk-level-distribution")
     public ResponseEntity<?> getRiskLevelDistribution(
@@ -45,8 +43,7 @@ public class AdminDashboardController {
     }
 
     /**
-     * 일지 작성 추이 차트 조회
-     * GET /api/admin/dashboard/diary-trend
+     * 기간별 일기 작성 추이 차트 데이터 조회
      */
     @GetMapping("/diary-trend")
     public ResponseEntity<?> getDiaryTrend(
@@ -58,8 +55,7 @@ public class AdminDashboardController {
     }
 
     /**
-     * 사용자 활동 통계 차트 조회
-     * GET /api/admin/dashboard/user-activity-stats
+     * 사용자 활동(가입/탈퇴/활성) 통계 차트 데이터 조회
      */
     @GetMapping("/user-activity-stats")
     public ResponseEntity<?> getUserActivityStats(

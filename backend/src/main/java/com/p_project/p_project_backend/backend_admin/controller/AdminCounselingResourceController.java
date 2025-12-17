@@ -21,8 +21,7 @@ public class AdminCounselingResourceController {
     private final AdminCounselingResourceService adminCounselingResourceService;
 
     /**
-     * 상담 기관 목록 조회
-     * GET /api/admin/settings/counseling-resources
+     * 등록된 상담 기관 전체 목록 조회
      */
     @GetMapping
     public ResponseEntity<?> getCounselingResourceList() {
@@ -31,34 +30,30 @@ public class AdminCounselingResourceController {
     }
 
     /**
-     * 상담 기관 추가
-     * POST /api/admin/settings/counseling-resources
+     * 새로운 상담 기관 정보 등록
      */
     @PostMapping
     public ResponseEntity<?> createCounselingResource(
-            @RequestBody @Valid CounselingResourceCreateRequest request
-    ) {
+            @RequestBody @Valid CounselingResourceCreateRequest request) {
         CounselingResourceResponse response = adminCounselingResourceService.createCounselingResource(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("success", true, "data", response));
     }
 
     /**
-     * 상담 기관 수정
-     * PUT /api/admin/settings/counseling-resources/{resourceId}
+     * 기존 상담 기관 정보 수정
      */
     @PutMapping("/{resourceId}")
     public ResponseEntity<?> updateCounselingResource(
             @PathVariable Long resourceId,
-            @RequestBody @Valid CounselingResourceUpdateRequest request
-    ) {
-        CounselingResourceResponse response = adminCounselingResourceService.updateCounselingResource(resourceId, request);
+            @RequestBody @Valid CounselingResourceUpdateRequest request) {
+        CounselingResourceResponse response = adminCounselingResourceService.updateCounselingResource(resourceId,
+                request);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
     /**
      * 상담 기관 삭제
-     * DELETE /api/admin/settings/counseling-resources/{resourceId}
      */
     @DeleteMapping("/{resourceId}")
     public ResponseEntity<?> deleteCounselingResource(@PathVariable Long resourceId) {
@@ -67,4 +62,3 @@ public class AdminCounselingResourceController {
                 "data", Map.of("message", "상담 기관이 삭제되었습니다")));
     }
 }
-

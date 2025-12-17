@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 토큰 정보 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

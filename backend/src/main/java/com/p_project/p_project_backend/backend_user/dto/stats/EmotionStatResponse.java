@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 감정 통계 정보 응답 DTO
+ */
 @Getter
 @Builder
 @NoArgsConstructor

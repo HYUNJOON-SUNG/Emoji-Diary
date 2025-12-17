@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 페르소나 설정 요청 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

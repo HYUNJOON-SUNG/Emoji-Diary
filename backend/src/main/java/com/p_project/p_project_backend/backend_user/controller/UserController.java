@@ -19,12 +19,18 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 내 정보 조회
+     */
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         UserResponse response = userService.getCurrentUser(userDetails.getUsername());
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 페르소나 설정
+     */
     @PutMapping("/me/persona")
     public ResponseEntity<?> updatePersona(@AuthenticationPrincipal UserDetails userDetails,
             @RequestBody @jakarta.validation.Valid PersonaUpdateRequest request) {
@@ -33,6 +39,9 @@ public class UserController {
                 Map.of("message", "페르소나가 설정되었습니다", "persona", response.getPersona())));
     }
 
+    /**
+     * 비밀번호 변경
+     */
     @PutMapping("/me/password")
     public ResponseEntity<?> changePassword(@AuthenticationPrincipal UserDetails userDetails,
             @RequestBody @jakarta.validation.Valid PasswordChangeRequest request) {
@@ -40,6 +49,9 @@ public class UserController {
         return ResponseEntity.ok(Map.of("success", true, "data", Map.of("message", "비밀번호가 변경되었습니다")));
     }
 
+    /**
+     * 회원 탈퇴
+     */
     @DeleteMapping("/me")
     public ResponseEntity<?> deleteAccount(
             @AuthenticationPrincipal UserDetails userDetails,

@@ -27,8 +27,7 @@ public class AdminRiskDetectionSettingsController {
     private final AdminRepository adminRepository;
 
     /**
-     * 위험 신호 감지 기준 조회
-     * GET /api/admin/settings/risk-detection
+     * 현재 설정된 위험 신호 감지 기준 조회
      */
     @GetMapping
     public ResponseEntity<?> getRiskDetectionSettings() {
@@ -37,21 +36,20 @@ public class AdminRiskDetectionSettingsController {
     }
 
     /**
-     * 위험 신호 감지 기준 변경
-     * PUT /api/admin/settings/risk-detection
+     * 위험 신호 감지 기준 변경 및 업데이트
      */
     @PutMapping
     public ResponseEntity<?> updateRiskDetectionSettings(
             @RequestBody @Valid RiskDetectionSettingsRequest request,
-            Authentication authentication
-    ) {
+            Authentication authentication) {
         Long adminId = getAdminIdFromAuthentication(authentication);
-        RiskDetectionSettingsUpdateResponse response = adminRiskDetectionSettingsService.updateRiskDetectionSettings(request, adminId);
+        RiskDetectionSettingsUpdateResponse response = adminRiskDetectionSettingsService
+                .updateRiskDetectionSettings(request, adminId);
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
     /**
-     * Authentication에서 관리자 ID 추출
+     * 인증 정보에서 관리자 식별자(ID) 추출
      */
     private Long getAdminIdFromAuthentication(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
@@ -66,4 +64,3 @@ public class AdminRiskDetectionSettingsController {
                 .orElseThrow(() -> new RuntimeException(ERROR_MESSAGE_ADMIN_NOT_FOUND));
     }
 }
-

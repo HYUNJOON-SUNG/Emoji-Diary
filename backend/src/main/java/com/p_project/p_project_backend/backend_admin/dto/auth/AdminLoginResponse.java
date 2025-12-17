@@ -8,6 +8,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
+/**
+ * 관리자 로그인 성공 응답 DTO
+ */
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -16,4 +19,3 @@ public class AdminLoginResponse {
     private String refreshToken;
     private AdminInfo admin;
 }
-

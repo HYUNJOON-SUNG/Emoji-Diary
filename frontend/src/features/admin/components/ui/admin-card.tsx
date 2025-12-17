@@ -1,6 +1,27 @@
 import * as React from "react"
 import { cn } from "@/shared/lib/utils"
 
+/**
+ * ====================================================================================================
+ * AdminCard 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 관리자 페이지 전용 카드 컨테이너 컴포넌트
+ * - 데이터를 섹션별로 구분하여 표시할 때 사용
+ * - 배경 블러(backdrop-blur) 및 그림자 효과 적용
+ * 
+ * @components
+ * - AdminCard: 메인 컨테이너
+ * - AdminCardHeader: 헤더 영역 (Title, Description 포함)
+ * - AdminCardTitle: 카드 제목
+ * - AdminCardDescription: 카드 부가 설명
+ * - AdminCardContent: 본문 영역
+ * - AdminCardFooter: 하단 액션 영역
+ * 
+ * ====================================================================================================
+ */
+
 const AdminCard = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>

@@ -1,6 +1,24 @@
 import * as React from "react"
 import { cn } from "@/shared/lib/utils"
 
+/**
+ * ====================================================================================================
+ * AdminTable 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 관리자 페이지 전용 데이터 테이블(Data Grid) 컴포넌트
+ * - shadcn/ui Table 기반 커스터마이징
+ * - 헤더 고정, 행 호버 효과, 체크박스 지원 등의 스타일 적용
+ * 
+ * @components
+ * - AdminTable: 테이블 컨테이너 (스크롤 가능)
+ * - AdminTableHeader, AdminTableBody, AdminTableFooter: 섹션 구분
+ * - AdminTableRow, AdminTableHead, AdminTableCell: 행/열 정의
+ * 
+ * ====================================================================================================
+ */
+
 const AdminTable = React.forwardRef<
     HTMLTableElement,
     React.HTMLAttributes<HTMLTableElement>

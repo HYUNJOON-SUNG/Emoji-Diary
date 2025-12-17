@@ -11,6 +11,7 @@ warnings.filterwarnings("ignore", message=".*tokenizer class.*")
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class BERTSentenceTransform:
+    """BERT 입력 형식으로 데이터 변환을 수행하는 클래스"""
     def __init__(self, tokenizer, max_seq_length, vocab, pad=True, pair=True):
         self._tokenizer = tokenizer
         self._max_seq_length = max_seq_length
@@ -80,6 +81,7 @@ class BERTSentenceTransform:
         return np.array(input_ids, dtype='int32'), np.array(valid_length, dtype='int32'), np.array(segment_ids, dtype='int32')
 
 class BERTClassifier(nn.Module):
+    """KoBERT 기반 감정 분류 모델"""
     def __init__(self, bert, hidden_size=768, num_classes=7, dr_rate=None):
         super(BERTClassifier, self).__init__()
         self.bert = bert
@@ -108,6 +110,7 @@ class BERTClassifier(nn.Module):
         return self.classifier(out)
 
 class SimpleVocab:
+    """토크나이저의 단어 사전을 래핑하는 간단한 클래스"""
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
         self.cls_token = tokenizer.cls_token
@@ -119,6 +122,7 @@ class SimpleVocab:
         return self.tokenizer.convert_tokens_to_ids([token])[0] if token in self._vocab_dict else self.tokenizer.unk_token_id
 
 def load_trained_model(model_path='best_model.pt'):
+    """학습된 KoBERT 감정 분석 모델을 로드"""
     from transformers import BertModel
     import os
     
@@ -164,6 +168,7 @@ def load_trained_model(model_path='best_model.pt'):
         raise
 
 def predict_emotion(model, sentence, tokenizer, vocab, max_len=128):
+    """입력된 문장의 감정을 예측하고 확률을 반환"""
     emotion_names = ['분노', '슬픔', '불안', '행복', '혐오', '당황', '중립']
     
     transform = BERTSentenceTransform(tokenizer, max_seq_length=max_len, vocab=vocab, pad=True, pair=False)
@@ -199,6 +204,7 @@ def predict_emotion(model, sentence, tokenizer, vocab, max_len=128):
 
 
 def initialize_tokenizer_and_vocab():
+    """KoBERT 토크나이저 및 단어 사전 초기화"""
     tokenizer = KoBERTTokenizer.from_pretrained('skt/kobert-base-v1')
     vocab = SimpleVocab(tokenizer)
     return tokenizer, vocab

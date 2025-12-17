@@ -1,11 +1,7 @@
 /**
  * 사용자 앱 상태 관리 Hook
- * 
- * @description
- * UserApp 컴포넌트의 상태 및 로직을 관리하는 hook
- * - 앱 화면 상태 관리 (landing, login, signup, diary 등)
- * - 사용자 정보 관리
- * - 인증 관련 핸들러
+ * - 앱 화면 전환 (Login, Signup, Diary)
+ * - 사용자 인증 상태 및 세션 관리
  */
 
 import { useState, useCallback } from 'react';
@@ -62,12 +58,8 @@ export function useUserApp() {
   // ========== 이벤트 핸들러 ==========
 
   /**
-   * "일기장 열기" 버튼 클릭 핸들러 (플로우 1.2)
-   * 
-   * 동작:
-   * 1. JWT 토큰 유효성 확인
-   * 2. 로그인 상태이면: localStorage에서 사용자 정보 로드 후 다이어리로 이동
-   * 3. 로그인 안됨이면: 로그인 화면으로 이동
+   * 다이어리 진입 핸들러
+   * - 토큰 유효 시 다이어리 이동, 아니면 로그인 이동
    */
   const handleOpenBook = useCallback(() => {
     if (TokenStorage.hasValidToken()) {
@@ -89,12 +81,8 @@ export function useUserApp() {
   }, []);
 
   /**
-   * 로그인 성공 핸들러 (플로우 1.1, 16.1)
-   * 
-   * 동작:
-   * 1. localStorage에서 사용자 정보 로드
-   * 2. 사용자 정보 상태 업데이트
-   * 3. 다이어리 화면으로 바로 이동
+   * 로그인 성공 핸들러
+   * - 사용자 정보 로드 및 다이어리 이동
    */
   const handleLoginSuccess = useCallback(() => {
     // 사용자 정보 로드 (플로우 16.1)
@@ -116,12 +104,8 @@ export function useUserApp() {
   }, []);
 
   /**
-   * 회원가입 성공 핸들러 (플로우 2 시작, 16.1)
-   * 
-   * 동작:
-   * 1. localStorage에서 사용자 정보 로드
-   * 2. 사용자 정보 상태 업데이트
-   * 3. 페르소나 설정 화면으로 이동
+   * 회원가입 성공 핸들러
+   * - 사용자 정보 로드 및 페르소나 설정 이동
    */
   const handleSignupSuccess = useCallback(() => {
     // 사용자 정보 로드 (플로우 16.1)
@@ -152,12 +136,7 @@ export function useUserApp() {
 
   /**
    * 로그아웃 핸들러
-   * 
-   * 동작:
-   * 1. JWT 토큰 삭제 (localStorage)
-   * 2. 사용자 정보 삭제
-   * 3. 상태 초기화
-   * 4. 랜딩 페이지로 이동
+   * - 토큰/세션 삭제 및 랜딩 이동
    */
   const handleLogout = useCallback(() => {
     TokenStorage.clearTokens();

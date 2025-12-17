@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 관리자 토큰 재발급 성공 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

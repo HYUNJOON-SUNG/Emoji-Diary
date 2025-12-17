@@ -19,6 +19,9 @@ public class StatsService {
 
         private final DiaryRepository diaryRepository;
 
+        /**
+         * 감정 통계 조회
+         */
         @Transactional(readOnly = true)
         public Map<String, Object> getEmotionStats(User user, String period, Integer year, Integer month,
                         Integer week) {
@@ -31,6 +34,9 @@ public class StatsService {
                 return buildStatsResponse(period, year, month, week, emotionCounts, diaries.size());
         }
 
+        /**
+         * 감정 추이 조회
+         */
         @Transactional(readOnly = true)
         public Map<String, Object> getEmotionTrend(User user, String period, Integer year, Integer month) {
                 if ("weekly".equalsIgnoreCase(period)) {

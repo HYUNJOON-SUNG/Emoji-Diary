@@ -6,8 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자 활동 통계 차트의 각 데이터 포인트
- * trend 배열의 각 항목
+ * 사용자 활동 통계 그래프의 개별 데이터 포인트
  */
 @Getter
 @Builder

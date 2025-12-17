@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 이미지 업로드 응답 DTO
+ */
 @Getter
 @Builder
 @NoArgsConstructor

@@ -10,16 +10,17 @@ import java.util.List;
 import java.util.Optional; // Added Optional
 import com.p_project.p_project_backend.entity.User; // Added User
 
+/**
+ * 위험 신호 세션 리포지토리
+ */
 public interface RiskDetectionSessionRepository extends JpaRepository<RiskDetectionSession, Long> {
+        /**
+         * 최신 세션 조회
+         */
         Optional<RiskDetectionSession> findTopByUserOrderByCreatedAtDesc(User user);
 
         /**
-         * 기간별 위험 레벨별 사용자 수 집계
-         * 기간 내에 생성된 세션 중, 각 사용자의 최신 세션의 위험 레벨을 기준으로 집계
-         * 
-         * @param startDate 기간 시작일
-         * @param endDate   기간 종료일
-         * @return 위험 레벨별 사용자 수 (List<Object[]>: [0]=RiskLevel, [1]=Long count)
+         * 기간별 위험 레벨 사용자 집계
          */
         @Query("SELECT r.riskLevel, COUNT(DISTINCT r.user.id) " +
                         "FROM RiskDetectionSession r " +
@@ -35,11 +36,7 @@ public interface RiskDetectionSessionRepository extends JpaRepository<RiskDetect
                         @Param("endDate") LocalDateTime endDate);
 
         /**
-         * 기간 내에 세션이 있는 전체 사용자 수 조회
-         * 
-         * @param startDate 기간 시작일
-         * @param endDate   기간 종료일
-         * @return 기간 내 세션이 있는 사용자 수
+         * 기간 내 전체 사용자 수
          */
         @Query("SELECT COUNT(DISTINCT r.user.id) " +
                         "FROM RiskDetectionSession r " +

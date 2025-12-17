@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 에러 로그 레벨별 요약 정보 (ERROR, WARN, INFO 카운트)
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,4 +19,3 @@ public class ErrorLogSummary {
     private Long warn;
     private Long info;
 }
-

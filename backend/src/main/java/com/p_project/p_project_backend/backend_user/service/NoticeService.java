@@ -24,7 +24,7 @@ public class NoticeService {
     private final NoticeRepository noticeRepository;
 
     /**
-     * 공지사항 목록 조회 (공개된 것만, 고정 우선)
+     * 공지사항 목록 조회
      */
     public NoticeListResponse getNoticeList(int page, int limit) {
         Pageable pageable = PageRequest.of(page - 1, limit); // page is 1-based in API, 0-based in Spring Data
@@ -44,7 +44,7 @@ public class NoticeService {
     }
 
     /**
-     * 공지사항 상세 조회 (공개된 것만, 조회수 증가)
+     * 공지사항 상세 조회
      */
     @Transactional
     public NoticeDetailResponse getNoticeDetail(Long id) {

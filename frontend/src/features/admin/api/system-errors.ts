@@ -46,6 +46,9 @@ export interface SystemErrorListParams {
 }
 
 export const systemErrorsApi = {
+    /**
+     * 시스템 에러 로그 목록 조회
+     */
     getSystemErrors: async (params: SystemErrorListParams): Promise<ErrorLogListResponse> => {
         const response = await adminApiClient.get(BASE_URL, {
             params: {
@@ -60,6 +63,9 @@ export const systemErrorsApi = {
         return response.data.data
     },
 
+    /**
+     * 시스템 에러 로그 상세 조회
+     */
     getSystemError: async (id: number | string): Promise<ErrorLogDetailResponse> => {
         const response = await adminApiClient.get(`${BASE_URL}/${id}`)
         return response.data.data

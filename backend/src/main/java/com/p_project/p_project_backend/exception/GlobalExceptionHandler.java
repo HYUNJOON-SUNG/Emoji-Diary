@@ -21,6 +21,9 @@ import java.io.StringWriter;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+/**
+ * 전역 예외 처리 핸들러
+ */
 @RestControllerAdvice
 @RequiredArgsConstructor
 @Slf4j
@@ -29,6 +32,9 @@ public class GlobalExceptionHandler {
         private final ErrorLogRepository errorLogRepository;
         private final UserRepository userRepository;
 
+        /**
+         * 유효성 검사 예외 처리
+         */
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex,
                         HttpServletRequest request) {
@@ -42,6 +48,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", errorMessage)));
         }
 
+        /**
+         * 자격 증명 오류 처리
+         */
         @ExceptionHandler(InvalidCredentialsException.class)
         public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex,
                         HttpServletRequest request) {
@@ -55,6 +64,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", message)));
         }
 
+        /**
+         * 인증 코드 불일치 처리
+         */
         @ExceptionHandler(InvalidCodeException.class)
         public ResponseEntity<?> handleInvalidCodeException(InvalidCodeException ex, HttpServletRequest request) {
                 String errorCode = "INVALID_CODE";
@@ -67,6 +79,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", message)));
         }
 
+        /**
+         * 인증 코드 만료 처리
+         */
         @ExceptionHandler(CodeExpiredException.class)
         public ResponseEntity<?> handleCodeExpiredException(CodeExpiredException ex, HttpServletRequest request) {
                 String errorCode = "CODE_EXPIRED";
@@ -79,6 +94,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", message)));
         }
 
+        /**
+         * 비밀번호 불일치 처리
+         */
         @ExceptionHandler(IncorrectPasswordException.class)
         public ResponseEntity<?> handleIncorrectPasswordException(IncorrectPasswordException ex,
                         HttpServletRequest request) {
@@ -92,6 +110,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", message)));
         }
 
+        /**
+         * 관리자 미발견 예외 처리
+         */
         @ExceptionHandler(AdminNotFoundException.class)
         public ResponseEntity<?> handleAdminNotFoundException(AdminNotFoundException ex, HttpServletRequest request) {
                 String errorCode = "ADMIN_NOT_FOUND";
@@ -103,6 +124,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", ex.getMessage())));
         }
 
+        /**
+         * 잘못된 인자 예외 처리
+         */
         @ExceptionHandler(IllegalArgumentException.class)
         public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex,
                         HttpServletRequest request) {
@@ -115,6 +139,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", ex.getMessage())));
         }
 
+        /**
+         * 일기 미발견 예외 처리
+         */
         @ExceptionHandler(DiaryNotFoundException.class)
         public ResponseEntity<?> handleDiaryNotFoundException(DiaryNotFoundException ex, HttpServletRequest request) {
                 String errorCode = "DIARY_NOT_FOUND";
@@ -126,6 +153,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", ex.getMessage())));
         }
 
+        /**
+         * 공지사항 미발견 예외 처리
+         */
         @ExceptionHandler(NoticeNotFoundException.class)
         public ResponseEntity<?> handleNoticeNotFoundException(NoticeNotFoundException ex, HttpServletRequest request) {
                 String errorCode = "NOTICE_NOT_FOUND";
@@ -137,6 +167,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", ex.getMessage())));
         }
 
+        /**
+         * 런타임 예외 처리
+         */
         @ExceptionHandler(RuntimeException.class)
         public ResponseEntity<?> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
                 String errorCode = "INTERNAL_SERVER_ERROR";
@@ -148,6 +181,9 @@ public class GlobalExceptionHandler {
                                                 Map.of("code", errorCode, "message", ex.getMessage())));
         }
 
+        /**
+         * 기타 예외 처리
+         */
         @ExceptionHandler(Exception.class)
         public ResponseEntity<?> handleException(Exception ex, HttpServletRequest request) {
                 String errorCode = "INTERNAL_SERVER_ERROR";
@@ -161,6 +197,9 @@ public class GlobalExceptionHandler {
         }
 
         // --- Helper Method ---
+        /**
+         * 에러 로그 DB 저장
+         */
         private void logError(Exception ex, ErrorLog.Level level, String errorCode, String message,
                         HttpServletRequest request) {
                 try {

@@ -26,6 +26,9 @@ public class RiskDetectionController {
     private final RiskDetectionService riskDetectionService;
     private final UserService userService; // To get User entity from UserDetails
 
+    /**
+     * 위험 분석 수행
+     */
     @GetMapping("/analyze")
     public ResponseEntity<Map<String, Object>> analyzeRisk(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.findActiveUser(userDetails.getUsername());
@@ -33,6 +36,9 @@ public class RiskDetectionController {
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 세션 상태 조회
+     */
     @GetMapping("/session-status")
     public ResponseEntity<Map<String, Object>> getSessionStatus(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.findActiveUser(userDetails.getUsername());
@@ -40,6 +46,9 @@ public class RiskDetectionController {
         return ResponseEntity.ok(Map.of("success", true, "data", response));
     }
 
+    /**
+     * 위험 알림 표시 상태 업데이트
+     */
     @PostMapping("/mark-shown")
     public ResponseEntity<Map<String, Object>> markStationShown(@AuthenticationPrincipal UserDetails userDetails) {
         User user = userService.findActiveUser(userDetails.getUsername());

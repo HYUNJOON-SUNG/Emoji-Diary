@@ -1,50 +1,20 @@
 /**
- * ========================================
- * Axios API 인스턴스 설정
- * ========================================
- * 
- * [백엔드 팀] 실제 백엔드 연동 시 사용할 axios 인스턴스
- * 
- * 주요 기능:
- * - Base URL 설정
- * - JWT 토큰 자동 추가 (Request Interceptor)
- * - 401 에러 시 토큰 재발급 시도 (Response Interceptor)
- * - 에러 처리 통합
- * 
- * [사용 방법]
- * - 각 서비스 파일에서 이 인스턴스를 import하여 사용
- * - JWT 토큰은 interceptor에서 자동으로 추가됩니다
- * 
- * 예시:
- * ```typescript
- * import { apiClient } from '@/shared/api/client';
- * 
- * // GET 요청
- * const response = await apiClient.get('/api/diaries');
- * 
- * // POST 요청
- * const response = await apiClient.post('/api/diaries', data);
- * ```
+ * Axios API 인스턴스 통합 설정
+ * - 사용자용 (`apiClient`) 및 관리자용 (`adminApiClient`) 인스턴스 제공
+ * - JWT 토큰 자동 주입 및 자동 갱신 (Refresh Token) 로직 구현
  */
 
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { TokenStorage } from '@/features/user/auth/api/authApi';
 
 /**
- * Base URL 설정
- * 
- * [백엔드 팀] 환경에 따라 변경 필요
- * - 개발: http://localhost:8080/api
- * - 운영: https://api.emoji-diary.com/api
+ * Base URL 설정 (환경 변수 사용)
  */
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * 사용자 API용 Axios 인스턴스
- * 
- * [백엔드 팀] 실제 백엔드 연동 시 사용
- * - 모든 요청에 JWT 토큰 자동 추가
- * - 401 에러 시 자동으로 토큰 재발급 시도
+ * - 모든 요청에 사용자 JWT 토큰 자동 추가
  */
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -55,13 +25,8 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 /**
- * Request Interceptor
- * 모든 요청 전에 JWT 토큰을 헤더에 자동 추가
- * 
- * [백엔드 팀] 실제 구현 시:
- * - localStorage에서 accessToken 조회
- * - 토큰이 있으면 Authorization 헤더에 추가
- * - 토큰이 없으면 요청은 그대로 진행 (인증 불필요한 API의 경우)
+ * 사용자 Request Interceptor
+ * - 인증이 필요한 요청 헤더에 JWT 추가
  */
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -85,14 +50,9 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response Interceptor
- * 응답 처리 및 에러 핸들링
- * 
- * [백엔드 팀] 실제 구현 시:
- * - 401 에러 시 refreshToken으로 토큰 재발급 시도
- * - 재발급 성공 시 원래 요청 재시도
- * - 재발급 실패 시 로그인 페이지로 리다이렉트
- * - 기타 에러는 적절한 에러 메시지 반환
+ * 사용자 Response Interceptor
+ * - 401/403 에러 핸들링 및 토큰 자동 갱신
+ * - CORS 및 네트워크 에러 통합 처리
  */
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
@@ -207,8 +167,6 @@ apiClient.interceptors.response.use(
 
 /**
  * 관리자 API용 Axios 인스턴스
- * 
- * [백엔드 팀] 실제 백엔드 연동 시 사용
  * - 관리자 JWT 토큰 사용
  * - Base URL: /api/admin
  */
@@ -240,8 +198,8 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 /**
- * 관리자 API Request Interceptor
- * 관리자 JWT 토큰 자동 추가
+ * 관리자 Request Interceptor
+ * - 관리자 토큰 자동 주입
  */
 adminApiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -259,9 +217,8 @@ adminApiClient.interceptors.request.use(
 );
 
 /**
- * 관리자 API Response Interceptor
- * 401 에러 시 리프레시 토큰으로 재발급 시도, 실패 시 관리자 로그인 페이지로 리다이렉트
- * Mutex 패턴 적용으로 동시 다발적인 토큰 갱신 요청 방지
+ * 관리자 Response Interceptor
+ * - 401 에러 시 관리자 토큰 갱신 (Mutex 패턴 적용)
  */
 adminApiClient.interceptors.response.use(
   (response: AxiosResponse) => {

@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
+/**
+ * AI 서버 연동 설정
+ */
 @Configuration
 public class AiConfig {
 

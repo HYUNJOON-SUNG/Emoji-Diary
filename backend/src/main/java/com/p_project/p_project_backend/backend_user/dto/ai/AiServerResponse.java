@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * AI 서버 분석 결과 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

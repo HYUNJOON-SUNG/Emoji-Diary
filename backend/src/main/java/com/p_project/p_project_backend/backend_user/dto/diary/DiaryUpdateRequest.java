@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+/**
+ * 일기 수정 요청 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,11 +22,11 @@ public class DiaryUpdateRequest {
     @NotBlank(message = "본문은 필수입니다")
     private String content;
 
-    private String mood; // "행복, 평온" (자유 텍스트)
+    private String mood;
 
-    private Weather weather; // ENUM
+    private Weather weather;
 
-    private List<String> activities; // ["운동", "독서"]
+    private List<String> activities;
 
-    private List<String> images; // ["url1", "url2"]
+    private List<String> images;
 }

@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 import java.security.Key;
 import java.util.Date;
 
+/**
+ * JWT 토큰 생성 및 검증 제공자
+ */
 @Slf4j
 @Component
 public class JwtTokenProvider {
@@ -30,20 +33,32 @@ public class JwtTokenProvider {
         this.refreshTokenValidityInMilliseconds = refreshTokenValidityInMilliseconds;
     }
 
+    /**
+     * Access Token 생성 (Authentication)
+     */
     public String createAccessToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         return createToken(userDetails.getUsername(), accessTokenValidityInMilliseconds);
     }
 
+    /**
+     * Refresh Token 생성 (Authentication)
+     */
     public String createRefreshToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         return createToken(userDetails.getUsername(), refreshTokenValidityInMilliseconds);
     }
 
+    /**
+     * Access Token 생성 (Email)
+     */
     public String createAccessToken(String email) {
         return createToken(email, accessTokenValidityInMilliseconds);
     }
 
+    /**
+     * Refresh Token 생성 (Email)
+     */
     public String createRefreshToken(String email) {
         return createToken(email, refreshTokenValidityInMilliseconds);
     }
@@ -60,6 +75,9 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * 토큰에서 이메일 추출
+     */
     public String getEmailFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(key)
@@ -87,6 +105,9 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * 토큰 유효성 검증
+     */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);

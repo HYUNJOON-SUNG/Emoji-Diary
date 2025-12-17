@@ -8,6 +8,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+/**
+ * 일기 작성 추이 차트 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,4 +22,3 @@ public class DiaryTrendResponse {
     private Integer month;
     private List<DiaryTrendItem> trend;
 }
-

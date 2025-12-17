@@ -1,6 +1,23 @@
 import * as React from "react"
 import { cn } from "@/shared/lib/utils"
 
+/**
+ * ====================================================================================================
+ * AdminInput 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 관리자 페이지 전용 입력 필드 컴포넌트
+ * - 아이콘(Left Icon) 통합 지원
+ * - 관리자 테마(slate-200 border, focus ring-indigo) 적용
+ * 
+ * @props
+ * - icon: 입력 필드 왼쪽에 표시할 아이콘 컴포넌트 (선택)
+ * - ...InputHTMLAttributes: 표준 input 속성 지원
+ * 
+ * ====================================================================================================
+ */
+
 export interface AdminInputProps
     extends React.InputHTMLAttributes<HTMLInputElement> {
     icon?: React.ReactNode

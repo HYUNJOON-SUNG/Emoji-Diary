@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+/**
+ * 사용자 정보 응답 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -33,7 +33,7 @@ public class AdminErrorLogService {
     private final ErrorLogRepository errorLogRepository;
 
     /**
-     * 에러 로그 목록 조회 (필터링, 검색, 페이징)
+     * 에러 로그 목록 조회 (필터링, 페이징 지원)
      */
     @Transactional(readOnly = true)
     public ErrorLogListResponse getErrorLogList(
@@ -42,8 +42,7 @@ public class AdminErrorLogService {
             String endDateStr,
             String search,
             int page,
-            int limit
-    ) {
+            int limit) {
         try {
             // 파라미터 파싱
             ErrorLog.Level level = parseLevel(levelStr);
@@ -56,13 +55,11 @@ public class AdminErrorLogService {
 
             // 에러 로그 목록 조회
             Page<ErrorLog> errorLogPage = errorLogRepository.findWithFilters(
-                    level, startDate, endDate, searchTerm, pageable
-            );
+                    level, startDate, endDate, searchTerm, pageable);
 
             // 레벨별 집계 조회
             ErrorLogSummaryProjection summaryProjection = errorLogRepository.countByLevelWithFilters(
-                    level, startDate, endDate, searchTerm
-            );
+                    level, startDate, endDate, searchTerm);
 
             // 집계 결과 변환
             ErrorLogSummary summary = buildSummary(summaryProjection);
@@ -85,8 +82,7 @@ public class AdminErrorLogService {
     }
 
     /**
-     * 레벨 문자열을 ErrorLog.Level enum으로 파싱
-     * ALL이거나 null이면 null 반환 (모든 레벨 조회)
+     * 레벨 파라미터 파싱
      */
     private ErrorLog.Level parseLevel(String levelStr) {
         if (levelStr == null || levelStr.isBlank() || levelStr.equalsIgnoreCase(LEVEL_ALL)) {
@@ -101,8 +97,7 @@ public class AdminErrorLogService {
     }
 
     /**
-     * 시작일 문자열을 LocalDateTime으로 파싱
-     * 해당 날짜의 00:00:00으로 설정
+     * 시작일 파싱 및 시간 설정 (00:00:00)
      */
     private LocalDateTime parseStartDate(String startDateStr) {
         if (startDateStr == null || startDateStr.isBlank()) {
@@ -118,8 +113,7 @@ public class AdminErrorLogService {
     }
 
     /**
-     * 종료일 문자열을 LocalDateTime으로 파싱
-     * 해당 날짜의 23:59:59.999999999로 설정
+     * 종료일 파싱 및 시간 설정 (23:59:59)
      */
     private LocalDateTime parseEndDate(String endDateStr) {
         if (endDateStr == null || endDateStr.isBlank()) {
@@ -135,14 +129,14 @@ public class AdminErrorLogService {
     }
 
     /**
-     * 검색어 정규화 (null이거나 빈 문자열이면 null 반환)
+     * 검색어 정규화 처리
      */
     private String normalizeSearchTerm(String search) {
         return (search != null && !search.isBlank()) ? search : null;
     }
 
     /**
-     * 프로젝션 결과를 ErrorLogSummary DTO로 변환
+     * 로그 집계 요약 생성
      */
     private ErrorLogSummary buildSummary(ErrorLogSummaryProjection projection) {
         if (projection == null) {
@@ -161,7 +155,7 @@ public class AdminErrorLogService {
     }
 
     /**
-     * 에러 로그 상세 조회
+     * 에러 로그 상세 정보 조회
      */
     @Transactional(readOnly = true)
     public ErrorLogDetailResponse getErrorLogDetail(Long logId) {
@@ -182,4 +176,3 @@ public class AdminErrorLogService {
         }
     }
 }
-

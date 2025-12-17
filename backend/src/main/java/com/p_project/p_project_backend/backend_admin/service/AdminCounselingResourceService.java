@@ -29,7 +29,7 @@ public class AdminCounselingResourceService {
     private final CounselingResourceRepository counselingResourceRepository;
 
     /**
-     * 상담 기관 목록 조회
+     * 상담 기관 목록 조회 (삭제되지 않은 항목만)
      */
     @Transactional(readOnly = true)
     public CounselingResourceListResponse getCounselingResourceList() {
@@ -45,14 +45,14 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관 추가
+     * 신규 상담 기관 등록
      */
     @Transactional
     public CounselingResourceResponse createCounselingResource(CounselingResourceCreateRequest request) {
-        // 카테고리 변환 및 검증
+        // 카테고리 검증
         CounselingResource.Category category = validateAndConvertCategory(request.getCategory());
 
-        // 상담 기관 생성
+        // 상담 기관 객체 생성 및 저장
         LocalDateTime now = LocalDateTime.now();
         CounselingResource resource = CounselingResource.builder()
                 .name(request.getName())
@@ -73,18 +73,19 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관 수정
+     * 기존 상담 기관 정보 수정
      */
     @Transactional
-    public CounselingResourceResponse updateCounselingResource(Long resourceId, CounselingResourceUpdateRequest request) {
-        // 상담 기관 조회
+    public CounselingResourceResponse updateCounselingResource(Long resourceId,
+            CounselingResourceUpdateRequest request) {
+        // 기관 조회 및 삭제 여부 확인
         CounselingResource resource = findResourceById(resourceId);
         validateResourceNotDeleted(resource, resourceId);
 
-        // 카테고리 변환 및 검증
+        // 카테고리 검증
         CounselingResource.Category category = validateAndConvertCategory(request.getCategory());
 
-        // 상담 기관 수정
+        // 정보 업데이트 및 저장
         updateResourceFields(resource, request, category);
         resource.setUpdatedAt(LocalDateTime.now());
 
@@ -95,14 +96,14 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관 삭제 (소프트 삭제)
+     * 상담 기관 삭제 처리 (소프트 삭제)
      */
     @Transactional
     public void deleteCounselingResource(Long resourceId) {
         CounselingResource resource = findResourceById(resourceId);
         validateResourceNotDeleted(resource, resourceId);
 
-        // 소프트 삭제
+        // 삭제 처리 (삭제 시간 기록)
         resource.setDeletedAt(LocalDateTime.now());
         resource.setUpdatedAt(LocalDateTime.now());
         counselingResourceRepository.save(resource);
@@ -111,7 +112,7 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관 ID로 조회
+     * ID 기반 상담 기관 조회
      */
     private CounselingResource findResourceById(Long resourceId) {
         return counselingResourceRepository.findById(resourceId)
@@ -122,7 +123,7 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관이 삭제되지 않았는지 검증
+     * 상담 기관 삭제 상태 검증
      */
     private void validateResourceNotDeleted(CounselingResource resource, Long resourceId) {
         if (resource.getDeletedAt() != null) {
@@ -132,7 +133,7 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 카테고리 변환 및 검증
+     * 카테고리 문자열 검증 및 Enum 변환
      */
     private CounselingResource.Category validateAndConvertCategory(String categoryKorean) {
         CounselingResource.Category category = CounselingResourceCategoryConverter.fromKorean(categoryKorean);
@@ -143,9 +144,10 @@ public class AdminCounselingResourceService {
     }
 
     /**
-     * 상담 기관 필드 업데이트
+     * 엔티티 필드 업데이트
      */
-    private void updateResourceFields(CounselingResource resource, CounselingResourceUpdateRequest request, CounselingResource.Category category) {
+    private void updateResourceFields(CounselingResource resource, CounselingResourceUpdateRequest request,
+            CounselingResource.Category category) {
         resource.setName(request.getName());
         resource.setCategory(category);
         resource.setPhone(request.getPhone());
@@ -155,4 +157,3 @@ public class AdminCounselingResourceService {
         resource.setIsUrgent(request.getIsUrgent());
     }
 }
-

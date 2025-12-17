@@ -1,7 +1,44 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Filter, Search, RefreshCw, Eye, X, Calendar, Clock, Code } from 'lucide-react';
-import { getErrorLogList } from '../../../services/adminApi';
+import { AlertTriangle, Filter, Search, RefreshCw, Eye, X, Clock, Code } from 'lucide-react';
+import { getErrorLogList } from '../api/adminApi';
 import type { ErrorLog } from '../types';
+
+type Severity = ErrorLog['level'];
+
+/**
+ * ====================================================================================================
+ * 에러 로그 뷰어 컴포넌트
+ * ====================================================================================================
+ * 
+ * @description
+ * 시스템 에러 로그를 조회하고 검색/필터링하는 컴포넌트
+ * - 유스케이스: 6.1 에러 로그 조회 및 검색
+ * - 플로우: 에러 로그 관리 플로우
+ * 
+ * @features
+ * 1. 에러 로그 목록 조회:
+ *    - 서버에서 에러 로그 데이터를 가져와 표시
+ *    - 필터링 (심각도, 날짜, 검색어) 지원
+ * 2. 통계 대시보드:
+ *    - 전체 로그, ERROR, WARN, INFO 개수 요약 카드 표시
+ * 3. 상세 보기 모달:
+ *    - 로그 클릭 시 상세 정보(Stack Trace 포함) 모달 표시
+ * 4. 심각도별 시각적 구분:
+ *    - ERROR(빨강), WARN(노랑), INFO(파랑) 색상 적용
+ * 
+ * @backend_requirements
+ * - GET /api/admin/error-logs
+ *   - Query Params: level, startDate, endDate, search
+ * 
+ * @component_structure
+ * - Header: 타이틀 및 새로고침 버튼
+ * - Statistics Cards: 로그 통계 요약
+ * - Filters: 심각도, 날짜, 검색어 필터 입력 폼
+ * - Log List: 필터링된 로그 목록 테이블
+ * - LogDetailModal: 로그 상세 정보 모달
+ * 
+ * ====================================================================================================
+ */
 
 export function ErrorLogViewer() {
   const [logs, setLogs] = useState<ErrorLog[]>([]);

@@ -18,22 +18,27 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AiService {
 
-    // AI 생성 이미지 저장 경로 (프로젝트 루트/images/ai_generates)
+    // AI 생성 이미지 저장 경로
     private static final String IMAGE_UPLOAD_DIR = "images/ai_generates/";
     private final WebClient aiWebClient;
 
+    /**
+     * AI 서버로 요청 전송
+     */
     public String sendToAiServer(Map<String, Object> requestData) {
-        // WebClient를 사용하여 AI 서버로 POST 요청 전송
         return aiWebClient.post()
-                .uri("/ai/test") // FastAPI의 엔드포인트 경로
-                .bodyValue(requestData) // 클라이언트로부터 받은 데이터를 그대로 전달
+                .uri("/ai/test")
+                .bodyValue(requestData)
                 .retrieve()
-                .bodyToMono(String.class) // 응답을 String으로 받음
-                .block(); // 테스트를 위해 동기식(Blocking)으로 처리하여 결과 반환
+                .bodyToMono(String.class)
+                .block();
     }
 
+    /**
+     * 일기 분석 및 이미지 생성 요청
+     */
     public AiServiceResult analyzeDiary(AiServerRequest request) {
-        // 1. AI 서버로 요청 전송 (AiServerRequest 객체 그대로 전송 -> JSON 변환됨)
+        // 1. AI 서버 요청
         AiServerResponse response = aiWebClient.post()
                 .uri("/api/ai/diary")
                 .bodyValue(request)
@@ -45,7 +50,7 @@ public class AiService {
             throw new RuntimeException("AI Server returned null response");
         }
 
-        // 2. 이미지 디코딩 및 저장
+        // 2. 이미지 저장
         String base64Image = response.getImage();
         String imageUrl = "";
 
@@ -53,7 +58,7 @@ public class AiService {
             imageUrl = saveImage(base64Image);
         }
 
-        // 3. 결과 반환 (AiServiceResult 생성)
+        // 3. 결과 반환
         return AiServiceResult.builder()
                 .aiComment(response.getAiComment())
                 .emotion(response.getEmotion())

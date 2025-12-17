@@ -1,5 +1,11 @@
 import axios from 'axios';
 
+/**
+ * Axios 기본 인스턴스 (관리자용 토큰 처리 포함)
+ * - Base URL, 헤더 설정
+ * - Request Interceptor: 토큰 주입
+ * - Response Interceptor: 401 오류 처리
+ */
 const axiosInstance = axios.create({
     baseURL: '/api', // Relative path since Vite handles proxy or same domain
     headers: {

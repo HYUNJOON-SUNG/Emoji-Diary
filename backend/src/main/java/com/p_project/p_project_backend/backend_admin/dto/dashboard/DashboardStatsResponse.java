@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 서비스 통계 카드 응답 DTO
+ * 서비스 주요 통계(가입자, 일기 수 등) 응답 DTO
  */
 @Getter
 @Builder

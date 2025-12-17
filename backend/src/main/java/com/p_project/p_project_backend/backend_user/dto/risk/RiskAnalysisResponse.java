@@ -8,6 +8,9 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * 위험 분석 결과 응답 DTO
+ */
 @Getter
 @Builder
 @AllArgsConstructor

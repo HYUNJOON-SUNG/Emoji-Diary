@@ -9,6 +9,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * 공지사항 수정 요청 DTO
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,4 +32,3 @@ public class NoticeUpdateRequest {
     @NotNull(message = "고정 여부는 필수입니다")
     private Boolean isPinned;
 }
-

@@ -14,15 +14,30 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * 일기 정보 레포지토리
+ */
 @Repository
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
+        /**
+         * 사용자 및 날짜별 일기 조회
+         */
         Optional<Diary> findByUserAndDate(User user, LocalDate date);
 
+        /**
+         * 기간별 일기 목록 조회
+         */
         List<Diary> findByUserAndDateBetweenAndDeletedAtIsNull(User user, LocalDate startDate, LocalDate endDate);
 
+        /**
+         * 기간별 일기 목록 조회 (최신순)
+         */
         List<Diary> findByUserAndDateBetweenAndDeletedAtIsNullOrderByDateDesc(User user, LocalDate startDate,
                         LocalDate endDate);
 
+        /**
+         * 일기 검색 (키워드, 날짜, 감정 필터링)
+         */
         @Query("SELECT d FROM Diary d WHERE d.user = :user " +
                         "AND d.deletedAt IS NULL " +
                         "AND (:keyword IS NULL OR d.content LIKE %:keyword% OR d.title LIKE %:keyword%) " +

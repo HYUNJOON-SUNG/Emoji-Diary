@@ -42,24 +42,24 @@ public class AdminAuthService {
     @Transactional
     public AdminLoginResponse login(String email, String password) {
         try {
-            // Admin 조회
+            // 관리자 조회
             Admin admin = adminRepository.findByEmail(email)
                     .orElseThrow(() -> {
                         logLoginAttempt(email, false, "Admin not found");
                         return new InvalidCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다.");
                     });
 
-            // 비밀번호 확인
+            // 비밀번호 검증
             if (!passwordEncoder.matches(password, admin.getPasswordHash())) {
                 logLoginAttempt(email, false, "Invalid password", admin);
                 throw new InvalidCredentialsException("아이디 또는 비밀번호가 일치하지 않습니다.");
             }
 
-            // JWT 토큰 생성
+            // 토큰 생성 및 발급
             String accessToken = tokenProvider.createAccessToken(email);
             String refreshToken = tokenProvider.createRefreshToken(email);
 
-            // Refresh Token 저장
+            // 리프레시 토큰 저장
             long refreshTokenValidityDays = refreshTokenValidityInMilliseconds / (1000 * 60 * 60 * 24);
             AdminRefreshToken adminRefreshToken = AdminRefreshToken.builder()
                     .admin(admin)
@@ -69,11 +69,11 @@ public class AdminAuthService {
                     .build();
             adminRefreshTokenRepository.save(adminRefreshToken);
 
-            // 로그인 성공 로그 기록
+            // 로그인 성공 기록
             logLoginAttempt(email, true, "Login successful", admin);
             log.info("Admin login successful: email={}, adminId={}", email, admin.getId());
 
-            // accessToken과 refreshToken 모두 반환
+            // 응답 반환
             return AdminLoginResponse.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
@@ -92,36 +92,34 @@ public class AdminAuthService {
     @Transactional
     public void logout(String accessToken) {
         try {
-            // JWT 토큰에서 이메일 추출 (만료된 토큰도 처리 가능)
+            // 토큰에서 이메일 추출
             String email = tokenProvider.getEmailFromTokenEvenIfExpired(accessToken);
-            
-            // 잘못된 형식의 토큰인 경우
+
+            // 유효성 검사
             if (email == null || email.isBlank()) {
                 log.warn("Invalid token format during logout");
                 throw new AdminNotFoundException("Invalid token format");
             }
 
-            // Admin 조회
+            // 관리자 조회
             Admin admin = adminRepository.findByEmail(email)
                     .orElseThrow(() -> new AdminNotFoundException("Admin not found with email: " + email));
 
-            // 해당 관리자의 모든 refresh token 삭제 (무효화)
+            // 리프레시 토큰 전체 삭제
             adminRefreshTokenRepository.deleteByAdmin(admin);
 
             log.info("Admin logout successful: email={}, adminId={}", email, admin.getId());
 
         } catch (AdminNotFoundException e) {
-            // AdminNotFoundException은 그대로 던짐 (Controller에서 401로 처리)
             throw e;
         } catch (Exception e) {
-            // 예상치 못한 예외는 로그만 남기고 AdminNotFoundException으로 변환
             log.error("Unexpected error during admin logout", e);
             throw new AdminNotFoundException("Invalid token");
         }
     }
 
     /**
-     * 로그인 시도 이력 기록 (명세서 요구사항)
+     * 로그인 시도 이력 기록
      */
     private void logLoginAttempt(String email, boolean success, String reason) {
         logLoginAttempt(email, success, reason, null);
@@ -145,7 +143,6 @@ public class AdminAuthService {
 
             errorLogRepository.save(errorLog);
         } catch (Exception e) {
-            // 에러 로그 기록 실패해도 로그인 프로세스는 계속 진행
             log.error("Failed to save login attempt log", e);
         }
     }
@@ -153,11 +150,11 @@ public class AdminAuthService {
     @Transactional
     public AdminRefreshResponse refresh(String refreshToken) {
         try {
-            // Refresh Token으로 Admin 조회
+            // 리프레시 토큰 조회
             AdminRefreshToken adminRefreshToken = adminRefreshTokenRepository.findByToken(refreshToken)
                     .orElseThrow(() -> new AdminNotFoundException("유효하지 않은 리프레시 토큰입니다."));
 
-            // 만료 확인
+            // 만료 여부 확인
             if (adminRefreshToken.getExpiresAt().isBefore(LocalDateTime.now())) {
                 adminRefreshTokenRepository.delete(adminRefreshToken);
                 throw new AdminNotFoundException("만료된 리프레시 토큰입니다.");
@@ -166,14 +163,13 @@ public class AdminAuthService {
             Admin admin = adminRefreshToken.getAdmin();
             String email = admin.getEmail();
 
-            // 새로운 토큰 생성
+            // 신규 토큰 발급
             String newAccessToken = tokenProvider.createAccessToken(email);
             String newRefreshToken = tokenProvider.createRefreshToken(email);
 
-            // 기존 Refresh Token 삭제
+            // 기존 토큰 삭제 및 신규 토큰 저장
             adminRefreshTokenRepository.delete(adminRefreshToken);
 
-            // 새로운 Refresh Token 저장
             long refreshTokenValidityDays = refreshTokenValidityInMilliseconds / (1000 * 60 * 60 * 24);
             AdminRefreshToken newAdminRefreshToken = AdminRefreshToken.builder()
                     .admin(admin)
@@ -199,7 +195,7 @@ public class AdminAuthService {
     }
 
     /**
-     * Authorization 헤더에서 토큰 추출
+     * 헤더에서 토큰 추출
      */
     public static String extractTokenFromHeader(String authorizationHeader) {
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
@@ -208,7 +204,6 @@ public class AdminAuthService {
         if (authorizationHeader.startsWith(BEARER_PREFIX)) {
             return authorizationHeader.substring(BEARER_PREFIX_LENGTH);
         }
-        return null; // Bearer 접두사가 없으면 null 반환 (JWT 표준 준수)
+        return null;
     }
 }
-

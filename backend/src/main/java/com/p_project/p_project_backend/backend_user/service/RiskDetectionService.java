@@ -30,6 +30,9 @@ public class RiskDetectionService {
     private final RiskDetectionSessionRepository sessionRepository;
     private final CounselingResourceRepository counselingResourceRepository;
 
+    /**
+     * 위험 감지 분석
+     */
     @Transactional(readOnly = true)
     public RiskAnalysisResponse analyze(User user) {
         RiskDetectionSettings settings = getSettings();
@@ -57,6 +60,9 @@ public class RiskDetectionService {
                 .build();
     }
 
+    /**
+     * 위험 알림 세션 상태 조회
+     */
     @Transactional(readOnly = true)
     public SessionStatusResponse getSessionStatus(User user) {
         LocalDate today = LocalDate.now();
@@ -70,6 +76,9 @@ public class RiskDetectionService {
                 .orElse(SessionStatusResponse.builder().alreadyShown(false).build());
     }
 
+    /**
+     * 위험 알림 노출 처리 (세션 기록)
+     */
     @Transactional
     public void markShown(User user) {
         LocalDate today = LocalDate.now();

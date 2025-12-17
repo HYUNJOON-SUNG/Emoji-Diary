@@ -97,25 +97,25 @@ public class AdminDashboardService {
     }
 
     /**
-     * 일지 작성 추이 차트 조회
+     * 일기 작성 추이 통계 조회
      */
     @Transactional(readOnly = true)
     public DiaryTrendResponse getDiaryTrend(
             String period,
             Integer year,
             Integer month) {
-        // 기간 계산 (LocalDate 사용)
+        // 기간 계산
         DatePeriodRange datePeriodRange = calculateDatePeriodRange(period, year, month);
         LocalDate startDate = datePeriodRange.getStartDate();
         LocalDate endDate = datePeriodRange.getEndDate();
 
-        // period에 따라 다른 집계 방식 사용
+        // 기간별 집계 수행
         List<DiaryTrendItem> trend;
         if (PERIOD_YEARLY.equalsIgnoreCase(period)) {
-            // 연간: 월별 집계
+            // 월별 집계
             trend = buildMonthlyTrend(startDate, endDate);
         } else {
-            // 주간/월간: 일별 집계
+            // 일별 집계
             trend = buildDailyTrend(startDate, endDate);
         }
 
@@ -129,7 +129,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 서비스 통계 카드 조회
+     * 서비스 주요 통계(가입자, 일기, 위험군 등) 카드 데이터 조회
      */
     @Transactional(readOnly = true)
     public DashboardStatsResponse getDashboardStats(
@@ -151,19 +151,19 @@ public class AdminDashboardService {
                 ? newUserPeriod.toLowerCase()
                 : NEW_USER_PERIOD_DAILY;
 
-        // 1. 전체 사용자 수
+        // 전체 사용자 수 계산
         DashboardStatsResponse.TotalUsersInfo totalUsers = calculateTotalUsersInfo();
 
-        // 2. 활성 사용자 수 (DAU/WAU/MAU)
+        // 활성 사용자 수(DAU/WAU/MAU) 계산
         DashboardStatsResponse.ActiveUsersInfo activeUsers = calculateActiveUsers(resolvedActiveUserType);
 
-        // 3. 신규 가입자 수
+        // 신규 가입자 수 계산
         DashboardStatsResponse.NewUsersInfo newUsers = calculateNewUsers(resolvedNewUserPeriod);
 
-        // 4. 총 일지 작성 수
+        // 총 일기 작성 수 계산
         DashboardStatsResponse.TotalDiariesInfo totalDiaries = calculateTotalDiariesInfo();
 
-        // 5. 일평균 일지 작성 수 (averageDiariesPeriod 사용)
+        // 일평균 일기 작성 수 계산
         PeriodRange avgDiariesPeriodRange = calculatePeriodRangeForStats(resolvedAverageDiariesPeriod);
         LocalDateTime avgDiariesCurrentStart = avgDiariesPeriodRange.getStartDate();
         LocalDateTime avgDiariesCurrentEnd = avgDiariesPeriodRange.getEndDate();
@@ -171,7 +171,7 @@ public class AdminDashboardService {
         DashboardStatsResponse.AverageDailyDiariesInfo averageDailyDiaries = calculateAverageDailyDiaries(
                 resolvedAverageDiariesPeriod, avgDiariesCurrentStart, avgDiariesCurrentEnd);
 
-        // 6. 위험 레벨별 사용자 수 (riskLevelPeriod 사용 - 독립 파라미터)
+        // 위험 레벨별 사용자 수 계산
         PeriodRange riskLevelPeriodRange = calculatePeriodRangeForStats(resolvedRiskLevelPeriod);
         LocalDateTime riskLevelCurrentStart = riskLevelPeriodRange.getStartDate();
         LocalDateTime riskLevelCurrentEnd = riskLevelPeriodRange.getEndDate();
@@ -190,7 +190,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 전체 사용자 수 정보 계산
+     * 전체 사용자 수 계산
      */
     private DashboardStatsResponse.TotalUsersInfo calculateTotalUsersInfo() {
         // 현재 시점의 전체 사용자 수
@@ -202,7 +202,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 총 일지 작성 수 정보 계산
+     * 총 일기 작성 수 계산
      */
     private DashboardStatsResponse.TotalDiariesInfo calculateTotalDiariesInfo() {
         long totalDiariesCount = getLongValueOrZero(adminDiaryRepository.countTotalDiaries());
@@ -213,7 +213,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * Long 값이 null이면 0L 반환
+     * Null 안전한 Long 값 반환
      */
     private long getLongValueOrZero(Long value) {
         return value != null ? value : 0L;
@@ -234,13 +234,12 @@ public class AdminDashboardService {
         LocalDate startDate = datePeriodRange.getStartDate();
         LocalDate endDate = datePeriodRange.getEndDate();
 
-        // period에 따라 다른 집계 방식 사용
         List<UserActivityStatsItem> trend;
         if (PERIOD_YEARLY.equalsIgnoreCase(period)) {
-            // 연간: 월별 집계
+            // 월별 집계
             trend = buildMonthlyUserActivityTrend(startDate, endDate, metricsList);
         } else {
-            // 주간/월간: 일별 집계
+            // 일별 집계
             trend = buildDailyUserActivityTrend(startDate, endDate, metricsList);
         }
 
@@ -252,7 +251,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 기간 범위 계산
+     * 기간 범위 문자열 파싱 및 계산
      */
     private PeriodRange calculatePeriodRange(String period) {
         String periodLower = period.toLowerCase();
@@ -269,7 +268,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * LocalDate 기간 범위 계산
+     * LocalDate 기반 기간 계산
      */
     private DatePeriodRange calculateDatePeriodRange(String period, Integer year, Integer month) {
         Integer resolvedYear = getDefaultYearIfNull(year);
@@ -287,7 +286,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * LocalDate 롤링 윈도우 기간 범위 계산 (최근 7일/30일/1년)
+     * 롤링 윈도우 기간 계산 (최근 7일/30일/1년)
      */
     private DatePeriodRange calculateRollingDatePeriodRange(String period) {
         String periodLower = period.toLowerCase();
@@ -315,14 +314,14 @@ public class AdminDashboardService {
     }
 
     /**
-     * year 기본값 설정 (null이면 현재 연도)
+     * 연도값이 없으면 현재 연도 반환
      */
     private Integer getDefaultYearIfNull(Integer year) {
         return year != null ? year : LocalDate.now().getYear();
     }
 
     /**
-     * 위험 레벨별 사용자 수 추출
+     * 위험 레벨별 사용자 수 집계
      */
     private Map<RiskDetectionSession.RiskLevel, Long> extractRiskLevelCounts(
             LocalDateTime startDate,
@@ -346,7 +345,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 주간 기간 범위 계산 (최근 7일)
+     * 최근 7일 기간 계산
      */
     private PeriodRange calculateWeeklyRange() {
         LocalDate now = LocalDate.now();
@@ -356,7 +355,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 월간 기간 범위 계산 (최근 30일)
+     * 최근 30일 기간 계산
      */
     private PeriodRange calculateMonthlyRange() {
         LocalDate now = LocalDate.now();
@@ -366,7 +365,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 연간 기간 범위 계산 (최근 1년)
+     * 최근 1년 기간 계산
      */
     private PeriodRange calculateYearlyRange() {
         LocalDate now = LocalDate.now();
@@ -376,7 +375,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * Response DTO 생성
+     * 위험 레벨 분포 응답 객체 생성
      */
     private RiskLevelDistributionResponse buildRiskLevelDistributionResponse(
             String period,
@@ -393,7 +392,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 위험 레벨별 Distribution 생성
+     * 위험 레벨별 분포 정보 생성
      */
     private RiskLevelDistributionResponse.RiskLevelDistribution buildDistribution(
             Map<RiskDetectionSession.RiskLevel, Long> riskLevelCounts,
@@ -411,7 +410,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * DistributionItem 생성 (비율 계산 포함)
+     * 분포 항목 생성 및 비율 계산
      */
     private RiskLevelDistributionItem createDistributionItem(long count, long total) {
         double percentage = calculatePercentage(count, total);
@@ -422,7 +421,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 비율 계산 (백분율, 소수점 첫째 자리까지 반올림)
+     * 백분율 계산 (소수점 첫째 자리 반올림)
      */
     private double calculatePercentage(long count, long total) {
         if (total == 0) {
@@ -433,7 +432,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 주간 LocalDate 기간 범위 계산
+     * 주간 LocalDate 범위 계산
      */
     private DatePeriodRange calculateWeeklyDateRange(Integer year, Integer month) {
         // Rolling 7 Days (Today inclusive)
@@ -443,7 +442,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 월간 LocalDate 기간 범위 계산
+     * 월간 LocalDate 범위 계산
      */
     private DatePeriodRange calculateMonthlyDateRange(Integer year, Integer month) {
         // Rolling 30 Days (Today inclusive)
@@ -453,7 +452,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 연간 LocalDate 기간 범위 계산
+     * 연간 LocalDate 범위 계산
      */
     private DatePeriodRange calculateYearlyDateRange(Integer year) {
         // Rolling 1 Year (Today inclusive)
@@ -463,7 +462,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 일별 추이 생성
+     * 일별 작성 추이 데이터 생성
      */
     private List<DiaryTrendItem> buildDailyTrend(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = adminDiaryRepository.countDiariesByDateInPeriod(startDate, endDate);
@@ -487,7 +486,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 월별 추이 생성
+     * 월별 작성 추이 데이터 생성
      */
     private List<DiaryTrendItem> buildMonthlyTrend(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = adminDiaryRepository.countDiariesByMonthInPeriod(startDate, endDate);
@@ -517,28 +516,28 @@ public class AdminDashboardService {
      */
 
     /**
-     * 결과 배열에서 year 추출
+     * 결과 배열에서 연도 추출
      */
     private Integer extractYearFromResult(Object[] result) {
         return (Integer) result[RESULT_INDEX_YEAR];
     }
 
     /**
-     * 결과 배열에서 month 추출
+     * 결과 배열에서 월 추출
      */
     private Integer extractMonthFromResult(Object[] result) {
         return (Integer) result[RESULT_INDEX_MONTH];
     }
 
     /**
-     * 결과 배열에서 count 추출
+     * 결과 배열에서 카운트 추출
      */
     private Long extractCountFromResult(Object[] result) {
         return ((Number) result[RESULT_INDEX_COUNT]).longValue();
     }
 
     /**
-     * DiaryTrendItem 생성
+     * 추이 아이템 객체 생성
      */
     private DiaryTrendItem createDiaryTrendItem(String date, Long count) {
         return DiaryTrendItem.builder()
@@ -548,7 +547,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * metrics 파라미터 파싱
+     * 메트릭 목록 파싱
      */
     private List<String> parseMetrics(String metrics) {
         if (metrics == null || metrics.trim().isEmpty()) {
@@ -562,7 +561,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 일별 사용자 활동 추이 생성
+     * 일별 사용자 활동 데이터 생성
      */
     private List<UserActivityStatsItem> buildDailyUserActivityTrend(
             LocalDate startDate,
@@ -581,7 +580,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 월별 사용자 활동 추이 생성
+     * 월별 사용자 활동 데이터 생성
      */
     private List<UserActivityStatsItem> buildMonthlyUserActivityTrend(
             LocalDate startDate,
@@ -605,7 +604,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 날짜의 사용자 활동 통계 항목 생성
+     * 일별 활동 통계 항목 빌드
      */
     private UserActivityStatsItem buildUserActivityItemForDate(
             LocalDate date,
@@ -629,7 +628,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 월의 사용자 활동 통계 항목 생성
+     * 월별 활동 통계 항목 빌드
      */
     private UserActivityStatsItem buildUserActivityItemForMonth(
             LocalDate monthStart,
@@ -654,7 +653,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 날짜의 신규 가입자 수 계산
+     * 일별 신규 가입자 수 계산
      */
     private Integer calculateNewUsersForDate(LocalDate date) {
         LocalDateTime dayStart = date.atStartOfDay();
@@ -675,7 +674,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 월의 신규 가입자 수 계산
+     * 월별 신규 가입자 수 계산
      */
     private Integer calculateNewUsersForMonth(LocalDate monthStart, LocalDate monthEnd) {
         LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
@@ -696,7 +695,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 날짜의 탈퇴 사용자 수 계산
+     * 일별 탈퇴 사용자 수 계산
      */
     private Integer calculateWithdrawnUsersForDate(LocalDate date) {
         LocalDateTime dayStart = date.atStartOfDay();
@@ -717,7 +716,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 특정 월의 탈퇴 사용자 수 계산
+     * 월별 탈퇴 사용자 수 계산
      */
     private Integer calculateWithdrawnUsersForMonth(LocalDate monthStart, LocalDate monthEnd) {
         LocalDateTime monthStartDateTime = monthStart.atStartOfDay();
@@ -739,7 +738,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 통계 카드용 기간 범위 계산
+     * 통계용 기간 범위 계산
      */
     private PeriodRange calculatePeriodRangeForStats(String period) {
         LocalDate now = LocalDate.now();
@@ -767,7 +766,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 이전 기간 범위 계산 (증감 계산용)
+     * 이전 기간 범위 계산 (증감율 계산용)
      */
     private PeriodRange calculatePreviousPeriodRange(String period, LocalDateTime currentStart) {
         LocalDate startDate = currentStart.toLocalDate();
@@ -795,7 +794,7 @@ public class AdminDashboardService {
     }
 
     /**
-     * 활성 사용자 수 계산
+     * 활성 사용자 수(DAU/WAU/MAU) 계산
      */
     private DashboardStatsResponse.ActiveUsersInfo calculateActiveUsers(String activeUserType) {
         LocalDate today = LocalDate.now();

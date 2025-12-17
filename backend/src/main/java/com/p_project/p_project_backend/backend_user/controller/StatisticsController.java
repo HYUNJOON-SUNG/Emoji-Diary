@@ -19,6 +19,9 @@ public class StatisticsController {
     private final StatsService statsService;
     private final UserRepository userRepository;
 
+    /**
+     * 감정 통계 조회
+     */
     @GetMapping("/emotions")
     public ResponseEntity<?> getEmotionStats(@AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String period,
@@ -30,6 +33,9 @@ public class StatisticsController {
                 .ok(Map.of("success", true, "data", statsService.getEmotionStats(user, period, year, month, week)));
     }
 
+    /**
+     * 감정 추이 조회
+     */
     @GetMapping("/emotion-trend")
     public ResponseEntity<?> getEmotionTrend(@AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String period,
