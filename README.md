@@ -1,184 +1,88 @@
 # 🎨 이모지 다이어리 (Emoji Diary)
 
-> AI가 당신의 하루를 분석하고, 감정에 맞는 그림일기와 위로를 선물합니다.
-
-
-![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F?logo=springboot)
-![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)
-
-## 📖 소개
-
-**이모지 다이어리**는 사용자의 감정을 스마트하게 분석하고 기록해주는 AI 기반 감정 일기 애플리케이션입니다.
-
-오늘 하루의 일기를 작성하면:
-- 🧠 **KoBERT 모델**이 감정을 분석하고
-- 🎨 **Google Gemini AI**가 그에 맞는 그림일기를 그려주고
-- 💬 선택한 페르소나가 공감 코멘트와 음식 추천까지 해줍니다
+> **AI 기반 감정 분석 및 맞춤형 그림일기 생성 서비스**
+> 사용자의 하루를 분석하여 7가지 감정을 도출하고, AI가 그에 어울리는 그림과 위로를 선사하는 정서 케어 플랫폼입니다.
 
 ---
 
-## ✨ 주요 기능
+## 💎 Project Highlights
 
-| 기능 | 설명 |
-|------|------|
-| 🎭 **감정 분석** | KoBERT 기반 7가지 감정 분류 (행복, 중립, 당황, 슬픔, 분노, 불안, 혐오) |
-| 🖼️ **AI 그림일기** | 일기 내용 + 날씨 + 성별 정보를 바탕으로 Gemini가 그림 생성 |
-| 💬 **맞춤 코멘트** | 6가지 페르소나 (베프, 부모님, 전문가, 멘토, 상담사, 시인) |
-| 🍽️ **음식 추천** | 기분 전환을 위한 맞춤 음식 추천 |
-| 📊 **다양한 뷰** | 캘린더, 타임라인, 통계 차트로 감정 흐름 파악 |
+* **지능형 감정 분석 엔진**: KoBERT 모델을 통해 텍스트 속 감정을 7가지 카테고리로 정밀하게 분류합니다.
+* **AI 시각화 시스템**: Google Gemini AI를 활용하여 일기 내용을 바탕으로 세상에 하나뿐인 그림일기를 생성합니다.
+* **멀티 서버 아키텍처**: 비즈니스 로직(Spring Boot)과 AI 연산(FastAPI) 서버를 분리하여 시스템 안정성과 확장성을 확보했습니다.
+* **관리자 통합 관제**: 에러 로그 모니터링, 사용자 심리 위험군 탐지 대시보드 등 고도화된 백오피스 시스템을 구축했습니다.
+* **보안 및 인증**: JWT Access/Refresh 토큰 체계와 이메일 SMTP 인증을 통해 안전한 데이터 관리 환경을 조성했습니다.
 
 ---
 
-## 🏗️ 기술 스택
+## ✨ Key Features
+
+### 🧠 AI 심리 분석 및 콘텐츠 생성
+* **감정 분류**: 일기 작성 시 실시간으로 감정(행복, 중립, 당황, 슬픔, 분노, 불안, 혐오)을 분석합니다.
+* **그림일기 생성**: 일기 내용과 날씨 정보를 조합한 프롬프트 엔지니어링으로 맞춤 이미지를 제공합니다.
+* **멀티 페르소나**: 6가지 페르소나를 선택하여 각기 다른 말투의 공감 피드백과 음식 추천을 받습니다.
+
+### 🛡️ 심리 위기 감지 및 운영 관제
+* **위험 탐지**: 특정 기간 부정적 감정이 지속될 경우 시스템이 위험 상태로 인지하여 관리자에게 리포팅합니다.
+* **로그 트래킹**: 서버 예외 상황을 실시간 수집하고 스택 트레이스를 시각화하여 운영 효율을 높였습니다.
+
+### 📊 데이터 시각화
+* **감정 통계**: Recharts를 활용하여 주간/월간 감정 변화 추이를 그래프로 시각화합니다.
+* **아카이빙**: AI가 생성한 이미지를 캘린더 및 타임라인 뷰로 관리하여 한눈에 감정 기록을 확인합니다.
+
+---
+
+## 🛠 Tech Stack
+
+### Backend & AI
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.0-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Java](https://img.shields.io/badge/Java%2017-007396?style=for-the-badge&logo=java&logoColor=white)
+![Python](https://img.shields.io/badge/Python%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white)
 
 ### Frontend
-- **React 18** + **Vite**
-- **TailwindCSS** + **Radix UI**
-- **Framer Motion** (애니메이션)
-- **Recharts** (차트)
-- **React Router DOM**
-
-### Backend
-- **Spring Boot 3.x**
-- **Spring Security** + **JWT**
-- **Spring Data JPA**
-- **MariaDB**
-
-### AI Server
-- **FastAPI** + **Uvicorn**
-- **KoBERT** (감정 분석)
-- **Google Gemini API** (이미지 생성 & 코멘트)
-- **PyTorch** + **Transformers**
+![React](https://img.shields.io/badge/React%2018-61DAFB?style=for-the-badge&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Framer Motion](https://img.shields.io/badge/Framer%20Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white)
+![Recharts](https://img.shields.io/badge/Recharts-22B5BF?style=for-the-badge)
 
 ---
 
-## 🚀 시작하기
+## 👥 Team
 
-### 사전 요구사항
-
-- **Node.js** 18+
-- **Java** 17+
-- **Python** 3.10+
-- **MariaDB** 10.x+
-- **Google Gemini API Key**
-
----
-
-### 1️⃣ AI Server 설정
-
-```bash
-cd ai_server
-
-# 가상환경 생성 (권장)
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
-pip install -r requirements.txt
-```
-
-#### Gemini API 키 설정
-`ai_server/middleware/feedback.py`와 `nano_banana.py` 파일에서 API 키를 설정하세요:
-```python
-api_key = "YOUR_GEMINI_API_KEY"
-```
-
-#### 서버 실행
-```bash
-python app.py
-```
-> 기본 포트: `8000`
+| 성명 | 역할 |
+| :--- | :--- |
+| **최준혁** | Project Lead / Backend |
+| **성현준** | Backend |
+| **이동원** | Frontend |
+| **박정우** | AI |
 
 ---
 
-### 2️⃣ Backend 설정
+## 📁 System Architecture
 
-```bash
-cd backend
-```
+```mermaid
+graph TD
+    subgraph Client
+        A[Frontend: React]
+    end
 
-#### 환경 설정
-1. `src/main/resources/application.properties.example`을 복사하여 `application.properties` 생성
-2. 아래 값들을 본인 환경에 맞게 수정:
+    subgraph Server_Logic
+        B[Backend: Spring Boot]
+        D[(MariaDB)]
+    end
 
-```properties
-# DB 설정
-spring.datasource.url=jdbc:mariadb://localhost:3306/emoji_diary
-spring.datasource.username=YOUR_DB_USERNAME
-spring.datasource.password=YOUR_DB_PASSWORD
+    subgraph AI_Engine
+        C[AI Server: FastAPI]
+        E[Google Gemini API]
+        F[KoBERT Model]
+    end
 
-# JWT Secret (안전한 랜덤 문자열 사용)
-jwt.secret=YOUR_JWT_SECRET_KEY
-
-# Gmail SMTP (이메일 인증용)
-spring.mail.username=YOUR_GMAIL
-spring.mail.password=YOUR_GMAIL_APP_PASSWORD
-```
-
-> 💡 Gmail 앱 비밀번호는 [Google 계정 설정](https://myaccount.google.com/apppasswords)에서 발급받을 수 있습니다.
-
-#### 서버 실행
-```bash
-# Windows
-.\gradlew bootRun
-
-# Mac/Linux
-./gradlew bootRun
-```
-> 기본 포트: `8080`
-
----
-
-### 3️⃣ Frontend 설정
-
-```bash
-cd frontend
-
-# 의존성 설치
-npm install
-
-# 개발 서버 실행
-npm run dev
-```
-> 기본 포트: `5173`
-
----
-
-## 📁 프로젝트 구조
-
-```
-Emoji-Diary/
-├── 📂 ai_server/           # AI 서버 (FastAPI)
-│   ├── app.py              # 메인 서버
-│   ├── middleware/         # 감정분석, 이미지생성 로직
-│   └── template/           # 프롬프트 템플릿
-│
-├── 📂 backend/             # 백엔드 (Spring Boot)
-│   └── src/main/java/com/p_project/
-│       ├── controller/     # REST API 컨트롤러
-│       ├── service/        # 비즈니스 로직
-│       ├── repository/     # 데이터 접근 계층
-│       └── entity/         # JPA 엔티티
-│
-├── 📂 frontend/            # 프론트엔드 (React + Vite)
-│   └── src/
-│       ├── features/       # 기능별 모듈
-│       ├── shared/         # 공통 컴포넌트
-│       └── app/            # 앱 진입점
-│
-└── 📄 README.md
-```
-
----
-
-## 🔐 환경 변수 요약
-
-| 서비스 | 환경 변수 | 설명 |
-|--------|-----------|------|
-| AI Server | `Gemini_API_KEY` | Google Gemini API 키 |
-| Backend | `DB_*` | MariaDB 연결 정보 |
-| Backend | `jwt.secret` | JWT 서명 키 |
-| Backend | `MAIL_*` | Gmail SMTP 설정 |
-
-
+    A <-->|REST API / JWT| B
+    B <-->|JPA| D
+    B <-->|HTTP / WebFlux| C
+    C <--> E
+    C <--> F
